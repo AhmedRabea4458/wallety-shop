@@ -50,7 +50,7 @@ class HomeHeader extends StatelessWidget {
                 const SizedBox(height: AppSpacing.space2),
                 // Finance subtitle
                 Text(
-                  'تابع مصروفاتك وأهدافك المالية',
+                  'إدارة محفظة فودافون كاش',
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.primary,
                     fontWeight: FontWeight.w600,

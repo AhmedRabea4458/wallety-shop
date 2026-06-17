@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:smart_expense/core/constants/category_colors.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
@@ -65,7 +64,7 @@ class AnalyticsChartCard extends StatelessWidget {
                       return Column(
                         children: [
                           LegendItem(
-                            label: CategoryColors.getLabel(category.category),
+                            label: category.category,
                             amount: NumberFormat('#,##0', 'ar').format(category.amount),
                             percentage: category.percentage,
                             color: category.color,

@@ -5,13 +5,9 @@ class ProfileInitial extends ProfileState {}
 class ProfileLoading extends ProfileState {}
 class ProfileLoaded extends ProfileState {
   final ProfileStats stats;
-  final double budget;
-  final double monthlySpent;
 
   ProfileLoaded({
     required this.stats,
-    required this.budget,
-    required this.monthlySpent,
   });
 }
 class ProfileError extends ProfileState {

@@ -2,15 +2,9 @@ class AppRoutes {
   AppRoutes._();
 
   static const String splash = '/';
-
-  static const String onboarding = '/onboarding';
-
   static const String main = '/main';
-
-  static const String home = '/home';
-  static const String analytics = '/analytics';
-  static const String transactions = '/transactions';
-  static const String profile = '/profile';
-
-  static const String addTransaction = '/add-transaction';
+  static const String addOperation = '/add-operation';
+  static const String editOperation = '/edit-operation';
+  static const String walletSetup = '/wallet-setup';
+  static const String walletManagement = '/wallet-management';
 }

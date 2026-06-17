@@ -1,16 +1,30 @@
 import 'package:get_it/get_it.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smart_expense/core/database/app_database.dart';
 import 'package:smart_expense/features/analytics/data/datasources/local/analytics_local_datasource.dart';
 import 'package:smart_expense/features/analytics/data/datasources/local/analytics_local_datasource_impl.dart';
 import 'package:smart_expense/features/analytics/data/repositories/analytics_repository_impl.dart';
 import 'package:smart_expense/features/analytics/domain/repositories/analytics_repository.dart';
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_cubit.dart';
-import 'package:smart_expense/features/expenses/data/datasources/local/transaction_local_datasource.dart';
-import 'package:smart_expense/features/expenses/data/datasources/local/transaction_local_datasource_imp.dart';
-import 'package:smart_expense/features/expenses/data/repositories/transaction_repository_imp.dart';
-import 'package:smart_expense/features/expenses/domain/repositories/transaction_repository.dart';
-import 'package:smart_expense/features/expenses/presentation/cubit/transaction_cubit.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/cash_drawer_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/cash_drawer_local_datasource_impl.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/operation_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/operation_local_datasource_impl.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/wallet_adjustment_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/wallet_adjustment_local_datasource_impl.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/wallet_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/wallet_local_datasource_impl.dart';
+import 'package:smart_expense/features/operations/data/repositories/cash_drawer_repository_impl.dart';
+import 'package:smart_expense/features/operations/data/repositories/operation_repository_impl.dart';
+import 'package:smart_expense/features/operations/data/repositories/wallet_adjustment_repository_impl.dart';
+import 'package:smart_expense/features/operations/data/repositories/wallet_repository_impl.dart';
+import 'package:smart_expense/features/operations/domain/repositories/cash_drawer_repository.dart';
+import 'package:smart_expense/features/operations/domain/repositories/operation_repository.dart';
+import 'package:smart_expense/features/operations/domain/repositories/wallet_adjustment_repository.dart';
+import 'package:smart_expense/features/operations/domain/repositories/wallet_repository.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
 
 final sl = GetIt.instance;
@@ -19,38 +33,57 @@ Future<void> init() async {
   // Database
   sl.registerLazySingleton(() => AppDatabase());
 
-  // SharedPreferences
-  final prefs = await SharedPreferences.getInstance();
-  sl.registerLazySingleton(() => prefs);
-
   // DataSource
-  sl.registerLazySingleton<TransactionLocalDataSource>(
-    () => TransactionLocalDataSourceImpl(sl()),
-  );
   sl.registerLazySingleton<AnalyticsLocalDataSource>(
     () => AnalyticsLocalDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<CashDrawerLocalDataSource>(
+    () => CashDrawerLocalDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<OperationLocalDataSource>(
+    () => OperationLocalDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<WalletAdjustmentLocalDataSource>(
+    () => WalletAdjustmentLocalDataSourceImpl(sl()),
+  );
+  sl.registerLazySingleton<WalletLocalDataSource>(
+    () => WalletLocalDataSourceImpl(sl()),
+  );
 
   // Repository
-  sl.registerLazySingleton<TransactionRepository>(
-    () => TransactionRepositoryImpl(sl()),
-  );
   sl.registerLazySingleton<AnalyticsRepository>(
     () => AnalyticsRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<CashDrawerRepository>(
+    () => CashDrawerRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<OperationRepository>(
+    () => OperationRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<WalletAdjustmentRepository>(
+    () => WalletAdjustmentRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<WalletRepository>(
+    () => WalletRepositoryImpl(sl()),
   );
 
   // Cubit
   sl.registerLazySingleton(
-    () => TransactionCubit(sl()),
-  );
-  sl.registerLazySingleton(
     () => AnalyticsCubit(sl<AnalyticsRepository>()),
   );
   sl.registerLazySingleton(
-    () => ProfileCubit(
-      sl<TransactionRepository>(),
-      sl<SharedPreferences>(),
-    ),
+    () => CashDrawerCubit(sl<CashDrawerRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => ProfileCubit(sl<OperationRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => WalletAdjustmentCubit(sl<WalletAdjustmentRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => OperationCubit(sl<OperationRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => WalletCubit(sl<WalletRepository>()),
   );
 }
-

@@ -65,23 +65,29 @@ class TransactionRow extends StatelessWidget {
                     style: AppTextStyles.bodyLarge.copyWith(
                       color: AppColors.foreground,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                   const SizedBox(height: AppSpacing.space1),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.space2,
-                          vertical: AppSpacing.space1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.withAlpha(iconBackgroundColor, 0.15),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text(
-                          category,
-                          style: AppTextStyles.caption.copyWith(
-                            color: iconColor,
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space2,
+                            vertical: AppSpacing.space1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.withAlpha(iconBackgroundColor, 0.15),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: Text(
+                            category,
+                            style: AppTextStyles.caption.copyWith(
+                              color: iconColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ),
@@ -94,10 +100,14 @@ class TransactionRow extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: AppSpacing.space2),
-                        Text(
-                          date!,
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.mutedForeground,
+                        Flexible(
+                          child: Text(
+                            date!,
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
                         ),
                       ],

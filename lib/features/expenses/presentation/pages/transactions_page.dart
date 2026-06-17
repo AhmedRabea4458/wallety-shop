@@ -2,31 +2,51 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
-import 'package:smart_expense/core/constants/category_colors.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/date_formatter.dart';
-import 'package:smart_expense/features/expenses/domain/entities/transaction_entity.dart';
-import 'package:smart_expense/features/expenses/presentation/cubit/transaction_cubit.dart';
-import 'package:smart_expense/features/expenses/presentation/cubit/transaction_state.dart';
-import 'package:smart_expense/features/expenses/presentation/widgets/transaction_card.dart';
+import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
+import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
 import 'package:smart_expense/shared/widgets/filter_chip_widget.dart';
 import 'package:smart_expense/shared/widgets/search_bar.dart' as app_search;
+import 'package:smart_expense/shared/widgets/transaction_row.dart';
 
 class TransactionsPage extends StatelessWidget {
   const TransactionsPage({super.key});
 
-  static final _filterChips = [
-    {'label': 'الكل', 'category': null},
-    {'label': 'طعام', 'category': TransactionCategory.food},
-    {'label': 'مواصلات', 'category': TransactionCategory.transport},
-    {'label': 'فواتير', 'category': TransactionCategory.bills},
-    {'label': 'ترفيه', 'category': TransactionCategory.entertainment},
-    {'label': 'تسوق', 'category': TransactionCategory.shopping},
-    {'label': 'أخرى', 'category': TransactionCategory.other},
-  ];
+  static Color _getOperationTypeColor(OperationType type) {
+    switch (type) {
+      case OperationType.deposit:
+        return AppColors.destructive;
+      case OperationType.withdrawal:
+        return AppColors.success;
+    }
+  }
+
+  static IconData _getOperationTypeIcon(OperationType type) {
+    switch (type) {
+      case OperationType.deposit:
+        return Icons.arrow_upward_rounded;
+      case OperationType.withdrawal:
+        return Icons.arrow_downward_rounded;
+    }
+  }
+
+  static String _getOperationTypeLabel(OperationType type) {
+    switch (type) {
+      case OperationType.deposit:
+        return 'إيداع';
+      case OperationType.withdrawal:
+        return 'سحب';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +73,7 @@ class TransactionsPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'المعاملات',
+                      'العمليات',
                       style: AppTextStyles.headline.copyWith(
                         color: AppColors.foreground,
                       ),
@@ -76,9 +96,9 @@ class TransactionsPage extends StatelessWidget {
                   horizontal: AppSpacing.screenHorizontal,
                 ),
                 child: app_search.SearchBar(
-                  hintText: 'البحث في المعاملات...',
+                  hintText: 'البحث في العمليات...',
                   onChanged: (query) {
-                    context.read<TransactionCubit>().search(query);
+                    context.read<OperationCubit>().search(query);
                   },
                 ),
               ),
@@ -92,33 +112,64 @@ class TransactionsPage extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.screenHorizontal,
                 ),
-                child: BlocBuilder<TransactionCubit, TransactionState>(
-                  buildWhen: (previous, current) =>
-                    current is TransactionLoaded,
+                child: BlocBuilder<OperationCubit, OperationState>(
+                  buildWhen: (previous, current) => current is OperationLoaded,
                   builder: (context, state) {
-                    final selectedCategory = state is TransactionLoaded
-                        ? state.selectedCategory
+                    final selectedType = state is OperationLoaded
+                        ? state.selectedOperationType
                         : null;
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: _filterChips.map((chip) {
-                          final category = chip['category'] as TransactionCategory?;
-                          final isActive = category == selectedCategory;
-                          return Padding(
-                            padding: const EdgeInsets.only(
-                              right: AppSpacing.space2,
-                            ),
-                            child: FilterChipWidget(
-                              label: chip['label'] as String,
-                              isActive: isActive,
-                              onTap: () {
-                                context.read<TransactionCubit>().filterByCategory(category);
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    final selectedProvider = state is OperationLoaded
+                        ? state.selectedProviderType
+                        : null;
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip(
+                                label: 'الكل',
+                                isActive: selectedType == null,
+                                onTap: () => context.read<OperationCubit>().filterByOperationType(null),
+                              ),
+                              _buildFilterChip(
+                                label: 'إيداع',
+                                isActive: selectedType == OperationType.deposit,
+                                onTap: () => context.read<OperationCubit>().filterByOperationType(OperationType.deposit),
+                              ),
+                              _buildFilterChip(
+                                label: 'سحب',
+                                isActive: selectedType == OperationType.withdrawal,
+                                onTap: () => context.read<OperationCubit>().filterByOperationType(OperationType.withdrawal),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space2),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip(
+                                label: 'كل المزودين',
+                                isActive: selectedProvider == null,
+                                onTap: () => context.read<OperationCubit>().filterByProvider(null),
+                              ),
+                              _buildFilterChip(
+                                label: 'Vodafone Cash',
+                                isActive: selectedProvider == ProviderType.vodafoneCash,
+                                onTap: () => context.read<OperationCubit>().filterByProvider(ProviderType.vodafoneCash),
+                              ),
+                              _buildFilterChip(
+                                label: 'InstaPay',
+                                isActive: selectedProvider == ProviderType.instaPay,
+                                onTap: () => context.read<OperationCubit>().filterByProvider(ProviderType.instaPay),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
                   },
                 ),
@@ -127,10 +178,10 @@ class TransactionsPage extends StatelessWidget {
             SliverToBoxAdapter(
               child: SizedBox(height: AppSpacing.space4),
             ),
-            // BlocBuilder for transactions
-            BlocBuilder<TransactionCubit, TransactionState>(
+            // BlocBuilder for operations
+            BlocBuilder<OperationCubit, OperationState>(
               builder: (context, state) {
-                if (state is TransactionLoading) {
+                if (state is OperationLoading) {
                   return SliverToBoxAdapter(
                     child: Center(
                       child: Padding(
@@ -141,7 +192,7 @@ class TransactionsPage extends StatelessWidget {
                       ),
                     ),
                   );
-                } else if (state is TransactionError) {
+                } else if (state is OperationError) {
                   return SliverToBoxAdapter(
                     child: Center(
                       child: Padding(
@@ -155,8 +206,8 @@ class TransactionsPage extends StatelessWidget {
                       ),
                     ),
                   );
-                } else if (state is TransactionLoaded) {
-                  if (state.visibleTransactions.isEmpty) {
+                } else if (state is OperationLoaded) {
+                  if (state.visibleOperations.isEmpty) {
                     final bool isSearching = state.searchQuery.isNotEmpty;
                     return SliverToBoxAdapter(
                       child: Center(
@@ -167,7 +218,7 @@ class TransactionsPage extends StatelessWidget {
                               Text(
                                 isSearching
                                     ? 'لا توجد نتائج للبحث'
-                                    : 'لا توجد معاملات',
+                                    : 'لا توجد عمليات',
                                 style: AppTextStyles.body.copyWith(
                                   color: AppColors.mutedForeground,
                                 ),
@@ -176,10 +227,7 @@ class TransactionsPage extends StatelessWidget {
                                 const SizedBox(height: AppSpacing.space4),
                                 ElevatedButton(
                                   onPressed: () {
-                                    context.push(
-                                      AppRoutes.addTransaction,
-                                      extra: {'isExpense': true},
-                                    );
+                                    context.push(AppRoutes.addOperation);
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primary,
@@ -189,7 +237,7 @@ class TransactionsPage extends StatelessWidget {
                                     ),
                                   ),
                                   child: Text(
-                                    'إضافة معاملة',
+                                    'إضافة عملية',
                                     style: AppTextStyles.body.copyWith(
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -202,8 +250,8 @@ class TransactionsPage extends StatelessWidget {
                       ),
                     );
                   }
-                  return _TransactionsList(
-                    transactions: state.visibleTransactions,
+                  return _OperationsList(
+                    operations: state.visibleOperations,
                   );
                 }
                 return const SliverToBoxAdapter(
@@ -220,169 +268,161 @@ class TransactionsPage extends StatelessWidget {
       ),
     );
   }
-}
 
-class _TransactionsList extends StatelessWidget {
-  final List<TransactionEntity> transactions;
-
-  const _TransactionsList({required this.transactions});
-
-  @override
-  Widget build(BuildContext context) {
-    // Group transactions by date
-    final grouped = _groupByDate(transactions);
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final group = grouped[index];
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Date group header
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenHorizontal,
-                  vertical: AppSpacing.space3,
-                ),
-                child: Text(
-                  group.dateLabel,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mutedForeground,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              // Transactions in this group
-              ...group.transactions.map((transaction) {
-                final categoryInfo = _getCategoryInfo(transaction.category);
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                    vertical: AppSpacing.space1,
-                  ),
-                  child: Dismissible(
-                    key: Key('transaction_${transaction.id}'),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.destructive,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                      ),
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.only(left: AppSpacing.space5),
-                      child: const Icon(
-                        Icons.delete_rounded,
-                        color: Colors.white,
-                      ),
-                    ),
-                    onDismissed: (_) {
-                      context.read<TransactionCubit>().deleteTransaction(transaction.id);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('تم حذف المعاملة'),
-                          backgroundColor: AppColors.destructive,
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    child: TransactionCard(
-                      name: transaction.note,
-                      category: categoryInfo.label,
-                      date: DateFormatter.formatTransactionDate(transaction.date),
-                      amount: '${transaction.amount.toStringAsFixed(0)} ج.م',
-                      iconBackgroundColor: AppColors.withAlpha(
-                        categoryInfo.color,
-                        0.15,
-                      ),
-                      iconColor: categoryInfo.color,
-                      icon: categoryInfo.icon,
-                      isExpense: transaction.type == TransactionType.expense,
-                      onTap: () {},
-                    ),
-                  ),
-                );
-              }),
-            ],
-          );
-        },
-        childCount: grouped.length,
+  Widget _buildFilterChip({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.space2),
+      child: FilterChipWidget(
+        label: label,
+        isActive: isActive,
+        onTap: onTap,
       ),
     );
   }
+}
 
-  List<_TransactionGroup> _groupByDate(List<TransactionEntity> transactions) {
-    final Map<String, List<TransactionEntity>> map = {};
-    for (final t in transactions) {
-      final key = DateFormatter.groupKey(t.date);
-      map.putIfAbsent(key, () => []).add(t);
-    }
-    return map.entries.map((e) => _TransactionGroup(e.key, e.value)).toList();
+class _OperationsList extends StatelessWidget {
+  final List<OperationEntity> operations;
+
+  const _OperationsList({required this.operations});
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = _groupByDate(operations);
+
+    return BlocBuilder<WalletCubit, WalletState>(
+      builder: (context, walletState) {
+        final wallets = walletState is WalletLoaded ? walletState.wallets : <WalletEntity>[];
+
+        return SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final group = grouped[index];
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date group header
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal,
+                      vertical: AppSpacing.space3,
+                    ),
+                    child: Text(
+                      group.dateLabel,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  // Operations in this group
+                  ...group.operations.map((operation) {
+                    final typeColor = TransactionsPage._getOperationTypeColor(operation.operationType);
+                    final typeIcon = TransactionsPage._getOperationTypeIcon(operation.operationType);
+                    final typeLabel = TransactionsPage._getOperationTypeLabel(operation.operationType);
+                    final walletName = wallets.firstWhere(
+                      (w) => w.id == operation.walletId,
+                      orElse: () => WalletEntity(
+                        id: 0,
+                        name: '',
+                        balance: 0,
+                        color: const Color(0xFF6366F1),
+                        createdAt: DateTime.now(),
+                      ),
+                    ).name;
+                    final isOutgoing = operation.operationType == OperationType.deposit;
+                    final providerLabel = operation.providerType.label;
+                    final title = operation.notes?.trim().isNotEmpty == true
+                        ? operation.notes!
+                        : operation.providerType == ProviderType.vodafoneCash
+                            ? '$typeLabel - $walletName'
+                            : '$typeLabel - $providerLabel';
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.screenHorizontal,
+                        vertical: AppSpacing.space1,
+                      ),
+                      child: Dismissible(
+                        key: Key('operation_${operation.id}'),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.destructive,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: AppSpacing.space5),
+                          child: const Icon(
+                            Icons.delete_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onDismissed: (_) {
+                          context.read<OperationCubit>().deleteOperation(operation.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('تم حذف العملية'),
+                              backgroundColor: AppColors.destructive,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.card,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(
+                              color: AppColors.border50,
+                              width: 1,
+                            ),
+                          ),
+                          child: TransactionRow(
+                            name: title,
+                            category: providerLabel,
+                            date: DateFormatter.formatTransactionDate(operation.createdAt),
+                            amount: '${operation.amount.toStringAsFixed(0)} ج.م',
+                            iconBackgroundColor: AppColors.withAlpha(typeColor, 0.15),
+                            iconColor: typeColor,
+                            icon: typeIcon,
+                            isExpense: isOutgoing,
+                            onTap: () {
+                              context.push(
+                                AppRoutes.editOperation,
+                                extra: operation,
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+            childCount: grouped.length,
+          ),
+        );
+      },
+    );
   }
 
-  _CategoryInfo _getCategoryInfo(TransactionCategory category) {
-    switch (category) {
-      case TransactionCategory.food:
-        return _CategoryInfo(
-          label: 'طعام',
-          icon: Icons.restaurant_rounded,
-          color: CategoryColors.food,
-        );
-      case TransactionCategory.transport:
-        return _CategoryInfo(
-          label: 'مواصلات',
-          icon: Icons.directions_car_rounded,
-          color: CategoryColors.transport,
-        );
-      case TransactionCategory.bills:
-        return _CategoryInfo(
-          label: 'فواتير',
-          icon: Icons.receipt_long_rounded,
-          color: CategoryColors.bills,
-        );
-      case TransactionCategory.entertainment:
-        return _CategoryInfo(
-          label: 'ترفيه',
-          icon: Icons.movie_rounded,
-          color: CategoryColors.entertainment,
-        );
-      case TransactionCategory.shopping:
-        return _CategoryInfo(
-          label: 'تسوق',
-          icon: Icons.shopping_bag_rounded,
-          color: CategoryColors.shopping,
-        );
-      case TransactionCategory.salary:
-        return _CategoryInfo(
-          label: 'راتب',
-          icon: Icons.attach_money_rounded,
-          color: CategoryColors.salary,
-        );
-      case TransactionCategory.other:
-        return _CategoryInfo(
-          label: 'أخرى',
-          icon: Icons.more_horiz_rounded,
-          color: CategoryColors.other,
-        );
+  List<_OperationGroup> _groupByDate(List<OperationEntity> operations) {
+    final Map<String, List<OperationEntity>> map = {};
+    for (final o in operations) {
+      final key = DateFormatter.groupKey(o.createdAt);
+      map.putIfAbsent(key, () => []).add(o);
     }
+    return map.entries.map((e) => _OperationGroup(e.key, e.value)).toList();
   }
 }
 
-class _TransactionGroup {
+class _OperationGroup {
   final String dateLabel;
-  final List<TransactionEntity> transactions;
+  final List<OperationEntity> operations;
 
-  _TransactionGroup(this.dateLabel, this.transactions);
-}
-
-class _CategoryInfo {
-  final String label;
-  final IconData icon;
-  final Color color;
-
-  _CategoryInfo({
-    required this.label,
-    required this.icon,
-    required this.color,
-  });
+  _OperationGroup(this.dateLabel, this.operations);
 }

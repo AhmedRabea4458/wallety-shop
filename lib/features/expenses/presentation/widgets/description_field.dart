@@ -4,7 +4,6 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 
-/// Text input for transaction description.
 class DescriptionField extends StatelessWidget {
   final TextEditingController? controller;
   final String? hintText;

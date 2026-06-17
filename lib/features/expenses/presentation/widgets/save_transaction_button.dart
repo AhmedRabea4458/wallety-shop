@@ -4,7 +4,6 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 
-/// Large primary CTA button for saving transactions.
 class SaveTransactionButton extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;

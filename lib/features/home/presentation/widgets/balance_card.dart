@@ -118,7 +118,7 @@ class _BalanceCardState extends State<BalanceCard> {
                     children: [
                       Expanded(
                         child: _SummaryItem(
-                          label: 'الدخل',
+                          label: 'العمولات',
                           amount: widget.income,
                           icon: Icons.arrow_upward_rounded,
                           color: AppColors.success,
@@ -134,7 +134,7 @@ class _BalanceCardState extends State<BalanceCard> {
                       ),
                       Expanded(
                         child: _SummaryItem(
-                          label: 'المصروفات',
+                          label: 'العمليات',
                           amount: widget.expenses,
                           icon: Icons.arrow_downward_rounded,
                           color: AppColors.destructive,

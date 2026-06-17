@@ -5,7 +5,6 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 
-/// Displays the large amount input with currency.
 class AmountCard extends StatelessWidget {
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;

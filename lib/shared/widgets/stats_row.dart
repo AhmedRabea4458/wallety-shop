@@ -53,6 +53,8 @@ class StatsRow extends StatelessWidget {
                       0.6,
                     ),
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),

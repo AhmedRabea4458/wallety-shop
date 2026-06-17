@@ -58,9 +58,9 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                     ),
                   ),
                   Expanded(
-                    child: CustomBottomNavItem(
+                    child:                     CustomBottomNavItem(
                       icon: Icons.receipt_long_rounded,
-                      label: 'المعاملات',
+                      label: 'العمليات',
                       isSelected: widget.currentIndex == 1,
                       onTap: () => widget.onTap(1),
                     ),
@@ -75,9 +75,9 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                     ),
                   ),
                   Expanded(
-                    child: CustomBottomNavItem(
-                      icon: Icons.person_rounded,
-                      label: 'الملف الشخصي',
+                    child:                     CustomBottomNavItem(
+                      icon: Icons.description_rounded,
+                      label: 'التقارير',
                       isSelected: widget.currentIndex == 3,
                       onTap: () => widget.onTap(3),
                     ),
@@ -93,10 +93,7 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
             child: Center(
               child: GestureDetector(
                 onTap: () {
-                  context.push(
-                    AppRoutes.addTransaction,
-                    extra: {'isExpense': true},
-                  );
+                  context.push(AppRoutes.addOperation);
                 },
                 child: Container(
                   width: 68,

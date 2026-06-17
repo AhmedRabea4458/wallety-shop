@@ -4,7 +4,6 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 
-/// Date selector card showing the selected date.
 class DateSelector extends StatelessWidget {
   final String dateLabel;
   final VoidCallback? onTap;

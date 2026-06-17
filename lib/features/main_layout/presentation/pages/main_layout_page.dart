@@ -3,10 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_expense/core/di/injection_container.dart';
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_cubit.dart';
 import 'package:smart_expense/features/analytics/presentation/pages/analytics_page.dart';
-import 'package:smart_expense/features/expenses/presentation/cubit/transaction_cubit.dart';
 import 'package:smart_expense/features/expenses/presentation/pages/transactions_page.dart';
 import 'package:smart_expense/features/home/presentation/pages/home_page.dart';
 import 'package:smart_expense/features/main_layout/presentation/widgets/custom_bottom_nav.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/pages/profile_page.dart';
 
@@ -26,13 +30,16 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   void initState() {
     super.initState();
     // Load data on app start
-    sl<TransactionCubit>().getTransactions();
+    sl<OperationCubit>().getOperations();
+    sl<WalletCubit>().getWallets();
     sl<AnalyticsCubit>().loadAnalytics();
     sl<ProfileCubit>().getProfileStats();
+    sl<CashDrawerCubit>().getCashDrawer();
+    sl<WalletAdjustmentCubit>().loadAllAdjustments();
 
     pages = [
       HomePage(
-        onNavigateToTransactions: () => setState(() => currentIndex = 1),
+        onNavigateToOperations: () => setState(() => currentIndex = 1),
       ),
       const TransactionsPage(),
       const AnalyticsPage(),
@@ -44,15 +51,29 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider.value(value: sl<TransactionCubit>()),
+        BlocProvider.value(value: sl<OperationCubit>()),
+        BlocProvider.value(value: sl<WalletCubit>()),
         BlocProvider.value(value: sl<AnalyticsCubit>()),
         BlocProvider.value(value: sl<ProfileCubit>()),
+        BlocProvider.value(value: sl<CashDrawerCubit>()),
+        BlocProvider.value(value: sl<WalletAdjustmentCubit>()),
       ],
       child: Scaffold(
         extendBody: true,
-        body: IndexedStack(
-          index: currentIndex,
-          children: pages,
+        body: BlocListener<OperationCubit, OperationState>(
+          listener: (context, state) {
+            if (state is OperationLoaded) {
+              context.read<CashDrawerCubit>().refreshCashDrawer();
+              context.read<WalletAdjustmentCubit>().refreshAllAdjustments();
+              context.read<ProfileCubit>().silentReload();
+              context.read<AnalyticsCubit>().silentReload();
+              context.read<WalletCubit>().getWallets();
+            }
+          },
+          child: IndexedStack(
+            index: currentIndex,
+            children: pages,
+          ),
         ),
         bottomNavigationBar: SafeArea(
           child: CustomBottomNav(
