@@ -60,8 +60,8 @@ class ProfilePage extends StatelessWidget {
                       stats: [
                         StatItem(label: 'العمليات', value: '...'),
                         StatItem(label: 'الإيداع', value: '...'),
+                        StatItem(label: 'السحب', value: '...'),
                         StatItem(label: 'العمولات', value: '...'),
-                        StatItem(label: 'رسوم الشبكة', value: '...'),
                       ],
                     );
                   } else if (state is ProfileLoaded) {
@@ -73,15 +73,15 @@ class ProfilePage extends StatelessWidget {
                         ),
                         StatItem(
                           label: 'الإيداع',
-                          value: state.stats.totalExpense.toStringAsFixed(0),
+                          value: state.stats.totalDeposits.toStringAsFixed(0),
+                        ),
+                        StatItem(
+                          label: 'السحب',
+                          value: state.stats.totalWithdrawals.toStringAsFixed(0),
                         ),
                         StatItem(
                           label: 'العمولات',
                           value: state.stats.commission.toStringAsFixed(0),
-                        ),
-                        StatItem(
-                          label: 'رسوم الشبكة',
-                          value: state.stats.networkFee.toStringAsFixed(0),
                         ),
                       ],
                     );
@@ -92,8 +92,8 @@ class ProfilePage extends StatelessWidget {
                           stats: [
                             StatItem(label: 'العمليات', value: '-'),
                             StatItem(label: 'الإيداع', value: '-'),
+                            StatItem(label: 'السحب', value: '-'),
                             StatItem(label: 'العمولات', value: '-'),
-                            StatItem(label: 'رسوم الشبكة', value: '-'),
                           ],
                         ),
                         const SizedBox(height: AppSpacing.space4),
@@ -137,8 +137,8 @@ class ProfilePage extends StatelessWidget {
                     stats: [
                       StatItem(label: 'العمليات', value: '-'),
                       StatItem(label: 'الإيداع', value: '-'),
+                      StatItem(label: 'السحب', value: '-'),
                       StatItem(label: 'العمولات', value: '-'),
-                      StatItem(label: 'رسوم الشبكة', value: '-'),
                     ],
                   );
                 },

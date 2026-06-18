@@ -20,8 +20,8 @@ class ProviderStats {
 
 class ProfileStats {
   final int totalTransactions;
-  final double totalIncome;
-  final double totalExpense;
+  final double totalDeposits;
+  final double totalWithdrawals;
   final double commission;
   final double networkFee;
   final ProviderStats vodafoneCash;
@@ -29,8 +29,8 @@ class ProfileStats {
 
   const ProfileStats({
     required this.totalTransactions,
-    required this.totalIncome,
-    required this.totalExpense,
+    required this.totalDeposits,
+    required this.totalWithdrawals,
     required this.commission,
     required this.networkFee,
     required this.vodafoneCash,
@@ -39,8 +39,8 @@ class ProfileStats {
 
   const ProfileStats.empty()
       : totalTransactions = 0,
-        totalIncome = 0,
-        totalExpense = 0,
+        totalDeposits = 0,
+        totalWithdrawals = 0,
         commission = 0,
         networkFee = 0,
         vodafoneCash = const ProviderStats.empty(),

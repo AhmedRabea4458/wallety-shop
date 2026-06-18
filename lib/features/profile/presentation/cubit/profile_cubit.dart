@@ -116,8 +116,8 @@ class ProfileCubit extends Cubit<ProfileState> {
 
     return ProfileStats(
       totalTransactions: operations.length,
-      totalIncome: monthlyWithdrawal,
-      totalExpense: monthlyDeposit,
+      totalDeposits: monthlyDeposit,
+      totalWithdrawals: monthlyWithdrawal,
       commission: monthlyCommission,
       networkFee: monthlyNetworkFee,
       vodafoneCash: ProviderStats(

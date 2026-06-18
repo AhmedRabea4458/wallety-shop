@@ -53,14 +53,14 @@ class ProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'إحصائياتك المالية',
+                      'ملخص المحل',
                       style: AppTextStyles.headline.copyWith(
                         color: AppColors.primaryForeground,
                       ),
                     ),
                     const SizedBox(height: AppSpacing.space1),
                     Text(
-                      'ملخص نشاطك داخل التطبيق',
+                      'إحصائيات عمليات Vodafone Cash و InstaPay',
                       style: AppTextStyles.body.copyWith(
                         color: AppColors.withAlpha(
                           AppColors.primaryForeground,

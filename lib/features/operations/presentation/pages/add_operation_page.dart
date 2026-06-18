@@ -37,6 +37,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   late ProviderType _selectedProvider;
   int? _selectedWalletId;
   late DateTime _selectedDate;
+  bool _isSaving = false;
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _commissionController = TextEditingController();
@@ -69,7 +70,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
     }
   }
 
-  void _saveOperation() {
+  Future<void> _saveOperation() async {
     final amountText = _amountController.text.trim();
     if (amountText.isEmpty) {
       _showError('يرجى إدخال المبلغ');
@@ -89,7 +90,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
 
     final phoneText = _phoneController.text.trim();
     if (phoneText.isEmpty) {
-      _showError('يرجى إدخال رقم الهاتف');
+      _showError('رقم الهاتف مطلوب');
       return;
     }
 
@@ -127,18 +128,42 @@ class _AddOperationPageState extends State<AddOperationPage> {
       createdAt: _selectedDate,
     );
 
-    if (_isEditing) {
-      context.read<OperationCubit>().updateOperation(entity);
-    } else {
-      context.read<OperationCubit>().addOperation(entity);
+    final operationCubit = context.read<OperationCubit>();
+
+    setState(() => _isSaving = true);
+
+    try {
+      if (_isEditing) {
+        await operationCubit.updateOperation(entity);
+      } else {
+        await operationCubit.addOperation(entity);
+      }
+      if (!mounted) return;
+      _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _showError(e.toString());
     }
   }
 
   void _showError(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: AppColors.destructive,
+      ),
+    );
+  }
+
+  void _showSuccess(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -203,19 +228,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
           listener: (context, state) {
             if (state is OperationError) {
               _showError(state.message);
-            } else if (state is OperationLoaded) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-              Navigator.pop(context);
             }
           },
           child: CustomScrollView(
             slivers: [
-              // Header
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -225,7 +241,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: Row(
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _isSaving ? null : () => Navigator.pop(context),
                         icon: Container(
                           padding: const EdgeInsets.all(AppSpacing.space2),
                           decoration: BoxDecoration(
@@ -254,7 +270,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   ),
                 ),
               ),
-              // Operation Type Selector
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -263,9 +278,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: OperationTypeSelector(
                     selectedType: _selectedType,
                     onChanged: (type) {
-                      setState(() {
-                        _selectedType = type;
-                      });
+                      if (_isSaving) return;
+                      setState(() => _selectedType = type);
                     },
                   ),
                 ),
@@ -273,7 +287,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space6),
               ),
-              // Provider Selector
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -282,9 +295,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: ProviderSelector(
                     selectedProvider: _selectedProvider,
                     onChanged: (provider) {
-                      setState(() {
-                        _selectedProvider = provider;
-                      });
+                      if (_isSaving) return;
+                      setState(() => _selectedProvider = provider);
                     },
                   ),
                 ),
@@ -292,7 +304,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space6),
               ),
-              // Wallet Selector (Vodafone Cash only)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -308,9 +319,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                   wallets: state.wallets,
                                   selectedWalletId: _selectedWalletId,
                                   onChanged: (id) {
-                                    setState(() {
-                                      _selectedWalletId = id;
-                                    });
+                                    if (_isSaving) return;
+                                    setState(() => _selectedWalletId = id);
                                   },
                                 );
                               }
@@ -333,7 +343,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space6),
               ),
-              // Amount Card
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -348,7 +357,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space6),
               ),
-              // Commission Field
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -380,6 +388,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                         TextField(
                           controller: _commissionController,
                           keyboardType: TextInputType.number,
+                          enabled: !_isSaving,
                           style: AppTextStyles.bodyLarge.copyWith(
                             color: AppColors.foreground,
                           ),
@@ -405,7 +414,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space4),
               ),
-              // Network Fee Field (Vodafone Cash only)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -440,6 +448,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                 TextField(
                                   controller: _networkFeeController,
                                   keyboardType: TextInputType.number,
+                                  enabled: !_isSaving,
                                   style: AppTextStyles.bodyLarge.copyWith(
                                     color: AppColors.foreground,
                                   ),
@@ -467,7 +476,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space4),
               ),
-              // Phone Number Field
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -500,6 +508,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
                           textAlign: TextAlign.right,
+                          enabled: !_isSaving,
                           style: AppTextStyles.bodyLarge.copyWith(
                             color: AppColors.foreground,
                           ),
@@ -521,7 +530,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space4),
               ),
-              // Notes Field
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -536,7 +544,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space4),
               ),
-              // Date Selector
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -544,14 +551,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   ),
                   child: DateSelector(
                     dateLabel: _formatDate(_selectedDate),
-                    onTap: _pickDate,
+                    onTap: _isSaving ? null : _pickDate,
                   ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space8),
               ),
-              // Save Button
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -561,14 +567,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     builder: (context, state) {
                       return SaveTransactionButton(
                         label: _isEditing ? 'تحديث العملية' : 'حفظ العملية',
-                        onPressed: _saveOperation,
-                        isLoading: state is OperationLoading,
+                        onPressed: _isSaving ? null : _saveOperation,
+                        isLoading: state is OperationLoading || _isSaving,
                       );
                     },
                   ),
                 ),
               ),
-              // Bottom padding
               SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space8),
               ),

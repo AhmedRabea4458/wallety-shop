@@ -1,4 +1,5 @@
-import 'package:bloc/bloc.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
@@ -22,6 +23,7 @@ class OperationCubit extends Cubit<OperationState> {
       _allOperations = await repository.getOperations();
       emit(_buildLoadedState());
     } catch (e) {
+      debugPrint('getOperations error: $e');
       emit(OperationError('فشل تحميل العمليات'));
     }
   }
@@ -30,13 +32,18 @@ class OperationCubit extends Cubit<OperationState> {
     emit(OperationLoading());
     try {
       await repository.addOperation(operation);
+      debugPrint('addOperation: inserted op type=${operation.operationType.name}');
       await _refreshOperations();
     } on InsufficientBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } catch (e) {
+      debugPrint('addOperation error: $e');
       emit(OperationError('فشل إضافة العملية'));
+      rethrow;
     }
   }
 
@@ -44,13 +51,18 @@ class OperationCubit extends Cubit<OperationState> {
     emit(OperationLoading());
     try {
       await repository.updateOperation(operation);
+      debugPrint('updateOperation: updated op id=${operation.id}');
       await _refreshOperations();
     } on InsufficientBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } catch (e) {
+      debugPrint('updateOperation error: $e');
       emit(OperationError('فشل تحديث العملية'));
+      rethrow;
     }
   }
 
@@ -58,13 +70,18 @@ class OperationCubit extends Cubit<OperationState> {
     emit(OperationLoading());
     try {
       await repository.deleteOperation(id);
+      debugPrint('deleteOperation: deleted op id=$id');
       await _refreshOperations();
     } on InsufficientBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
       emit(OperationError(e.toString()));
+      rethrow;
     } catch (e) {
+      debugPrint('deleteOperation error: $e');
       emit(OperationError('فشل حذف العملية'));
+      rethrow;
     }
   }
 
@@ -140,6 +157,7 @@ class OperationCubit extends Cubit<OperationState> {
       _allOperations = await repository.getOperations();
       emit(_buildLoadedState());
     } catch (e) {
+      debugPrint('_refreshOperations error: $e');
       emit(OperationError('فشل تحديث العمليات'));
     }
   }

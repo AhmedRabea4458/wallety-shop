@@ -67,19 +67,11 @@ class _CustomBottomNavState extends State<CustomBottomNav> {
                   ),
                   const SizedBox(width: AppSpacing.space10 * 2),
                   Expanded(
-                    child: CustomBottomNavItem(
-                      icon: Icons.bar_chart_rounded,
-                      label: 'التحليلات',
-                      isSelected: widget.currentIndex == 2,
-                      onTap: () => widget.onTap(2),
-                    ),
-                  ),
-                  Expanded(
                     child:                     CustomBottomNavItem(
                       icon: Icons.description_rounded,
                       label: 'التقارير',
-                      isSelected: widget.currentIndex == 3,
-                      onTap: () => widget.onTap(3),
+                      isSelected: widget.currentIndex == 2,
+                      onTap: () => widget.onTap(2),
                     ),
                   ),
                 ],

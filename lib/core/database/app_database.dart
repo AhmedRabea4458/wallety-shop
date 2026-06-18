@@ -46,6 +46,9 @@ class AppDatabase extends _$AppDatabase {
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async {
           await m.createAll();
+          await into(cashDrawerTable).insert(
+            CashDrawerTableCompanion(id: const Value(1), balance: const Value(0.0)),
+          );
         },
         onUpgrade: (Migrator m, int from, int to) async {
           if (from == 1) {

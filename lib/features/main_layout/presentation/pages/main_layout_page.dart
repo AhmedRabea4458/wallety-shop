@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_expense/core/di/injection_container.dart';
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_cubit.dart';
-import 'package:smart_expense/features/analytics/presentation/pages/analytics_page.dart';
 import 'package:smart_expense/features/expenses/presentation/pages/transactions_page.dart';
 import 'package:smart_expense/features/home/presentation/pages/home_page.dart';
 import 'package:smart_expense/features/main_layout/presentation/widgets/custom_bottom_nav.dart';
@@ -42,7 +41,6 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         onNavigateToOperations: () => setState(() => currentIndex = 1),
       ),
       const TransactionsPage(),
-      const AnalyticsPage(),
       const ProfilePage(),
     ];
   }

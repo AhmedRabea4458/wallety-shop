@@ -5,6 +5,7 @@ import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/features/main_layout/presentation/pages/main_layout_page.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/pages/add_operation_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_management_page.dart';
@@ -59,8 +60,11 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.walletManagement,
       builder: (context, state) {
-        return BlocProvider.value(
-          value: sl<WalletCubit>(),
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: sl<WalletCubit>()),
+            BlocProvider.value(value: sl<WalletAdjustmentCubit>()),
+          ],
           child: const WalletManagementPage(),
         );
       },
