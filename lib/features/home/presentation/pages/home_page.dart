@@ -11,19 +11,25 @@ import 'package:smart_expense/features/operations/domain/entities/operation_enti
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_adjustment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
-import 'package:smart_expense/features/operations/domain/entities/wallet_usage.dart';
 import 'package:smart_expense/features/operations/domain/utils/wallet_limit_calculator.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/active_shift_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/debt_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/cash_drawer_card.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/operation_list.dart';
-import 'package:smart_expense/features/operations/presentation/widgets/wallet_limit_indicator.dart';
+import 'package:smart_expense/features/home/presentation/widgets/hero_balance_card.dart';
+import 'package:smart_expense/features/home/presentation/widgets/home_wallet_card.dart';
+import 'package:smart_expense/features/home/presentation/widgets/quick_action_button.dart';
+import 'package:smart_expense/features/home/presentation/widgets/shift_status_card.dart';
 
 class HomePage extends StatelessWidget {
   final VoidCallback? onNavigateToOperations;
@@ -49,6 +55,23 @@ class HomePage extends StatelessWidget {
               builder: (context, operationState) {
                 return BlocBuilder<WalletAdjustmentCubit, WalletAdjustmentState>(
                   builder: (context, adjustmentState) {
+                    return BlocConsumer<ActiveShiftCubit, ActiveShiftState>(
+                      listener: (context, shiftState) {
+                        if (shiftState is ActiveShiftError) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(shiftState.message),
+                              backgroundColor: AppColors.destructive,
+                              action: SnackBarAction(
+                                label: 'إعادة المحاولة',
+                                textColor: AppColors.destructiveForeground,
+                                onPressed: () => context.read<ActiveShiftCubit>().loadActiveShift(),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                      builder: (context, shiftState) {
                     final now = DateTime.now();
                     final monthName = DateFormat('MMMM y', 'ar').format(now);
 
@@ -155,133 +178,67 @@ class HomePage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space6),
                     ),
-                    // Hero Balance Card
+                    // Shift Status Card
                     SliverToBoxAdapter(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.screenHorizontal,
                         ),
-                        padding: const EdgeInsets.all(AppSpacing.space6),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF6366F1),
-                              const Color(0xFF8B5CF6),
-                              const Color(0xFFA855F7),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(AppRadius.xxl),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withValues(alpha: 0.3),
-                              blurRadius: 24,
-                              offset: const Offset(0, 12),
+                        child: const ShiftStatusCard(),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: AppSpacing.space4),
+                    ),
+                    // Outstanding Debt Card
+                    BlocBuilder<DebtCubit, DebtState>(
+                      builder: (context, debtState) {
+                        final totalOutstanding = context.read<DebtCubit>().totalOutstanding;
+                        if (totalOutstanding > 0) {
+                          return SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSpacing.space4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.card,
+                                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
+                                    ),
+                                    const SizedBox(width: AppSpacing.space2),
+                                    Expanded(
+                                      child: Text(
+                                        'إجمالي الآجل: ${_formatAmount(totalOutstanding)} ج.م',
+                                        style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'إجمالي الرصيد',
-                                  style: AppTextStyles.body.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.visibility_outlined,
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.space4),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  _formatAmount(totalBalance),
-                                  style: AppTextStyles.hero.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 42,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.space2),
-                                Text(
-                                  'ج.م',
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.8),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.space6),
-                            Divider(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              thickness: 1,
-                              height: 1,
-                            ),
-                            const SizedBox(height: AppSpacing.space4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _HeroStat(
-                                    label: 'العمليات اليوم',
-                                    value: todayCount.toString(),
-                                    icon: Icons.receipt_long_outlined,
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 40,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                ),
-                                Expanded(
-                                  child: _HeroStat(
-                                    label: 'إجمالي العمولات',
-                                    value: '${_formatAmount(todayCommission)} ج.م',
-                                    icon: Icons.trending_up_outlined,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: AppSpacing.space4),
-                            Divider(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              thickness: 1,
-                              height: 1,
-                            ),
-                            const SizedBox(height: AppSpacing.space4),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _HeroStat(
-                                    label: 'Vodafone Cash',
-                                    value: '${_formatAmount(todayVodafoneCommission)} ج.م',
-                                    icon: Icons.account_balance_wallet_outlined,
-                                  ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 40,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                ),
-                                Expanded(
-                                  child: _HeroStat(
-                                    label: 'InstaPay',
-                                    value: '${_formatAmount(todayInstaPayCommission)} ج.م',
-                                    icon: Icons.point_of_sale_outlined,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          );
+                        }
+                        return const SliverToBoxAdapter(child: SizedBox.shrink());
+                      },
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: AppSpacing.space4),
+                    ),
+                    // Hero Balance Card
+                    SliverToBoxAdapter(
+                      child: HeroBalanceCard(
+                        totalBalance: totalBalance,
+                        todayCount: todayCount,
+                        todayCommission: todayCommission,
+                        todayVodafoneCommission: todayVodafoneCommission,
+                        todayInstaPayCommission: todayInstaPayCommission,
                       ),
                     ),
                     SliverToBoxAdapter(
@@ -356,7 +313,7 @@ class HomePage extends StatelessWidget {
                                   );
                                   return SizedBox(
                                     width: 174,
-                                    child: _WalletCard(
+                                    child: HomeWalletCard(
                                       wallet: wallet,
                                       usage: usage,
                                     ),
@@ -390,7 +347,7 @@ class HomePage extends StatelessWidget {
                             Row(
                               children: [
                                 Expanded(
-                                  child: _QuickActionButton(
+                                  child: QuickActionButton(
                                     label: 'إيداع',
                                     icon: Icons.arrow_upward_rounded,
                                     color: AppColors.destructive,
@@ -401,7 +358,7 @@ class HomePage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: AppSpacing.space2),
                                 Expanded(
-                                  child: _QuickActionButton(
+                                  child: QuickActionButton(
                                     label: 'سحب',
                                     icon: Icons.arrow_downward_rounded,
                                     color: AppColors.success,
@@ -412,7 +369,7 @@ class HomePage extends StatelessWidget {
                                 ),
                                 const SizedBox(width: AppSpacing.space2),
                                 Expanded(
-                                  child: _QuickActionButton(
+                                  child: QuickActionButton(
                                     label: 'العمليات',
                                     icon: Icons.receipt_long_rounded,
                                     color: AppColors.primary,
@@ -433,6 +390,7 @@ class HomePage extends StatelessWidget {
                       child: OperationList(
                         operations: operations,
                         wallets: wallets,
+                        operationDebts: operationState is OperationLoaded ? operationState.operationDebts : {},
                         onViewAll: onNavigateToOperations,
                         onAddOperation: () {
                           context.push(AppRoutes.addOperation);
@@ -445,195 +403,15 @@ class HomePage extends StatelessWidget {
                     ),
                   ],
                 );
-                  },
-                );
               },
             );
           },
-        ),
-      ),
+        );
+      },
     );
-  }
-}
-
-class _HeroStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-
-  const _HeroStat({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.caption.copyWith(
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
-        ),
-        const SizedBox(height: AppSpacing.space1),
-        Row(
-          children: [
-            Icon(
-              icon,
-              size: 14,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-            const SizedBox(width: AppSpacing.space2),
-            Text(
-              value,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _WalletCard extends StatelessWidget {
-  final WalletEntity wallet;
-  final WalletUsage usage;
-
-  const _WalletCard({
-    required this.wallet,
-    required this.usage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.space4),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: AppColors.border50,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: wallet.color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.space2),
-              Expanded(
-                child: Text(
-                  wallet.name,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mutedForeground,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.space1),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerRight,
-            child: Text(
-              '${NumberFormat('#,##0.##', 'ar').format(wallet.balance)} ج.م',
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: AppColors.foreground,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.space3),
-          WalletLimitIndicator(
-            label: 'يومي',
-            used: usage.dailyUsed,
-            limit: usage.dailyLimit,
-          ),
-          const SizedBox(height: AppSpacing.space2),
-          WalletLimitIndicator(
-            label: 'شهري',
-            used: usage.monthlyUsed,
-            limit: usage.monthlyLimit,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _QuickActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const _QuickActionButton({
-    required this.label,
-    required this.icon,
-    required this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.space4,
-        ),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          border: Border.all(
-            color: AppColors.border50,
-            width: 1,
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 22,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.space2),
-            Text(
-              label,
-              style: AppTextStyles.body.copyWith(
-                color: AppColors.foreground,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  },
+),
+),
+);
   }
 }

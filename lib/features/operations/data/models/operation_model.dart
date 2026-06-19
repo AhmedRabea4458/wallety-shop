@@ -10,6 +10,7 @@ class OperationModel {
   final double amount;
   final double commission;
   final double networkFee;
+  final int? shiftId;
   final String? phoneNumber;
   final String? notes;
   final DateTime createdAt;
@@ -22,6 +23,7 @@ class OperationModel {
     required this.amount,
     this.commission = 0.0,
     this.networkFee = 0.0,
+    this.shiftId,
     this.phoneNumber,
     this.notes,
     required this.createdAt,
@@ -36,6 +38,7 @@ class OperationModel {
       amount: amount,
       commission: commission,
       networkFee: networkFee,
+      shiftId: shiftId,
       phoneNumber: phoneNumber,
       notes: notes,
       createdAt: createdAt,
@@ -51,6 +54,7 @@ class OperationModel {
       amount: entity.amount,
       commission: entity.commission,
       networkFee: entity.networkFee,
+      shiftId: entity.shiftId,
       phoneNumber: entity.phoneNumber,
       notes: entity.notes,
       createdAt: entity.createdAt,
@@ -66,6 +70,7 @@ class OperationModel {
       amount: data.amount,
       commission: data.commission,
       networkFee: data.networkFee,
+      shiftId: data.shiftId,
       phoneNumber: data.phoneNumber,
       notes: data.notes,
       createdAt: data.createdAt,

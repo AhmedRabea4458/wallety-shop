@@ -23,10 +23,11 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
   }
 
   @override
-  Future<void> insertOperation(OperationModel model) {
+  Future<int> insertOperation(OperationModel model,{bool isDebt=false}) {
     return database.addOperationWithBalanceUpdate(
       OperationsTableCompanion(
         walletId: Value(model.walletId),
+        shiftId: Value(model.shiftId),
         operationType: Value(model.operationType.name),
         providerType: Value(model.providerType.name),
         amount: Value(model.amount),
@@ -34,6 +35,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
         networkFee: Value(model.networkFee),
         phoneNumber: Value(model.phoneNumber),
         notes: Value(model.notes),
+        isDebt: Value(isDebt),
         createdAt: Value(model.createdAt),
       ),
     );
@@ -45,6 +47,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
       OperationsTableCompanion(
         id: Value(model.id),
         walletId: Value(model.walletId),
+        shiftId: Value(model.shiftId),
         operationType: Value(model.operationType.name),
         providerType: Value(model.providerType.name),
         amount: Value(model.amount),

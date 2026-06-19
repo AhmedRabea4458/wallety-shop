@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/date_formatter.dart';
 import 'package:smart_expense/features/home/presentation/widgets/section_header.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
@@ -16,6 +19,7 @@ class OperationList extends StatelessWidget {
   final List<WalletEntity> wallets;
   final VoidCallback? onViewAll;
   final VoidCallback? onAddOperation;
+  final Map<int, DebtEntity> operationDebts;
 
   const OperationList({
     super.key,
@@ -23,6 +27,7 @@ class OperationList extends StatelessWidget {
     required this.wallets,
     this.onViewAll,
     this.onAddOperation,
+    this.operationDebts = const {},
   });
 
   static String _formatAmount(double amount) {
@@ -139,8 +144,27 @@ class OperationList extends StatelessWidget {
                           : operation.providerType == ProviderType.vodafoneCash
                               ? '$typeLabel - $walletName'
                               : '$typeLabel - $providerLabel';
+                      final debt = operationDebts[operation.id];
                       return Column(
                         children: [
+                          if (debt != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: AppSpacing.space1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4, vertical: AppSpacing.space1),
+                                decoration: BoxDecoration(
+                                  color: debt.isPaid ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                                ),
+                                child: Text(
+                                  debt.isPaid ? '🟢 تم السداد' : '🟠 آجل',
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: debt.isPaid ? AppColors.success : AppColors.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
                           TransactionRow(
                             name: title,
                             category: providerLabel,
@@ -150,6 +174,20 @@ class OperationList extends StatelessWidget {
                             iconColor: typeColor,
                             icon: typeIcon,
                             isExpense: isOutgoing,
+                            onTap: () {
+                              final hasDebt = operationDebts.containsKey(operation.id);
+                              if (hasDebt) {
+                                context.push(
+                                  AppRoutes.operationDetail,
+                                  extra: operation,
+                                );
+                              } else {
+                                context.push(
+                                  AppRoutes.editOperation,
+                                  extra: operation,
+                                );
+                              }
+                            },
                           ),
                           if (operation != operations.last && operation != operations.take(3).last)
                             const Divider(

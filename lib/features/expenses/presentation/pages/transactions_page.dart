@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/date_formatter.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
@@ -252,6 +254,7 @@ class TransactionsPage extends StatelessWidget {
                   }
                   return _OperationsList(
                     operations: state.visibleOperations,
+                    operationDebts: state.operationDebts,
                   );
                 }
                 return const SliverToBoxAdapter(
@@ -287,12 +290,15 @@ class TransactionsPage extends StatelessWidget {
 
 class _OperationsList extends StatelessWidget {
   final List<OperationEntity> operations;
+  final Map<int, DebtEntity> operationDebts;
 
-  const _OperationsList({required this.operations});
+  const _OperationsList({required this.operations, this.operationDebts = const {}});
 
   @override
   Widget build(BuildContext context) {
     final grouped = _groupByDate(operations);
+    final operationCubit = context.read<OperationCubit>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, walletState) {
@@ -341,14 +347,46 @@ class _OperationsList extends StatelessWidget {
                         : operation.providerType == ProviderType.vodafoneCash
                             ? '$typeLabel - $walletName'
                             : '$typeLabel - $providerLabel';
+                    final debt = operationDebts[operation.id];
                     return Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: AppSpacing.screenHorizontal,
                         vertical: AppSpacing.space1,
                       ),
-                      child: Dismissible(
+                      child: Column(
+                        children: [
+                          if (debt != null)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space5, vertical: AppSpacing.space1),
+                              decoration: BoxDecoration(
+                                color: debt.isPaid ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(AppRadius.lg),
+                                  topRight: Radius.circular(AppRadius.lg),
+                                ),
+                                border: Border.all(color: AppColors.border50, width: 1),
+                              ),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    debt.isPaid ? '🟢 تم السداد' : '🟠 آجل',
+                                    style: AppTextStyles.caption.copyWith(
+                                      color: debt.isPaid ? AppColors.success : AppColors.warning,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${_format(debt.amount)} ج.م',
+                                    style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Dismissible(
                         key: Key('operation_${operation.id}'),
-                        direction: DismissDirection.endToStart,
+                        direction: debt != null ? DismissDirection.none : DismissDirection.endToStart,
                         background: Container(
                           decoration: BoxDecoration(
                             color: AppColors.destructive,
@@ -362,8 +400,8 @@ class _OperationsList extends StatelessWidget {
                           ),
                         ),
                         onDismissed: (_) {
-                          context.read<OperationCubit>().deleteOperation(operation.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          operationCubit.deleteOperation(operation.id);
+                          scaffoldMessenger.showSnackBar(
                             const SnackBar(
                               content: Text('تم حذف العملية'),
                               backgroundColor: AppColors.destructive,
@@ -390,15 +428,25 @@ class _OperationsList extends StatelessWidget {
                             icon: typeIcon,
                             isExpense: isOutgoing,
                             onTap: () {
-                              context.push(
-                                AppRoutes.editOperation,
-                                extra: operation,
-                              );
+                              if (debt != null) {
+                                context.push(
+                                  AppRoutes.operationDetail,
+                                  extra: operation,
+                                );
+                              } else {
+                                context.push(
+                                  AppRoutes.editOperation,
+                                  extra: operation,
+                                );
+                              }
                             },
                           ),
                         ),
                       ),
+                        ]
+                      ),
                     );
+
                   }),
                 ],
               );
@@ -409,7 +457,9 @@ class _OperationsList extends StatelessWidget {
       },
     );
   }
-
+  static String _format(double amount) {
+    return NumberFormat('#,##0.##', 'ar').format(amount);
+  }
   List<_OperationGroup> _groupByDate(List<OperationEntity> operations) {
     final Map<String, List<OperationEntity>> map = {};
     for (final o in operations) {
@@ -426,3 +476,4 @@ class _OperationGroup {
 
   _OperationGroup(this.dateLabel, this.operations);
 }
+   

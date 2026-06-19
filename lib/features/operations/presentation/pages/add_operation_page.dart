@@ -10,14 +10,19 @@ import 'package:smart_expense/features/operations/domain/entities/operation_enti
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/active_shift_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/operation_type_selector.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/provider_selector.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/wallet_selector.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/operation_input_card.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/debt_section.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/amount_card.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/date_selector.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/description_field.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/save_transaction_button.dart';
 
 class AddOperationPage extends StatefulWidget {
@@ -38,14 +43,18 @@ class _AddOperationPageState extends State<AddOperationPage> {
   int? _selectedWalletId;
   late DateTime _selectedDate;
   bool _isSaving = false;
+  bool _isDebt = false;
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _commissionController = TextEditingController();
   final TextEditingController _networkFeeController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  final TextEditingController _customerNameController = TextEditingController();
+  final TextEditingController _customerPhoneController = TextEditingController();
 
   bool get _isEditing => widget.operationToEdit != null;
+  bool _isDebtLinked = false;
 
   @override
   void initState() {
@@ -63,6 +72,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
       _networkFeeController.text = op.networkFee > 0 ? op.networkFee.toStringAsFixed(0) : '';
       _phoneController.text = op.phoneNumber ?? '';
       _notesController.text = op.notes ?? '';
+      _isDebtLinked = context.read<OperationCubit>().getDebtForOperation(op.id) != null;
     } else {
       _selectedType = OperationType.deposit;
       _selectedProvider = ProviderType.vodafoneCash;
@@ -115,6 +125,21 @@ class _AddOperationPageState extends State<AddOperationPage> {
       walletId = _selectedWalletId!;
     }
 
+    // Require active shift
+    final shiftState = context.read<ActiveShiftCubit>().state;
+    int? shiftId;
+    if (shiftState is ActiveShiftLoaded) {
+      shiftId = shiftState.shift.id;
+    } else {
+      _showError('يجب فتح وردية أولاً قبل إضافة عملية');
+      return;
+    }
+
+    if (_isDebt && _customerNameController.text.trim().isEmpty) {
+      _showError('اسم العميل مطلوب لتسجيل الآجل');
+      return;
+    }
+
     final entity = OperationEntity(
       id: _isEditing ? widget.operationToEdit!.id : 0,
       walletId: walletId,
@@ -123,6 +148,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
       amount: amount,
       commission: commission,
       networkFee: _selectedProvider == ProviderType.vodafoneCash ? networkFee : 0.0,
+      shiftId: shiftId,
       phoneNumber: phoneText,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       createdAt: _selectedDate,
@@ -133,10 +159,27 @@ class _AddOperationPageState extends State<AddOperationPage> {
     setState(() => _isSaving = true);
 
     try {
+      int operationId;
       if (_isEditing) {
         await operationCubit.updateOperation(entity);
+        operationId = entity.id;
       } else {
-        await operationCubit.addOperation(entity);
+        operationId = await operationCubit.addOperation(entity, isDebt: _isDebt);
+      }
+      if (_isDebt && !_isEditing) {
+        if (!mounted) return;
+        final debtCubit = context.read<DebtCubit>();
+        await debtCubit.createDebtFromOperation(
+          operationId: operationId,
+          customerName: _customerNameController.text.trim(),
+          customerPhone: _customerPhoneController.text.trim().isEmpty
+              ? null
+              : _customerPhoneController.text.trim(),
+          operationType: _selectedType.name,
+          providerType: _selectedProvider.name,
+          amount: amount + commission,
+        );
+        await operationCubit.getOperations();
       }
       if (!mounted) return;
       _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
@@ -216,6 +259,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
     _networkFeeController.dispose();
     _phoneController.dispose();
     _notesController.dispose();
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
     super.dispose();
   }
 
@@ -270,6 +315,34 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   ),
                 ),
               ),
+              if (_isDebtLinked)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.space4),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_outline_rounded, color: AppColors.warning, size: 20),
+                          const SizedBox(width: AppSpacing.space3),
+                          Expanded(
+                            child: Text(
+                              'هذه العملية مرتبطة بدين ولا يمكن تعديلها',
+                              style: AppTextStyles.body.copyWith(color: AppColors.warning),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -279,7 +352,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     selectedType: _selectedType,
                     onChanged: (type) {
                       if (_isSaving) return;
-                      setState(() => _selectedType = type);
+                      setState(() {
+                        _selectedType = type;
+                        if (type == OperationType.withdrawal) _isDebt = false;
+                      });
                     },
                   ),
                 ),
@@ -362,52 +438,12 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space5,
-                      vertical: AppSpacing.space4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(
-                        color: AppColors.border50,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'العمولة',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.mutedForeground,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space2),
-                        TextField(
-                          controller: _commissionController,
-                          keyboardType: TextInputType.number,
-                          enabled: !_isSaving,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.foreground,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '0',
-                            hintStyle: AppTextStyles.body.copyWith(
-                              color: AppColors.mutedForeground,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            isDense: true,
-                            suffixText: 'ج.م',
-                            suffixStyle: AppTextStyles.body.copyWith(
-                              color: AppColors.mutedForeground,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: OperationInputCard(
+                    label: 'العمولة',
+                    controller: _commissionController,
+                    keyboardType: TextInputType.number,
+                    enabled: !_isSaving,
+                    suffixText: 'ج.م',
                   ),
                 ),
               ),
@@ -422,52 +458,12 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: _selectedProvider == ProviderType.vodafoneCash
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space5,
-                              vertical: AppSpacing.space4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.card,
-                              borderRadius: BorderRadius.circular(AppRadius.lg),
-                              border: Border.all(
-                                color: AppColors.border50,
-                                width: 1,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'رسوم الشبكة (Vodafone Cash)',
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.mutedForeground,
-                                  ),
-                                ),
-                                const SizedBox(height: AppSpacing.space2),
-                                TextField(
-                                  controller: _networkFeeController,
-                                  keyboardType: TextInputType.number,
-                                  enabled: !_isSaving,
-                                  style: AppTextStyles.bodyLarge.copyWith(
-                                    color: AppColors.foreground,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: '0',
-                                    hintStyle: AppTextStyles.body.copyWith(
-                                      color: AppColors.mutedForeground,
-                                    ),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.zero,
-                                    isDense: true,
-                                    suffixText: 'ج.م',
-                                    suffixStyle: AppTextStyles.body.copyWith(
-                                      color: AppColors.mutedForeground,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                        ? OperationInputCard(
+                            label: 'رسوم الشبكة (Vodafone Cash)',
+                            controller: _networkFeeController,
+                            keyboardType: TextInputType.number,
+                            enabled: !_isSaving,
+                            suffixText: 'ج.م',
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -481,49 +477,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space5,
-                      vertical: AppSpacing.space4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                      border: Border.all(
-                        color: AppColors.border50,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'رقم الهاتف',
-                          style: AppTextStyles.caption.copyWith(
-                            color: AppColors.mutedForeground,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.space2),
-                        TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          textAlign: TextAlign.right,
-                          enabled: !_isSaving,
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: AppColors.foreground,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '01XXXXXXXXX',
-                            hintStyle: AppTextStyles.body.copyWith(
-                              color: AppColors.mutedForeground,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                            isDense: true,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: OperationInputCard(
+                    label: 'رقم الهاتف',
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    textAlign: TextAlign.right,
+                    enabled: !_isSaving,
+                    hintText: '01XXXXXXXXX',
                   ),
                 ),
               ),
@@ -556,6 +516,22 @@ class _AddOperationPageState extends State<AddOperationPage> {
                 ),
               ),
               SliverToBoxAdapter(
+                child: SizedBox(height: AppSpacing.space4),
+              ),
+              if (!_isEditing && _selectedType == OperationType.deposit)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                    child: DebtSection(
+                      isDebt: _isDebt,
+                      isSaving: _isSaving,
+                      onDebtChanged: (v) => setState(() => _isDebt = v),
+                      customerNameController: _customerNameController,
+                      customerPhoneController: _customerPhoneController,
+                    ),
+                  ),
+                ),
+              SliverToBoxAdapter(
                 child: SizedBox(height: AppSpacing.space8),
               ),
               SliverToBoxAdapter(
@@ -567,7 +543,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     builder: (context, state) {
                       return SaveTransactionButton(
                         label: _isEditing ? 'تحديث العملية' : 'حفظ العملية',
-                        onPressed: _isSaving ? null : _saveOperation,
+                        onPressed: (_isSaving || _isDebtLinked) ? null : _saveOperation,
                         isLoading: state is OperationLoading || _isSaving,
                       );
                     },

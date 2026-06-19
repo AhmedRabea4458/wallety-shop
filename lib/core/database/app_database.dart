@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:smart_expense/core/database/tables/debtors_table.dart';
+import 'package:smart_expense/core/database/tables/debts_table.dart';
 import 'dart:ui';
 
 import 'package:smart_expense/features/analytics/domain/entities/category_breakdown.dart';
@@ -12,6 +14,7 @@ import 'package:smart_expense/core/errors/exceptions.dart';
 
 import 'tables/cash_drawer_table.dart';
 import 'tables/operations_table.dart';
+import 'tables/shifts_table.dart';
 import 'tables/transactions_table.dart';
 import 'tables/wallet_adjustments_table.dart';
 import 'tables/wallets_table.dart';
@@ -34,13 +37,16 @@ LazyDatabase _openConnection() {
     OperationsTable,
     CashDrawerTable,
     WalletAdjustmentsTable,
+    ShiftsTable,
+    DebtorsTable,
+    DebtsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -49,6 +55,7 @@ class AppDatabase extends _$AppDatabase {
           await into(cashDrawerTable).insert(
             CashDrawerTableCompanion(id: const Value(1), balance: const Value(0.0)),
           );
+          await _createSingleActiveShiftTrigger();
         },
         onUpgrade: (Migrator m, int from, int to) async {
           if (from == 1) {
@@ -81,8 +88,70 @@ class AppDatabase extends _$AppDatabase {
           if (from <= 8) {
             await m.addColumn(operationsTable, operationsTable.networkFee);
           }
+          if (from <= 9) {
+            await m.createTable(shiftsTable);
+            await m.addColumn(operationsTable, operationsTable.shiftId);
+          }
+          if (from <= 10) {
+            await _repairDuplicateActiveShifts();
+            await _createSingleActiveShiftTrigger();
+          }
+          if (from <= 11) {
+            await m.createTable(debtorsTable);
+            await m.createTable(debtsTable);
+          }
+          if (from <= 13) {
+            try {
+              await m.addColumn(operationsTable, operationsTable.isDebt);
+            } catch (_) {
+              // Column may already exist on some installs; safe to ignore.
+            }
+          }
+          if (from <= 15) {
+            await _recreateDebtsTableIfOperationIdNotNullable();
+          }
         },
       );
+
+  Future<void> _recreateDebtsTableIfOperationIdNotNullable() async {
+    final columns = await customSelect(
+      "PRAGMA table_info(${debtsTable.actualTableName})",
+    ).get();
+    QueryRow? operationIdInfo;
+    for (final row in columns) {
+      if (row.read<String>('name') == 'operation_id') {
+        operationIdInfo = row;
+        break;
+      }
+    }
+    if (operationIdInfo == null) return;
+    final isNotNull = operationIdInfo.read<int>('notnull') == 1;
+    if (!isNotNull) return;
+
+    await customStatement('''
+      CREATE TABLE debts_table_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        debtor_id INTEGER NOT NULL REFERENCES debtors_table (id),
+        operation_id INTEGER REFERENCES operations_table (id),
+        operation_type TEXT NOT NULL DEFAULT 'deposit',
+        provider_type TEXT,
+        amount REAL NOT NULL,
+        is_paid INTEGER NOT NULL DEFAULT 0 CHECK (is_paid IN (0, 1)),
+        paid_at INTEGER,
+        created_at INTEGER NOT NULL
+      )
+    ''');
+    await customStatement('''
+      INSERT INTO debts_table_new (
+        id, debtor_id, operation_id, operation_type, provider_type, amount, is_paid, paid_at, created_at
+      )
+      SELECT
+        id, debtor_id, operation_id, operation_type, provider_type, amount, is_paid, paid_at, created_at
+      FROM debts_table
+    ''');
+    await customStatement('DROP TABLE debts_table');
+    await customStatement('ALTER TABLE debts_table_new RENAME TO debts_table');
+  }
 
   // ── Legacy Transaction Methods (keep for backward compatibility) ──
   Future<List<TransactionsTableData>> getTransactions() {
@@ -264,6 +333,10 @@ class AppDatabase extends _$AppDatabase {
     return count.isNotEmpty;
   }
 
+  Future<List<OperationsTableData>> getOperationsByShiftId(int shiftId) {
+    return (select(operationsTable)..where((o) => o.shiftId.equals(shiftId))).get();
+  }
+
   // ── Operation Read Methods ──
   Future<List<OperationsTableData>> getOperations() => select(operationsTable).get();
 
@@ -277,7 +350,7 @@ class AppDatabase extends _$AppDatabase {
 
   // ── Atomic Operation Methods (with Balance Update) ──
 
-  Future<void> addOperationWithBalanceUpdate(OperationsTableCompanion operation) {
+  Future<int> addOperationWithBalanceUpdate(OperationsTableCompanion operation) {
     return transaction(() async {
       final walletId = operation.walletId.value;
       final providerType = operation.providerType.value;
@@ -285,6 +358,7 @@ class AppDatabase extends _$AppDatabase {
       final amount = operation.amount.value;
       final commission = operation.commission.value;
       final networkFee = operation.networkFee.value;
+      final isDebt = operation.isDebt.value;
 
       // Vodafone Cash affects wallet balance; InstaPay does not
       if (providerType == 'vodafoneCash') {
@@ -302,14 +376,16 @@ class AppDatabase extends _$AppDatabase {
             .write(WalletsTableCompanion(balance: Value(newBalance)));
       }
 
-      await into(operationsTable).insert(operation);
+      final operationId = await into(operationsTable).insert(operation);
 
       // Update cash drawer
       final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
       double cashBalance = cashDrawer.balance;
       if (providerType == 'vodafoneCash') {
         if (type == 'deposit') {
-          cashBalance += amount + commission;
+       if (!isDebt) {
+  cashBalance += amount + commission;
+}
         } else if (type == 'withdrawal') {
           cashBalance -= amount - commission;
           if (cashBalance < 0) {
@@ -317,10 +393,18 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       } else if (providerType == 'instaPay') {
-        cashBalance += commission;
+        if (type == 'deposit') {
+          cashBalance += commission;
+        } else if (type == 'withdrawal') {
+          cashBalance -= amount - commission;
+          if (cashBalance < 0) {
+            throw InsufficientCashDrawerBalanceException();
+          }
+        }
       }
       await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
           .write(CashDrawerTableCompanion(balance: Value(cashBalance)));
+      return operationId;
     });
   }
 
@@ -383,9 +467,13 @@ class AppDatabase extends _$AppDatabase {
           cashBalance += oldOp.amount - oldOp.commission;
         }
       } else if (oldProvider == 'instaPay') {
-        cashBalance -= oldOp.commission;
-        if (cashBalance < 0) {
-          throw InsufficientCashDrawerBalanceException();
+        if (oldOp.operationType == 'deposit') {
+          cashBalance -= oldOp.commission;
+          if (cashBalance < 0) {
+            throw InsufficientCashDrawerBalanceException();
+          }
+        } else if (oldOp.operationType == 'withdrawal') {
+          cashBalance += oldOp.amount - oldOp.commission;
         }
       }
 
@@ -400,7 +488,14 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       } else if (newProvider == 'instaPay') {
-        cashBalance += newCommission;
+        if (newType == 'deposit') {
+          cashBalance += newCommission;
+        } else if (newType == 'withdrawal') {
+          cashBalance -= newAmount - newCommission;
+          if (cashBalance < 0) {
+            throw InsufficientCashDrawerBalanceException();
+          }
+        }
       }
 
       await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
@@ -445,13 +540,174 @@ class AppDatabase extends _$AppDatabase {
           cashBalance += operation.amount - operation.commission;
         }
       } else if (providerType == 'instaPay') {
-        cashBalance -= operation.commission;
-        if (cashBalance < 0) {
-          throw InsufficientCashDrawerBalanceException();
+        if (operation.operationType == 'deposit') {
+          cashBalance -= operation.commission;
+          if (cashBalance < 0) {
+            throw InsufficientCashDrawerBalanceException();
+          }
+        } else if (operation.operationType == 'withdrawal') {
+          cashBalance += operation.amount - operation.commission;
         }
       }
       await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
           .write(CashDrawerTableCompanion(balance: Value(cashBalance)));
     });
   }
+
+  // ── Shift Methods ──
+
+  Future<ShiftsTableData?> getActiveShift() async {
+    final active = await (select(shiftsTable)..where((s) => s.endTime.isNull())).get();
+    if (active.isEmpty) return null;
+    if (active.length == 1) return active.first;
+    throw MultipleActiveShiftsException(active.length);
+  }
+
+  Future<List<ShiftsTableData>> _getActiveShifts() {
+    return (select(shiftsTable)..where((s) => s.endTime.isNull())).get();
+  }
+
+  Future<void> repairActiveShifts() async {
+    final active = await _getActiveShifts();
+    if (active.length <= 1) return;
+    active.sort((a, b) => b.startTime.compareTo(a.startTime));
+    final duplicates = active.skip(1);
+    for (final shift in duplicates) {
+      await (update(shiftsTable)..where((s) => s.id.equals(shift.id))).write(
+        ShiftsTableCompanion(
+          endTime: Value(shift.startTime),
+          closingCashDrawer: Value(shift.openingCashDrawer),
+        ),
+      );
+    }
+  }
+
+  Future<void> _repairDuplicateActiveShifts() => repairActiveShifts();
+
+  Future<void> _createSingleActiveShiftTrigger() async {
+    await customStatement('''
+      CREATE TRIGGER IF NOT EXISTS trg_single_active_shift
+      BEFORE INSERT ON shifts_table
+      FOR EACH ROW
+      WHEN NEW.end_time IS NULL
+      BEGIN
+        SELECT CASE
+          WHEN EXISTS (SELECT 1 FROM shifts_table WHERE end_time IS NULL)
+          THEN RAISE(ABORT, 'Only one active shift is allowed')
+        END;
+      END;
+    ''');
+  }
+
+  Future<List<ShiftsTableData>> getShiftHistory() {
+    return (select(shiftsTable)
+      ..orderBy([(s) => OrderingTerm.desc(s.startTime)])
+    ).get();
+  }
+
+  Future<ShiftsTableData?> getShiftById(int id) {
+    return (select(shiftsTable)..where((s) => s.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> insertShift(ShiftsTableCompanion shift) async {
+    await into(shiftsTable).insert(shift);
+  }
+
+  Future<void> closeShift(int id, double closingBalance) async {
+    await (update(shiftsTable)..where((s) => s.id.equals(id)))
+        .write(ShiftsTableCompanion(
+          endTime: Value(DateTime.now()),
+          closingCashDrawer: Value(closingBalance),
+        ));
+  }
+  Future<List<DebtorsTableData>> getAllDebtors() {
+  return select(debtorsTable).get();
+}
+Future<DebtorsTableData?> getDebtorByPhone(String phone) {
+  return (select(debtorsTable)
+        ..where((tbl) => tbl.phone.equals(phone)))
+      .getSingleOrNull();
+}
+Future<DebtorsTableData?> getDebtorById(int id) {
+  return (select(debtorsTable)
+        ..where((tbl) => tbl.id.equals(id)))
+      .getSingleOrNull();
+}
+Future<DebtorsTableData?> getDebtorByName(String name) {
+  return (select(debtorsTable)
+        ..where((tbl) => tbl.name.equals(name)))
+      .getSingleOrNull();
+}
+Future<DebtsTableData?> getDebtByOperationId(int operationId) {
+  return (select(debtsTable)
+        ..where((d) => d.operationId.equals(operationId)))
+      .getSingleOrNull();
+}
+Future<Map<int, DebtsTableData>> getOperationDebts() async {
+  final debts = await (select(debtsTable)
+        ..where((d) => d.operationId.isNotNull()))
+      .get();
+  return {for (final d in debts) d.operationId!: d};
+}
+Future<bool> hasDebt(int operationId) async {
+  final debt = await getDebtByOperationId(operationId);
+  return debt != null;
+}
+Future<void> settleDebt(int debtId) async {
+  await transaction(() async {
+    final debt = await (select(debtsTable)
+          ..where((d) => d.id.equals(debtId)))
+        .getSingle();
+
+    if (debt.isPaid) return;
+
+    await (update(debtsTable)
+          ..where((d) => d.id.equals(debtId)))
+        .write(
+      DebtsTableCompanion(
+        isPaid: const Value(true),
+        paidAt: Value(DateTime.now()),
+      ),
+    );
+
+    final cashDrawer =
+        await (select(cashDrawerTable)
+              ..where((c) => c.id.equals(1)))
+            .getSingle();
+
+    await (update(cashDrawerTable)
+          ..where((c) => c.id.equals(1)))
+        .write(
+      CashDrawerTableCompanion(
+        balance: Value(cashDrawer.balance + debt.amount),
+      ),
+    );
+  });
+}
+Future<int> insertDebtor(DebtorsTableCompanion debtor) {
+  return into(debtorsTable).insert(debtor);
+}
+Future<int> insertDebt(DebtsTableCompanion debt) {
+  return into(debtsTable).insert(debt);
+}
+Future<List<DebtsTableData>> getDebtsByDebtor(int debtorId) {
+  return (select(debtsTable)
+        ..where((tbl) => tbl.debtorId.equals(debtorId)))
+      .get();
+}
+Future<List<DebtsTableData>> getUnpaidDebts() {
+  return (select(debtsTable)
+        ..where((tbl) => tbl.isPaid.equals(false)))
+      .get();
+}
+Future<double> getTotalOutstandingDebt() async {
+  final query = selectOnly(debtsTable)
+    ..addColumns([debtsTable.amount.sum()])
+    ..where(debtsTable.isPaid.equals(false));
+
+  final result = await query.getSingle();
+
+  return result.read(debtsTable.amount.sum()) ?? 0;
+}
+
 }

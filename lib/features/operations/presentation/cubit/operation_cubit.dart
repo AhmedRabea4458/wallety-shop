@@ -1,26 +1,35 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smart_expense/core/errors/exceptions.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
+import 'package:smart_expense/features/operations/domain/repositories/debt_repository.dart';
 import 'package:smart_expense/features/operations/domain/repositories/operation_repository.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 
 class OperationCubit extends Cubit<OperationState> {
   final OperationRepository repository;
+  final DebtRepository debtRepository;
 
   List<OperationEntity> _allOperations = [];
+  Map<int, DebtEntity> _operationDebts = {};
   String _searchQuery = '';
   int? _selectedWalletId;
   OperationType? _selectedOperationType;
   ProviderType? _selectedProviderType;
 
-  OperationCubit(this.repository) : super(OperationInitial());
+  OperationCubit(this.repository, {required this.debtRepository}) : super(OperationInitial());
 
   Future<void> getOperations() async {
     emit(OperationLoading());
     try {
-      _allOperations = await repository.getOperations();
+      final results = await Future.wait([
+        repository.getOperations(),
+        debtRepository.getOperationDebts(),
+      ]);
+      _allOperations = results[0] as List<OperationEntity>;
+      _operationDebts = results[1] as Map<int, DebtEntity>;
       emit(_buildLoadedState());
     } catch (e) {
       debugPrint('getOperations error: $e');
@@ -28,22 +37,39 @@ class OperationCubit extends Cubit<OperationState> {
     }
   }
 
-  Future<void> addOperation(OperationEntity operation) async {
+  Future<int> addOperation(OperationEntity operation, {bool isDebt = false}) async {
     emit(OperationLoading());
     try {
-      await repository.addOperation(operation);
+      final id = await repository.addOperation(operation, isDebt: isDebt);
       debugPrint('addOperation: inserted op type=${operation.operationType.name}');
       await _refreshOperations();
+      return id;
     } on InsufficientBalanceException catch (e) {
       emit(OperationError(e.toString()));
       rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
       emit(OperationError(e.toString()));
       rethrow;
+    } on OperationLinkedToDebtException catch (e) {
+      emit(OperationError(e.toString()));
+      rethrow;
     } catch (e) {
       debugPrint('addOperation error: $e');
       emit(OperationError('فشل إضافة العملية'));
       rethrow;
+    }
+  }
+
+  Future<int?> getActiveShiftId() async {
+    try {
+      final ops = await repository.getOperations();
+      // Return the shiftId of the most recently created operation as the active shift
+      if (ops.isNotEmpty) {
+        return ops.first.shiftId;
+      }
+      return null;
+    } catch (e) {
+      return null;
     }
   }
 
@@ -57,6 +83,9 @@ class OperationCubit extends Cubit<OperationState> {
       emit(OperationError(e.toString()));
       rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
+      emit(OperationError(e.toString()));
+      rethrow;
+    } on OperationLinkedToDebtException catch (e) {
       emit(OperationError(e.toString()));
       rethrow;
     } catch (e) {
@@ -76,6 +105,9 @@ class OperationCubit extends Cubit<OperationState> {
       emit(OperationError(e.toString()));
       rethrow;
     } on InsufficientCashDrawerBalanceException catch (e) {
+      emit(OperationError(e.toString()));
+      rethrow;
+    } on OperationLinkedToDebtException catch (e) {
       emit(OperationError(e.toString()));
       rethrow;
     } catch (e) {
@@ -145,6 +177,7 @@ class OperationCubit extends Cubit<OperationState> {
     return OperationLoaded(
       allOperations: _allOperations,
       visibleOperations: _applyFilters(),
+      operationDebts: _operationDebts,
       searchQuery: _searchQuery,
       selectedWalletId: _selectedWalletId,
       selectedOperationType: _selectedOperationType,
@@ -152,9 +185,18 @@ class OperationCubit extends Cubit<OperationState> {
     );
   }
 
+  DebtEntity? getDebtForOperation(int operationId) {
+    return _operationDebts[operationId];
+  }
+
   Future<void> _refreshOperations() async {
     try {
-      _allOperations = await repository.getOperations();
+      final results = await Future.wait([
+        repository.getOperations(),
+        debtRepository.getOperationDebts(),
+      ]);
+      _allOperations = results[0] as List<OperationEntity>;
+      _operationDebts = results[1] as Map<int, DebtEntity>;
       emit(_buildLoadedState());
     } catch (e) {
       debugPrint('_refreshOperations error: $e');

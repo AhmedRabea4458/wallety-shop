@@ -1,3 +1,5 @@
+import 'package:smart_expense/core/errors/exceptions.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/debt_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/operation_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/models/operation_model.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
@@ -5,8 +7,9 @@ import 'package:smart_expense/features/operations/domain/repositories/operation_
 
 class OperationRepositoryImpl implements OperationRepository {
   final OperationLocalDataSource localDataSource;
+  final DebtLocalDataSource debtDataSource;
 
-  OperationRepositoryImpl(this.localDataSource);
+  OperationRepositoryImpl(this.localDataSource, {required this.debtDataSource});
 
   @override
   Future<List<OperationEntity>> getOperations() {
@@ -23,19 +26,29 @@ class OperationRepositoryImpl implements OperationRepository {
   }
 
   @override
-  Future<void> addOperation(OperationEntity operation) {
+  Future<int> addOperation(OperationEntity operation, {bool isDebt = false}) {
     final model = OperationModel.fromEntity(operation);
-    return localDataSource.insertOperation(model);
+    return localDataSource.insertOperation(model, isDebt: isDebt);
   }
 
   @override
-  Future<void> updateOperation(OperationEntity operation) {
+  Future<void> updateOperation(OperationEntity operation) async {
+    if (operation.id != 0) {
+      final hasDebt = await debtDataSource.getDebtByOperationId(operation.id);
+      if (hasDebt != null) {
+        throw OperationLinkedToDebtException(operation.id);
+      }
+    }
     final model = OperationModel.fromEntity(operation);
     return localDataSource.updateOperation(model);
   }
 
   @override
-  Future<void> deleteOperation(int id) {
+  Future<void> deleteOperation(int id) async {
+    final hasDebt = await debtDataSource.getDebtByOperationId(id);
+    if (hasDebt != null) {
+      throw OperationLinkedToDebtException(id);
+    }
     return localDataSource.deleteOperation(id);
   }
 }

@@ -8,6 +8,8 @@ import 'package:smart_expense/features/main_layout/presentation/widgets/custom_b
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
@@ -35,6 +37,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     sl<ProfileCubit>().getProfileStats();
     sl<CashDrawerCubit>().getCashDrawer();
     sl<WalletAdjustmentCubit>().loadAllAdjustments();
+    sl<ActiveShiftCubit>().loadActiveShift();
+    sl<DebtCubit>().loadOutstandingDebt();
 
     pages = [
       HomePage(
@@ -55,6 +59,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         BlocProvider.value(value: sl<ProfileCubit>()),
         BlocProvider.value(value: sl<CashDrawerCubit>()),
         BlocProvider.value(value: sl<WalletAdjustmentCubit>()),
+        BlocProvider.value(value: sl<ActiveShiftCubit>()),
+        BlocProvider.value(value: sl<DebtCubit>()),
       ],
       child: Scaffold(
         extendBody: true,
@@ -66,6 +72,8 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               context.read<ProfileCubit>().silentReload();
               context.read<AnalyticsCubit>().silentReload();
               context.read<WalletCubit>().getWallets();
+              context.read<ActiveShiftCubit>().loadActiveShift();
+              context.read<DebtCubit>().loadOutstandingDebt();
             }
           },
           child: IndexedStack(

@@ -13,6 +13,7 @@ class OperationEntity {
   final double amount;
   final double commission;
   final double networkFee;
+  final int? shiftId;
   final String? phoneNumber;
   final String? notes;
   final DateTime createdAt;
@@ -25,6 +26,7 @@ class OperationEntity {
     required this.amount,
     this.commission = 0.0,
     this.networkFee = 0.0,
+    this.shiftId,
     this.phoneNumber,
     this.notes,
     required this.createdAt,
