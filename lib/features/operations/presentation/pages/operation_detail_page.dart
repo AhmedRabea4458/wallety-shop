@@ -7,10 +7,12 @@ import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/date_formatter.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
@@ -170,6 +172,32 @@ class OperationDetailPage extends StatelessWidget {
                             value: operation.providerType.label,
                           ),
                           const Divider(color: AppColors.border45),
+                          if (operation.providerType == ProviderType.instaPay)
+                            BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+                              builder: (context, state) {
+                                String accountName = '--';
+                                if (state is InstaPayAccountLoaded) {
+                                  final account = state.accounts.firstWhere(
+                                    (a) => a.id == operation.instaPayAccountId,
+                                    orElse: () => InstaPayAccountEntity(
+                                      id: 0,
+                                      name: 'غير معروف',
+                                      createdAt: DateTime.now(),
+                                    ),
+                                  );
+                                  accountName = account.name;
+                         }
+                                return Column(
+                                  children: [
+                                    _DetailRow(
+                                      label: 'الحساب',
+                                      value: accountName,
+                                    ),
+                                    const Divider(color: AppColors.border45),
+                                  ],
+                                );
+                              },
+                            ),
                           if (operation.providerType == ProviderType.vodafoneCash)
                             BlocBuilder<WalletCubit, WalletState>(
                               builder: (context, state) {

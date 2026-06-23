@@ -85,6 +85,10 @@ class _DebtorsPageState extends State<DebtorsPage> {
             ),
             SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
             BlocBuilder<DebtCubit, DebtState>(
+              buildWhen: (previous, current) =>
+                  current is DebtLoading ||
+                  current is DebtError ||
+                  current is DebtorsLoaded,
               builder: (context, state) {
                 if (state is DebtLoading) {
                   return const SliverToBoxAdapter(
@@ -145,12 +149,15 @@ class _DebtorsPageState extends State<DebtorsPage> {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
     final amountController = TextEditingController();
+    final notesController = TextEditingController();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final debtCubit = context.read<DebtCubit>();
-    
+    bool isCashLoan = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
         title: Text('إضافة آجل يدوي', style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
         content: SingleChildScrollView(
           child: Column(
@@ -175,6 +182,22 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 textAlign: TextAlign.right,
                 decoration: const InputDecoration(hintText: 'المبلغ', border: OutlineInputBorder()),
               ),
+              const SizedBox(height: AppSpacing.space2),
+              TextField(
+                controller: notesController,
+                textAlign: TextAlign.right,
+                maxLines: 2,
+                decoration: const InputDecoration(hintText: 'ملاحظات (اختياري)', border: OutlineInputBorder()),
+              ),
+              const SizedBox(height: AppSpacing.space2),
+              CheckboxListTile(
+                value: isCashLoan,
+                onChanged: (v) => setDialogState(() => isCashLoan = v ?? false),
+                title: Text('دين نقدي من الدرج', style: AppTextStyles.body.copyWith(color: AppColors.foreground)),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                activeColor: AppColors.primary,
+              ),
             ],
           ),
         ),
@@ -197,16 +220,28 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 );
                 return;
               }
+              final notes = notesController.text.trim();
               debtCubit.createManualDebt(
                 customerName: name,
                 customerPhone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
                 amount: amount,
-              );
+                notes: notes.isEmpty ? null : notes,
+                isCashLoan: isCashLoan,
+              ).then((_) {
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('تم إضافة الدين بنجاح'), duration: Duration(seconds: 2)),
+                );
+              }).catchError((e) {
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text(e.toString()), backgroundColor: AppColors.destructive),
+                );
+              });
               Navigator.pop(ctx);
             },
             child: const Text('حفظ'),
           ),
         ],
+      ),
       ),
     );
   }

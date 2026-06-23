@@ -2,5 +2,5 @@ import 'package:smart_expense/features/operations/domain/entities/cash_drawer_en
 
 abstract class CashDrawerRepository {
   Future<CashDrawerEntity?> getCashDrawer();
-  Future<void> updateInitialBalance(double newInitialBalance);
+  Future<void> updateBalance(double newBalance);
 }

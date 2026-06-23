@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
+import 'package:smart_expense/core/services/shift_pdf_service.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
@@ -34,58 +36,86 @@ class _ShiftDetailPageState extends State<ShiftDetailPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenHorizontal,
-                  vertical: AppSpacing.space4,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => context.pop(),
-                      icon: Container(
-                        padding: const EdgeInsets.all(AppSpacing.space2),
-                        decoration: BoxDecoration(
-                          color: AppColors.card,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
+        child: BlocBuilder<ShiftDetailCubit, ShiftDetailState>(
+          builder: (context, state) {
+            return CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal,
+                      vertical: AppSpacing.space4,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => context.pop(),
+                          icon: Container(
+                            padding: const EdgeInsets.all(AppSpacing.space2),
+                            decoration: BoxDecoration(
+                              color: AppColors.card,
+                              borderRadius: BorderRadius.circular(AppRadius.full),
+                            ),
+                            child: const Icon(Icons.close_rounded, color: AppColors.foreground, size: 20),
+                          ),
                         ),
-                        child: const Icon(Icons.close_rounded, color: AppColors.foreground, size: 20),
-                      ),
+                        const SizedBox(width: AppSpacing.space3),
+                        Expanded(
+                          child: Text(
+                            'تفاصيل الوردية',
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+                          ),
+                        ),
+                        const SizedBox(width: 48),
+                        if (state is ShiftDetailLoaded)
+                          IconButton(
+                            onPressed: () async {
+                              try {
+                                await ShiftPdfService.printShift(
+                                  shift: state.shift,
+                                  stats: state.stats,
+                                  operations: state.operations,
+                                );
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('فشل الطباعة: ${ErrorMapper.map(e)}'),
+                                      backgroundColor: AppColors.destructive,
+                                      duration: const Duration(seconds: 4),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: Container(
+                              padding: const EdgeInsets.all(AppSpacing.space2),
+                              decoration: BoxDecoration(
+                                color: AppColors.card,
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                              ),
+                              child: const Icon(Icons.print, color: AppColors.foreground, size: 20),
+                            ),
+                          ),
+                      ],
                     ),
-                    const SizedBox(width: AppSpacing.space3),
-                    Expanded(
-                      child: Text(
-                        'تفاصيل الوردية',
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
-                      ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
+                  ),
                 ),
-              ),
-            ),
-            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
-            BlocBuilder<ShiftDetailCubit, ShiftDetailState>(
-              builder: (context, state) {
-                if (state is ShiftDetailLoading) {
-                  return const SliverToBoxAdapter(
+                SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+                if (state is ShiftDetailLoading)
+                  const SliverToBoxAdapter(
                     child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (state is ShiftDetailError) {
-                  return SliverToBoxAdapter(
+                  ),
+                if (state is ShiftDetailError)
+                  SliverToBoxAdapter(
                     child: Center(
                       child: Text(state.message, style: AppTextStyles.body.copyWith(color: AppColors.destructive)),
                     ),
-                  );
-                }
-                if (state is ShiftDetailLoaded) {
-                  return SliverList(
+                  ),
+                if (state is ShiftDetailLoaded)
+                  SliverList(
                     delegate: SliverChildListDelegate([
                       // Stats Card
                       Padding(
@@ -110,6 +140,7 @@ class _ShiftDetailPageState extends State<ShiftDetailPage> {
                               _row('إجمالي السحب', '${_f(state.stats.totalWithdrawals)} ج.م'),
                               _row('إجمالي العمولات', '${_f(state.stats.totalCommissions)} ج.م'),
                               _row('رسوم الشبكة', '${_f(state.stats.totalNetworkFees)} ج.م'),
+                              _row('صافي الربح', '${_f(state.stats.netProfit)} ج.م'),
                               _row('عمليات InstaPay', state.stats.instaPayCount.toString()),
                               _row('إجمالي العمليات', '${state.stats.totalOperations}'),
                             ],
@@ -139,12 +170,10 @@ class _ShiftDetailPageState extends State<ShiftDetailPage> {
                         ...state.operations.reversed.map((op) => _OperationTile(operation: op)),
                       SizedBox(height: AppSpacing.space8),
                     ]),
-                  );
-                }
-                return const SliverToBoxAdapter(child: SizedBox.shrink());
-              },
-            ),
-          ],
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );

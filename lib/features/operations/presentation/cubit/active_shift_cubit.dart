@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/domain/entities/shift_entity.dart';
 import 'package:smart_expense/features/operations/domain/repositories/shift_repository.dart';
@@ -52,7 +53,7 @@ class ActiveShiftCubit extends Cubit<ActiveShiftState> {
       await loadActiveShift();
     } on ActiveShiftExistsException catch (e) {
       debugPrint('openShift error: $e');
-      emit(ActiveShiftError(message: e.toString()));
+      emit(ActiveShiftError(message: ErrorMapper.map(e)));
     } catch (e) {
       debugPrint('openShift error: $e');
       emit(ActiveShiftError(message: 'فشل فتح الوردية'));

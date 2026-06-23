@@ -1096,6 +1096,17 @@ class $OperationsTableTable extends OperationsTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _instaPayAccountIdMeta = const VerificationMeta(
+    'instaPayAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> instaPayAccountId = GeneratedColumn<int>(
+    'insta_pay_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1121,6 +1132,7 @@ class $OperationsTableTable extends OperationsTable
     phoneNumber,
     notes,
     isDebt,
+    instaPayAccountId,
     createdAt,
   ];
   @override
@@ -1211,6 +1223,15 @@ class $OperationsTableTable extends OperationsTable
         isDebt.isAcceptableOrUnknown(data['is_debt']!, _isDebtMeta),
       );
     }
+    if (data.containsKey('insta_pay_account_id')) {
+      context.handle(
+        _instaPayAccountIdMeta,
+        instaPayAccountId.isAcceptableOrUnknown(
+          data['insta_pay_account_id']!,
+          _instaPayAccountIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1278,6 +1299,10 @@ class $OperationsTableTable extends OperationsTable
             DriftSqlType.bool,
             data['${effectivePrefix}is_debt'],
           )!,
+      instaPayAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}insta_pay_account_id'],
+      ),
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -1305,6 +1330,7 @@ class OperationsTableData extends DataClass
   final String? phoneNumber;
   final String? notes;
   final bool isDebt;
+  final int? instaPayAccountId;
   final DateTime createdAt;
   const OperationsTableData({
     required this.id,
@@ -1318,6 +1344,7 @@ class OperationsTableData extends DataClass
     this.phoneNumber,
     this.notes,
     required this.isDebt,
+    this.instaPayAccountId,
     required this.createdAt,
   });
   @override
@@ -1340,6 +1367,9 @@ class OperationsTableData extends DataClass
       map['notes'] = Variable<String>(notes);
     }
     map['is_debt'] = Variable<bool>(isDebt);
+    if (!nullToAbsent || instaPayAccountId != null) {
+      map['insta_pay_account_id'] = Variable<int>(instaPayAccountId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -1364,6 +1394,10 @@ class OperationsTableData extends DataClass
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
       isDebt: Value(isDebt),
+      instaPayAccountId:
+          instaPayAccountId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(instaPayAccountId),
       createdAt: Value(createdAt),
     );
   }
@@ -1385,6 +1419,7 @@ class OperationsTableData extends DataClass
       phoneNumber: serializer.fromJson<String?>(json['phoneNumber']),
       notes: serializer.fromJson<String?>(json['notes']),
       isDebt: serializer.fromJson<bool>(json['isDebt']),
+      instaPayAccountId: serializer.fromJson<int?>(json['instaPayAccountId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -1403,6 +1438,7 @@ class OperationsTableData extends DataClass
       'phoneNumber': serializer.toJson<String?>(phoneNumber),
       'notes': serializer.toJson<String?>(notes),
       'isDebt': serializer.toJson<bool>(isDebt),
+      'instaPayAccountId': serializer.toJson<int?>(instaPayAccountId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -1419,6 +1455,7 @@ class OperationsTableData extends DataClass
     Value<String?> phoneNumber = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     bool? isDebt,
+    Value<int?> instaPayAccountId = const Value.absent(),
     DateTime? createdAt,
   }) => OperationsTableData(
     id: id ?? this.id,
@@ -1432,6 +1469,10 @@ class OperationsTableData extends DataClass
     phoneNumber: phoneNumber.present ? phoneNumber.value : this.phoneNumber,
     notes: notes.present ? notes.value : this.notes,
     isDebt: isDebt ?? this.isDebt,
+    instaPayAccountId:
+        instaPayAccountId.present
+            ? instaPayAccountId.value
+            : this.instaPayAccountId,
     createdAt: createdAt ?? this.createdAt,
   );
   OperationsTableData copyWithCompanion(OperationsTableCompanion data) {
@@ -1456,6 +1497,10 @@ class OperationsTableData extends DataClass
           data.phoneNumber.present ? data.phoneNumber.value : this.phoneNumber,
       notes: data.notes.present ? data.notes.value : this.notes,
       isDebt: data.isDebt.present ? data.isDebt.value : this.isDebt,
+      instaPayAccountId:
+          data.instaPayAccountId.present
+              ? data.instaPayAccountId.value
+              : this.instaPayAccountId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1474,6 +1519,7 @@ class OperationsTableData extends DataClass
           ..write('phoneNumber: $phoneNumber, ')
           ..write('notes: $notes, ')
           ..write('isDebt: $isDebt, ')
+          ..write('instaPayAccountId: $instaPayAccountId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1492,6 +1538,7 @@ class OperationsTableData extends DataClass
     phoneNumber,
     notes,
     isDebt,
+    instaPayAccountId,
     createdAt,
   );
   @override
@@ -1509,6 +1556,7 @@ class OperationsTableData extends DataClass
           other.phoneNumber == this.phoneNumber &&
           other.notes == this.notes &&
           other.isDebt == this.isDebt &&
+          other.instaPayAccountId == this.instaPayAccountId &&
           other.createdAt == this.createdAt);
 }
 
@@ -1524,6 +1572,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
   final Value<String?> phoneNumber;
   final Value<String?> notes;
   final Value<bool> isDebt;
+  final Value<int?> instaPayAccountId;
   final Value<DateTime> createdAt;
   const OperationsTableCompanion({
     this.id = const Value.absent(),
@@ -1537,6 +1586,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
     this.phoneNumber = const Value.absent(),
     this.notes = const Value.absent(),
     this.isDebt = const Value.absent(),
+    this.instaPayAccountId = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   OperationsTableCompanion.insert({
@@ -1551,6 +1601,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
     this.phoneNumber = const Value.absent(),
     this.notes = const Value.absent(),
     this.isDebt = const Value.absent(),
+    this.instaPayAccountId = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : walletId = Value(walletId),
        amount = Value(amount);
@@ -1566,6 +1617,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
     Expression<String>? phoneNumber,
     Expression<String>? notes,
     Expression<bool>? isDebt,
+    Expression<int>? instaPayAccountId,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -1580,6 +1632,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
       if (phoneNumber != null) 'phone_number': phoneNumber,
       if (notes != null) 'notes': notes,
       if (isDebt != null) 'is_debt': isDebt,
+      if (instaPayAccountId != null) 'insta_pay_account_id': instaPayAccountId,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -1596,6 +1649,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
     Value<String?>? phoneNumber,
     Value<String?>? notes,
     Value<bool>? isDebt,
+    Value<int?>? instaPayAccountId,
     Value<DateTime>? createdAt,
   }) {
     return OperationsTableCompanion(
@@ -1610,6 +1664,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       notes: notes ?? this.notes,
       isDebt: isDebt ?? this.isDebt,
+      instaPayAccountId: instaPayAccountId ?? this.instaPayAccountId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1650,6 +1705,9 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
     if (isDebt.present) {
       map['is_debt'] = Variable<bool>(isDebt.value);
     }
+    if (instaPayAccountId.present) {
+      map['insta_pay_account_id'] = Variable<int>(instaPayAccountId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1670,6 +1728,7 @@ class OperationsTableCompanion extends UpdateCompanion<OperationsTableData> {
           ..write('phoneNumber: $phoneNumber, ')
           ..write('notes: $notes, ')
           ..write('isDebt: $isDebt, ')
+          ..write('instaPayAccountId: $instaPayAccountId, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3321,6 +3380,21 @@ class $DebtsTableTable extends DebtsTable
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _isCashLoanMeta = const VerificationMeta(
+    'isCashLoan',
+  );
+  @override
+  late final GeneratedColumn<bool> isCashLoan = GeneratedColumn<bool>(
+    'is_cash_loan',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_cash_loan" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _paidAtMeta = const VerificationMeta('paidAt');
   @override
   late final GeneratedColumn<DateTime> paidAt = GeneratedColumn<DateTime>(
@@ -3351,6 +3425,7 @@ class $DebtsTableTable extends DebtsTable
     providerType,
     amount,
     isPaid,
+    isCashLoan,
     paidAt,
     createdAt,
   ];
@@ -3418,6 +3493,15 @@ class $DebtsTableTable extends DebtsTable
         isPaid.isAcceptableOrUnknown(data['is_paid']!, _isPaidMeta),
       );
     }
+    if (data.containsKey('is_cash_loan')) {
+      context.handle(
+        _isCashLoanMeta,
+        isCashLoan.isAcceptableOrUnknown(
+          data['is_cash_loan']!,
+          _isCashLoanMeta,
+        ),
+      );
+    }
     if (data.containsKey('paid_at')) {
       context.handle(
         _paidAtMeta,
@@ -3472,6 +3556,11 @@ class $DebtsTableTable extends DebtsTable
             DriftSqlType.bool,
             data['${effectivePrefix}is_paid'],
           )!,
+      isCashLoan:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_cash_loan'],
+          )!,
       paidAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}paid_at'],
@@ -3498,6 +3587,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
   final String? providerType;
   final double amount;
   final bool isPaid;
+  final bool isCashLoan;
   final DateTime? paidAt;
   final DateTime createdAt;
   const DebtsTableData({
@@ -3508,6 +3598,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
     this.providerType,
     required this.amount,
     required this.isPaid,
+    required this.isCashLoan,
     this.paidAt,
     required this.createdAt,
   });
@@ -3525,6 +3616,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
     }
     map['amount'] = Variable<double>(amount);
     map['is_paid'] = Variable<bool>(isPaid);
+    map['is_cash_loan'] = Variable<bool>(isCashLoan);
     if (!nullToAbsent || paidAt != null) {
       map['paid_at'] = Variable<DateTime>(paidAt);
     }
@@ -3547,6 +3639,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
               : Value(providerType),
       amount: Value(amount),
       isPaid: Value(isPaid),
+      isCashLoan: Value(isCashLoan),
       paidAt:
           paidAt == null && nullToAbsent ? const Value.absent() : Value(paidAt),
       createdAt: Value(createdAt),
@@ -3566,6 +3659,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
       providerType: serializer.fromJson<String?>(json['providerType']),
       amount: serializer.fromJson<double>(json['amount']),
       isPaid: serializer.fromJson<bool>(json['isPaid']),
+      isCashLoan: serializer.fromJson<bool>(json['isCashLoan']),
       paidAt: serializer.fromJson<DateTime?>(json['paidAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
@@ -3581,6 +3675,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
       'providerType': serializer.toJson<String?>(providerType),
       'amount': serializer.toJson<double>(amount),
       'isPaid': serializer.toJson<bool>(isPaid),
+      'isCashLoan': serializer.toJson<bool>(isCashLoan),
       'paidAt': serializer.toJson<DateTime?>(paidAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
@@ -3594,6 +3689,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
     Value<String?> providerType = const Value.absent(),
     double? amount,
     bool? isPaid,
+    bool? isCashLoan,
     Value<DateTime?> paidAt = const Value.absent(),
     DateTime? createdAt,
   }) => DebtsTableData(
@@ -3604,6 +3700,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
     providerType: providerType.present ? providerType.value : this.providerType,
     amount: amount ?? this.amount,
     isPaid: isPaid ?? this.isPaid,
+    isCashLoan: isCashLoan ?? this.isCashLoan,
     paidAt: paidAt.present ? paidAt.value : this.paidAt,
     createdAt: createdAt ?? this.createdAt,
   );
@@ -3623,6 +3720,8 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
               : this.providerType,
       amount: data.amount.present ? data.amount.value : this.amount,
       isPaid: data.isPaid.present ? data.isPaid.value : this.isPaid,
+      isCashLoan:
+          data.isCashLoan.present ? data.isCashLoan.value : this.isCashLoan,
       paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
@@ -3638,6 +3737,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
           ..write('providerType: $providerType, ')
           ..write('amount: $amount, ')
           ..write('isPaid: $isPaid, ')
+          ..write('isCashLoan: $isCashLoan, ')
           ..write('paidAt: $paidAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
@@ -3653,6 +3753,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
     providerType,
     amount,
     isPaid,
+    isCashLoan,
     paidAt,
     createdAt,
   );
@@ -3667,6 +3768,7 @@ class DebtsTableData extends DataClass implements Insertable<DebtsTableData> {
           other.providerType == this.providerType &&
           other.amount == this.amount &&
           other.isPaid == this.isPaid &&
+          other.isCashLoan == this.isCashLoan &&
           other.paidAt == this.paidAt &&
           other.createdAt == this.createdAt);
 }
@@ -3679,6 +3781,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
   final Value<String?> providerType;
   final Value<double> amount;
   final Value<bool> isPaid;
+  final Value<bool> isCashLoan;
   final Value<DateTime?> paidAt;
   final Value<DateTime> createdAt;
   const DebtsTableCompanion({
@@ -3689,6 +3792,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
     this.providerType = const Value.absent(),
     this.amount = const Value.absent(),
     this.isPaid = const Value.absent(),
+    this.isCashLoan = const Value.absent(),
     this.paidAt = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
@@ -3700,6 +3804,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
     this.providerType = const Value.absent(),
     required double amount,
     this.isPaid = const Value.absent(),
+    this.isCashLoan = const Value.absent(),
     this.paidAt = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : debtorId = Value(debtorId),
@@ -3712,6 +3817,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
     Expression<String>? providerType,
     Expression<double>? amount,
     Expression<bool>? isPaid,
+    Expression<bool>? isCashLoan,
     Expression<DateTime>? paidAt,
     Expression<DateTime>? createdAt,
   }) {
@@ -3723,6 +3829,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
       if (providerType != null) 'provider_type': providerType,
       if (amount != null) 'amount': amount,
       if (isPaid != null) 'is_paid': isPaid,
+      if (isCashLoan != null) 'is_cash_loan': isCashLoan,
       if (paidAt != null) 'paid_at': paidAt,
       if (createdAt != null) 'created_at': createdAt,
     });
@@ -3736,6 +3843,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
     Value<String?>? providerType,
     Value<double>? amount,
     Value<bool>? isPaid,
+    Value<bool>? isCashLoan,
     Value<DateTime?>? paidAt,
     Value<DateTime>? createdAt,
   }) {
@@ -3747,6 +3855,7 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
       providerType: providerType ?? this.providerType,
       amount: amount ?? this.amount,
       isPaid: isPaid ?? this.isPaid,
+      isCashLoan: isCashLoan ?? this.isCashLoan,
       paidAt: paidAt ?? this.paidAt,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -3776,6 +3885,9 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
     if (isPaid.present) {
       map['is_paid'] = Variable<bool>(isPaid.value);
     }
+    if (isCashLoan.present) {
+      map['is_cash_loan'] = Variable<bool>(isCashLoan.value);
+    }
     if (paidAt.present) {
       map['paid_at'] = Variable<DateTime>(paidAt.value);
     }
@@ -3795,7 +3907,268 @@ class DebtsTableCompanion extends UpdateCompanion<DebtsTableData> {
           ..write('providerType: $providerType, ')
           ..write('amount: $amount, ')
           ..write('isPaid: $isPaid, ')
+          ..write('isCashLoan: $isCashLoan, ')
           ..write('paidAt: $paidAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $InstaPayAccountsTableTable extends InstaPayAccountsTable
+    with TableInfo<$InstaPayAccountsTableTable, InstaPayAccountsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $InstaPayAccountsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'insta_pay_accounts_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<InstaPayAccountsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  InstaPayAccountsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return InstaPayAccountsTableData(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.int,
+            data['${effectivePrefix}id'],
+          )!,
+      name:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}name'],
+          )!,
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+    );
+  }
+
+  @override
+  $InstaPayAccountsTableTable createAlias(String alias) {
+    return $InstaPayAccountsTableTable(attachedDatabase, alias);
+  }
+}
+
+class InstaPayAccountsTableData extends DataClass
+    implements Insertable<InstaPayAccountsTableData> {
+  final int id;
+  final String name;
+  final DateTime createdAt;
+  const InstaPayAccountsTableData({
+    required this.id,
+    required this.name,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  InstaPayAccountsTableCompanion toCompanion(bool nullToAbsent) {
+    return InstaPayAccountsTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory InstaPayAccountsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return InstaPayAccountsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  InstaPayAccountsTableData copyWith({
+    int? id,
+    String? name,
+    DateTime? createdAt,
+  }) => InstaPayAccountsTableData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  InstaPayAccountsTableData copyWithCompanion(
+    InstaPayAccountsTableCompanion data,
+  ) {
+    return InstaPayAccountsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstaPayAccountsTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is InstaPayAccountsTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.createdAt == this.createdAt);
+}
+
+class InstaPayAccountsTableCompanion
+    extends UpdateCompanion<InstaPayAccountsTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<DateTime> createdAt;
+  const InstaPayAccountsTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  InstaPayAccountsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    this.createdAt = const Value.absent(),
+  }) : name = Value(name);
+  static Insertable<InstaPayAccountsTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  InstaPayAccountsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<DateTime>? createdAt,
+  }) {
+    return InstaPayAccountsTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('InstaPayAccountsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -3819,6 +4192,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ShiftsTableTable shiftsTable = $ShiftsTableTable(this);
   late final $DebtorsTableTable debtorsTable = $DebtorsTableTable(this);
   late final $DebtsTableTable debtsTable = $DebtsTableTable(this);
+  late final $InstaPayAccountsTableTable instaPayAccountsTable =
+      $InstaPayAccountsTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3832,6 +4207,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     shiftsTable,
     debtorsTable,
     debtsTable,
+    instaPayAccountsTable,
   ];
 }
 
@@ -4592,6 +4968,7 @@ typedef $$OperationsTableTableCreateCompanionBuilder =
       Value<String?> phoneNumber,
       Value<String?> notes,
       Value<bool> isDebt,
+      Value<int?> instaPayAccountId,
       Value<DateTime> createdAt,
     });
 typedef $$OperationsTableTableUpdateCompanionBuilder =
@@ -4607,6 +4984,7 @@ typedef $$OperationsTableTableUpdateCompanionBuilder =
       Value<String?> phoneNumber,
       Value<String?> notes,
       Value<bool> isDebt,
+      Value<int?> instaPayAccountId,
       Value<DateTime> createdAt,
     });
 
@@ -4723,6 +5101,11 @@ class $$OperationsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get instaPayAccountId => $composableBuilder(
+    column: $table.instaPayAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -4836,6 +5219,11 @@ class $$OperationsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get instaPayAccountId => $composableBuilder(
+    column: $table.instaPayAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4913,6 +5301,11 @@ class $$OperationsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get isDebt =>
       $composableBuilder(column: $table.isDebt, builder: (column) => column);
+
+  GeneratedColumn<int> get instaPayAccountId => $composableBuilder(
+    column: $table.instaPayAccountId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5014,6 +5407,7 @@ class $$OperationsTableTableTableManager
                 Value<String?> phoneNumber = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDebt = const Value.absent(),
+                Value<int?> instaPayAccountId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OperationsTableCompanion(
                 id: id,
@@ -5027,6 +5421,7 @@ class $$OperationsTableTableTableManager
                 phoneNumber: phoneNumber,
                 notes: notes,
                 isDebt: isDebt,
+                instaPayAccountId: instaPayAccountId,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -5042,6 +5437,7 @@ class $$OperationsTableTableTableManager
                 Value<String?> phoneNumber = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<bool> isDebt = const Value.absent(),
+                Value<int?> instaPayAccountId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => OperationsTableCompanion.insert(
                 id: id,
@@ -5055,6 +5451,7 @@ class $$OperationsTableTableTableManager
                 phoneNumber: phoneNumber,
                 notes: notes,
                 isDebt: isDebt,
+                instaPayAccountId: instaPayAccountId,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
@@ -6265,6 +6662,7 @@ typedef $$DebtsTableTableCreateCompanionBuilder =
       Value<String?> providerType,
       required double amount,
       Value<bool> isPaid,
+      Value<bool> isCashLoan,
       Value<DateTime?> paidAt,
       Value<DateTime> createdAt,
     });
@@ -6277,6 +6675,7 @@ typedef $$DebtsTableTableUpdateCompanionBuilder =
       Value<String?> providerType,
       Value<double> amount,
       Value<bool> isPaid,
+      Value<bool> isCashLoan,
       Value<DateTime?> paidAt,
       Value<DateTime> createdAt,
     });
@@ -6355,6 +6754,11 @@ class $$DebtsTableTableFilterComposer
 
   ColumnFilters<bool> get isPaid => $composableBuilder(
     column: $table.isPaid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCashLoan => $composableBuilder(
+    column: $table.isCashLoan,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6449,6 +6853,11 @@ class $$DebtsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isCashLoan => $composableBuilder(
+    column: $table.isCashLoan,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get paidAt => $composableBuilder(
     column: $table.paidAt,
     builder: (column) => ColumnOrderings(column),
@@ -6533,6 +6942,11 @@ class $$DebtsTableTableAnnotationComposer
 
   GeneratedColumn<bool> get isPaid =>
       $composableBuilder(column: $table.isPaid, builder: (column) => column);
+
+  GeneratedColumn<bool> get isCashLoan => $composableBuilder(
+    column: $table.isCashLoan,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get paidAt =>
       $composableBuilder(column: $table.paidAt, builder: (column) => column);
@@ -6622,6 +7036,7 @@ class $$DebtsTableTableTableManager
                 Value<String?> providerType = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<bool> isPaid = const Value.absent(),
+                Value<bool> isCashLoan = const Value.absent(),
                 Value<DateTime?> paidAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => DebtsTableCompanion(
@@ -6632,6 +7047,7 @@ class $$DebtsTableTableTableManager
                 providerType: providerType,
                 amount: amount,
                 isPaid: isPaid,
+                isCashLoan: isCashLoan,
                 paidAt: paidAt,
                 createdAt: createdAt,
               ),
@@ -6644,6 +7060,7 @@ class $$DebtsTableTableTableManager
                 Value<String?> providerType = const Value.absent(),
                 required double amount,
                 Value<bool> isPaid = const Value.absent(),
+                Value<bool> isCashLoan = const Value.absent(),
                 Value<DateTime?> paidAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => DebtsTableCompanion.insert(
@@ -6654,6 +7071,7 @@ class $$DebtsTableTableTableManager
                 providerType: providerType,
                 amount: amount,
                 isPaid: isPaid,
+                isCashLoan: isCashLoan,
                 paidAt: paidAt,
                 createdAt: createdAt,
               ),
@@ -6740,6 +7158,188 @@ typedef $$DebtsTableTableProcessedTableManager =
       DebtsTableData,
       PrefetchHooks Function({bool debtorId, bool operationId})
     >;
+typedef $$InstaPayAccountsTableTableCreateCompanionBuilder =
+    InstaPayAccountsTableCompanion Function({
+      Value<int> id,
+      required String name,
+      Value<DateTime> createdAt,
+    });
+typedef $$InstaPayAccountsTableTableUpdateCompanionBuilder =
+    InstaPayAccountsTableCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<DateTime> createdAt,
+    });
+
+class $$InstaPayAccountsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $InstaPayAccountsTableTable> {
+  $$InstaPayAccountsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$InstaPayAccountsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $InstaPayAccountsTableTable> {
+  $$InstaPayAccountsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$InstaPayAccountsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $InstaPayAccountsTableTable> {
+  $$InstaPayAccountsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$InstaPayAccountsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $InstaPayAccountsTableTable,
+          InstaPayAccountsTableData,
+          $$InstaPayAccountsTableTableFilterComposer,
+          $$InstaPayAccountsTableTableOrderingComposer,
+          $$InstaPayAccountsTableTableAnnotationComposer,
+          $$InstaPayAccountsTableTableCreateCompanionBuilder,
+          $$InstaPayAccountsTableTableUpdateCompanionBuilder,
+          (
+            InstaPayAccountsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $InstaPayAccountsTableTable,
+              InstaPayAccountsTableData
+            >,
+          ),
+          InstaPayAccountsTableData,
+          PrefetchHooks Function()
+        > {
+  $$InstaPayAccountsTableTableTableManager(
+    _$AppDatabase db,
+    $InstaPayAccountsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$InstaPayAccountsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer:
+              () => $$InstaPayAccountsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer:
+              () => $$InstaPayAccountsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InstaPayAccountsTableCompanion(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => InstaPayAccountsTableCompanion.insert(
+                id: id,
+                name: name,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$InstaPayAccountsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $InstaPayAccountsTableTable,
+      InstaPayAccountsTableData,
+      $$InstaPayAccountsTableTableFilterComposer,
+      $$InstaPayAccountsTableTableOrderingComposer,
+      $$InstaPayAccountsTableTableAnnotationComposer,
+      $$InstaPayAccountsTableTableCreateCompanionBuilder,
+      $$InstaPayAccountsTableTableUpdateCompanionBuilder,
+      (
+        InstaPayAccountsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $InstaPayAccountsTableTable,
+          InstaPayAccountsTableData
+        >,
+      ),
+      InstaPayAccountsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6763,4 +7363,6 @@ class $AppDatabaseManager {
       $$DebtorsTableTableTableManager(_db, _db.debtorsTable);
   $$DebtsTableTableTableManager get debtsTable =>
       $$DebtsTableTableTableManager(_db, _db.debtsTable);
+  $$InstaPayAccountsTableTableTableManager get instaPayAccountsTable =>
+      $$InstaPayAccountsTableTableTableManager(_db, _db.instaPayAccountsTable);
 }

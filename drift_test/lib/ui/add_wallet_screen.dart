@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 
 import 'package:drift_test/data/app_database.dart';
@@ -14,13 +12,11 @@ class AddWalletScreen extends StatefulWidget {
 }
 
 class _AddWalletScreenState extends State<AddWalletScreen> {
-  // Controllers hold the text typed by the user.
   final _nameController = TextEditingController();
   final _balanceController = TextEditingController();
 
   @override
   void dispose() {
-    // Always dispose controllers to avoid memory leaks.
     _nameController.dispose();
     _balanceController.dispose();
     super.dispose();
@@ -34,9 +30,6 @@ class _AddWalletScreenState extends State<AddWalletScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // -----------------------------------------------------------------
-            // Name input
-            // -----------------------------------------------------------------
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
@@ -46,10 +39,6 @@ class _AddWalletScreenState extends State<AddWalletScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // -----------------------------------------------------------------
-            // Balance input
-            // -----------------------------------------------------------------
             TextField(
               controller: _balanceController,
               keyboardType: TextInputType.number,
@@ -60,10 +49,6 @@ class _AddWalletScreenState extends State<AddWalletScreen> {
               ),
             ),
             const SizedBox(height: 24),
-
-            // -----------------------------------------------------------------
-            // Save button
-            // -----------------------------------------------------------------
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
@@ -77,15 +62,6 @@ class _AddWalletScreenState extends State<AddWalletScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // INSERT: create a new wallet row
-  // ---------------------------------------------------------------------------
-  // `_save` parses the form values and calls `database.createWallet(...)`.
-  // That method in turn calls `into(wallets).insert(WalletsCompanion(...))`.
-  //
-  // Because `WalletsScreen` is listening to `watchAllWallets()`, it will
-  // automatically rebuild and show the new wallet without us sending any
-  // extra events.
   Future<void> _save() async {
     final name = _nameController.text.trim();
     final balanceText = _balanceController.text.trim();
@@ -94,13 +70,8 @@ class _AddWalletScreenState extends State<AddWalletScreen> {
 
     final balance = double.tryParse(balanceText) ?? 0.0;
 
-    // `await` waits for the database insert to finish.
     await widget.database.createWallet(name, balance);
 
-    if (mounted) {
-      // Pop back to the list. The list is already updating in the background
-      // thanks to the Drift Stream.
-      Navigator.of(context).pop();
-    }
+    if (mounted) Navigator.of(context).pop();
   }
 }

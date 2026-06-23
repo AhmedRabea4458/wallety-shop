@@ -9,6 +9,7 @@ class DebtModel {
   final String? providerType;
   final double amount;
   final bool isPaid;
+  final bool isCashLoan;
   final DateTime? paidAt;
   final DateTime createdAt;
 
@@ -20,6 +21,7 @@ class DebtModel {
     this.providerType,
     required this.amount,
     required this.isPaid,
+    this.isCashLoan = false,
     this.paidAt,
     required this.createdAt,
   });
@@ -33,6 +35,7 @@ class DebtModel {
       providerType: providerType,
       amount: amount,
       isPaid: isPaid,
+      isCashLoan: isCashLoan,
       paidAt: paidAt,
       createdAt: createdAt,
     );
@@ -47,6 +50,7 @@ class DebtModel {
       providerType: entity.providerType,
       amount: entity.amount,
       isPaid: entity.isPaid,
+      isCashLoan: entity.isCashLoan,
       paidAt: entity.paidAt,
       createdAt: entity.createdAt,
     );
@@ -61,6 +65,7 @@ class DebtModel {
       providerType: data.providerType,
       amount: data.amount,
       isPaid: data.isPaid,
+      isCashLoan: data.isCashLoan,
       paidAt: data.paidAt,
       createdAt: data.createdAt,
     );
@@ -77,6 +82,7 @@ class DebtModel {
       providerType: providerType,
       amount: amount,
       isPaid: isPaid,
+      isCashLoan: isCashLoan,
       paidAt: paidAt,
       createdAt: createdAt,
     );

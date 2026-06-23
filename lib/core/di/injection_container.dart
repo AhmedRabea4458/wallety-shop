@@ -7,6 +7,8 @@ import 'package:smart_expense/features/analytics/domain/repositories/analytics_r
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_cubit.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/debt_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/debt_local_datasource_impl.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/instapay_account_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/datasources/local/instapay_account_local_datasource_impl.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/cash_drawer_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/cash_drawer_local_datasource_impl.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/operation_local_datasource.dart';
@@ -18,7 +20,9 @@ import 'package:smart_expense/features/operations/data/datasources/local/wallet_
 import 'package:smart_expense/features/operations/data/datasources/local/wallet_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/wallet_local_datasource_impl.dart';
 import 'package:smart_expense/features/operations/data/repositories/debt_repository_impl.dart';
+import 'package:smart_expense/features/operations/data/repositories/instapay_account_repository_impl.dart';
 import 'package:smart_expense/features/operations/domain/repositories/debt_repository.dart';
+import 'package:smart_expense/features/operations/domain/repositories/instapay_account_repository.dart';
 import 'package:smart_expense/features/operations/data/repositories/cash_drawer_repository_impl.dart';
 import 'package:smart_expense/features/operations/data/repositories/operation_repository_impl.dart';
 import 'package:smart_expense/features/operations/data/repositories/shift_repository_impl.dart';
@@ -33,6 +37,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/active_shif
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_detail_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_history_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
@@ -67,6 +72,9 @@ Future<void> init() async {
   sl.registerLazySingleton<DebtLocalDataSource>(
     () => DebtLocalDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<InstaPayAccountLocalDataSource>(
+    () => InstaPayAccountLocalDataSourceImpl(sl()),
+  );
 
   // Repository
   sl.registerLazySingleton<AnalyticsRepository>(
@@ -89,6 +97,9 @@ Future<void> init() async {
   );
   sl.registerLazySingleton<DebtRepository>(
     () => DebtRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<InstaPayAccountRepository>(
+    () => InstaPayAccountRepositoryImpl(sl()),
   );
 
   // Cubit
@@ -121,5 +132,8 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(
     () => DebtCubit(sl<DebtRepository>(), cashDrawerCubit: sl()),
+  );
+  sl.registerLazySingleton(
+    () => InstaPayAccountCubit(sl<InstaPayAccountRepository>()),
   );
 }

@@ -7,6 +7,7 @@ import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
 
 class CashDrawerCard extends StatelessWidget {
   final double balance;
@@ -74,22 +75,26 @@ class CashDrawerCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () => _showEditInitialBalanceDialog(context),
+            onPressed: () => _showEditBalanceDialog(context),
             icon: const Icon(
               Icons.edit_rounded,
               color: AppColors.mutedForeground,
               size: 18,
             ),
-            tooltip: 'تعديل الرصيد الافتتاحي',
+            tooltip: 'تعديل رصيد الدرج',
           ),
         ],
       ),
     );
   }
 
-  void _showEditInitialBalanceDialog(BuildContext context) {
+  void _showEditBalanceDialog(BuildContext context) {
+    final cubitState = context.read<CashDrawerCubit>().state;
+    final currentBalance = cubitState is CashDrawerLoaded
+        ? cubitState.cashDrawer.balance
+        : balance;
     final controller = TextEditingController(
-      text: initialBalance > 0 ? initialBalance.toStringAsFixed(0) : '',
+      text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '',
     );
 
     showDialog(
@@ -101,7 +106,7 @@ class CashDrawerCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
           title: Text(
-            'الرصيد الافتتاحي للدرج النقدي',
+            'رصيد الدرج النقدي',
             style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
           ),
           content: TextField(
@@ -125,17 +130,26 @@ class CashDrawerCard extends StatelessWidget {
               child: Text('إلغاء', style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 final text = controller.text.trim();
                 final value = text.isEmpty ? 0.0 : parseArabicNumerals(text);
                 if (value < 0) {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('لا يمكن أن يكون الرصيد الافتتاحي سالباً')),
+                    const SnackBar(content: Text('لا يمكن أن يكون الرصيد سالباً')),
                   );
                   return;
                 }
-                context.read<CashDrawerCubit>().updateInitialBalance(value);
-                Navigator.pop(dialogContext);
+                final cubit = context.read<CashDrawerCubit>();
+                final messenger = ScaffoldMessenger.of(dialogContext);
+                final navigator = Navigator.of(dialogContext);
+                try {
+                  await cubit.updateBalance(value);
+                  navigator.pop();
+                } catch (e) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('فشل تحديث رصيد الدرج النقدي')),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,

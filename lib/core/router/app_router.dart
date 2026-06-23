@@ -9,6 +9,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/active_shif
 import 'package:smart_expense/features/operations/presentation/cubit/shift_detail_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_history_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/pages/add_operation_page.dart';
@@ -41,6 +42,7 @@ final appRouter = GoRouter(
             BlocProvider.value(value: sl<WalletCubit>()),
             BlocProvider.value(value: sl<ActiveShiftCubit>()),
             BlocProvider.value(value: sl<DebtCubit>()),
+            BlocProvider.value(value: sl<InstaPayAccountCubit>()),
           ],
           child: const AddOperationPage(),
         );
@@ -109,6 +111,7 @@ final appRouter = GoRouter(
             BlocProvider.value(value: sl<OperationCubit>()),
             BlocProvider.value(value: sl<WalletCubit>()),
             BlocProvider.value(value: sl<DebtCubit>()),
+            BlocProvider.value(value: sl<InstaPayAccountCubit>()),
           ],
           child: OperationDetailPage(operation: operation),
         );

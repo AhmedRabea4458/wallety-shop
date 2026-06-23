@@ -5,7 +5,9 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
+import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
@@ -23,6 +25,7 @@ import 'package:smart_expense/features/expenses/presentation/widgets/amount_card
 import 'package:smart_expense/features/expenses/presentation/widgets/date_selector.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/description_field.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/save_transaction_button.dart';
 
 class AddOperationPage extends StatefulWidget {
@@ -44,6 +47,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   late DateTime _selectedDate;
   bool _isSaving = false;
   bool _isDebt = false;
+  int? _instaPayAccountId;
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _commissionController = TextEditingController();
@@ -60,12 +64,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
   void initState() {
     super.initState();
     context.read<WalletCubit>().getWallets();
+    context.read<InstaPayAccountCubit>().loadAccounts();
 
     if (_isEditing) {
       final op = widget.operationToEdit!;
       _selectedType = op.operationType;
       _selectedProvider = op.providerType;
       _selectedWalletId = op.walletId;
+      _instaPayAccountId = op.instaPayAccountId;
       _selectedDate = op.createdAt;
       _amountController.text = op.amount.toStringAsFixed(0);
       _commissionController.text = op.commission > 0 ? op.commission.toStringAsFixed(0) : '';
@@ -149,6 +155,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
       commission: commission,
       networkFee: _selectedProvider == ProviderType.vodafoneCash ? networkFee : 0.0,
       shiftId: shiftId,
+      instaPayAccountId: _selectedProvider == ProviderType.instaPay ? _instaPayAccountId : null,
       phoneNumber: phoneText,
       notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
       createdAt: _selectedDate,
@@ -187,7 +194,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      _showError(e.toString());
+      _showError(ErrorMapper.map(e));
     }
   }
 
@@ -238,6 +245,106 @@ class _AddOperationPageState extends State<AddOperationPage> {
     }
   }
 
+  void _showManageInstaPayAccountsDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    InstaPayAccountEntity? editingAccount;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+            builder: (context, state) {
+              final accounts = state is InstaPayAccountLoaded
+                  ? state.accounts
+                  : <InstaPayAccountEntity>[];
+              return AlertDialog(
+                backgroundColor: AppColors.card,
+                title: Text('إدارة حسابات InstaPay',
+                    style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: nameController,
+                                textAlign: TextAlign.right,
+                                decoration: InputDecoration(
+                                  hintText: editingAccount != null ? 'تعديل الاسم' : 'اسم الحساب الجديد',
+                                  border: const OutlineInputBorder(),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.space2),
+                            ElevatedButton(
+                              onPressed: () async {
+                                final name = nameController.text.trim();
+                                if (name.isEmpty) return;
+                                final cubit = context.read<InstaPayAccountCubit>();
+                                if (editingAccount != null) {
+                                  await cubit.updateAccount(InstaPayAccountEntity(
+                                    id: editingAccount!.id,
+                                    name: name,
+                                    createdAt: editingAccount!.createdAt,
+                                  ));
+                                } else {
+                                  await cubit.addAccount(name);
+                                }
+                                nameController.clear();
+                                setDialogState(() => editingAccount = null);
+                              },
+                              child: Text(editingAccount != null ? 'تعديل' : 'إضافة'),
+                            ),
+                          ],
+                        ),
+                        if (accounts.isNotEmpty) ...[
+                          const SizedBox(height: AppSpacing.space4),
+                          const Divider(),
+                          ...accounts.map((a) => ListTile(
+                                title: Text(a.name),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_rounded, size: 18),
+                                      onPressed: () {
+                                        nameController.text = a.name;
+                                        setDialogState(() => editingAccount = a);
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                      onPressed: () async {
+                                        await context.read<InstaPayAccountCubit>().deleteAccount(a.id);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('إغلاق'),
+                  ),
+                ],
+              );
+        },
+      );
+    },
+  ),
+);
+}
+
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -269,13 +376,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: BlocListener<OperationCubit, OperationState>(
-          listener: (context, state) {
-            if (state is OperationError) {
-              _showError(state.message);
-            }
-          },
-          child: CustomScrollView(
+        child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
@@ -333,8 +434,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
                           const Icon(Icons.lock_outline_rounded, color: AppColors.warning, size: 20),
                           const SizedBox(width: AppSpacing.space3),
                           Expanded(
-                            child: Text(
-                              'هذه العملية مرتبطة بدين ولا يمكن تعديلها',
+                              child: Text(
+                                'لا يمكن تعديل أو حذف عملية مرتبطة بدين',
                               style: AppTextStyles.body.copyWith(color: AppColors.warning),
                             ),
                           ),
@@ -389,6 +490,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     duration: const Duration(milliseconds: 200),
                     child: _selectedProvider == ProviderType.vodafoneCash
                         ? BlocBuilder<WalletCubit, WalletState>(
+                            key: const ValueKey('wallet'),
                             builder: (context, state) {
                               if (state is WalletLoaded) {
                                 return WalletSelector(
@@ -412,7 +514,84 @@ class _AddOperationPageState extends State<AddOperationPage> {
                               );
                             },
                           )
-                        : const SizedBox.shrink(),
+                        : BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+                            key: const ValueKey('instapay'),
+                            builder: (context, state) {
+                              final accounts = state is InstaPayAccountLoaded
+                                  ? state.accounts
+                                  : <InstaPayAccountEntity>[];
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.space5,
+                                  vertical: AppSpacing.space4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.card,
+                                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                                  border: Border.all(color: AppColors.border50, width: 1),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'حساب InstaPay',
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.mutedForeground,
+                                      ),
+                                    ),
+                                    const SizedBox(height: AppSpacing.space3),
+                                    if (accounts.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+                                        child: Text(
+                                          'لا توجد حسابات، أضف حساباً جديداً',
+                                          style: AppTextStyles.caption.copyWith(
+                                            color: AppColors.mutedForeground,
+                                          ),
+                                        ),
+                                      ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: DropdownButtonFormField<int>(
+                                            value: _instaPayAccountId,
+                                            isExpanded: true,
+                                            decoration: const InputDecoration(
+                                              border: InputBorder.none,
+                                              contentPadding: EdgeInsets.zero,
+                                              isDense: true,
+                                            ),
+                                            hint: Text(
+                                              'اختر الحساب',
+                                              style: AppTextStyles.body.copyWith(
+                                                color: AppColors.mutedForeground,
+                                              ),
+                                            ),
+                                            items: accounts.map((a) {
+                                              return DropdownMenuItem(
+                                                value: a.id,
+                                                child: Text(a.name),
+                                              );
+                                            }).toList(),
+                                            onChanged: _isSaving
+                                                ? null
+                                                : (v) => setState(() => _instaPayAccountId = v),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
+                                          color: AppColors.primary,
+                                          onPressed: _isSaving
+                                              ? null
+                                              : () => _showManageInstaPayAccountsDialog(context),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
                   ),
                 ),
               ),
@@ -544,7 +723,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                       return SaveTransactionButton(
                         label: _isEditing ? 'تحديث العملية' : 'حفظ العملية',
                         onPressed: (_isSaving || _isDebtLinked) ? null : _saveOperation,
-                        isLoading: state is OperationLoading || _isSaving,
+                        isLoading: _isSaving,
                       );
                     },
                   ),
@@ -555,7 +734,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
               ),
             ],
           ),
-        ),
       ),
     );
   }

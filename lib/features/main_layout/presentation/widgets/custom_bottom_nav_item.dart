@@ -30,7 +30,7 @@ class CustomBottomNavItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          vertical: AppSpacing.space2,
+          vertical: AppSpacing.space1,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

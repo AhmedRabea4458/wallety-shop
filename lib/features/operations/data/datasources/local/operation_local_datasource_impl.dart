@@ -36,6 +36,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
         phoneNumber: Value(model.phoneNumber),
         notes: Value(model.notes),
         isDebt: Value(isDebt),
+        instaPayAccountId: Value(model.instaPayAccountId),
         createdAt: Value(model.createdAt),
       ),
     );
@@ -55,6 +56,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
         networkFee: Value(model.networkFee),
         phoneNumber: Value(model.phoneNumber),
         notes: Value(model.notes),
+        instaPayAccountId: Value(model.instaPayAccountId),
         createdAt: Value(model.createdAt),
       ),
     );

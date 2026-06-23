@@ -11,6 +11,7 @@ class OperationModel {
   final double commission;
   final double networkFee;
   final int? shiftId;
+  final int? instaPayAccountId;
   final String? phoneNumber;
   final String? notes;
   final DateTime createdAt;
@@ -24,6 +25,7 @@ class OperationModel {
     this.commission = 0.0,
     this.networkFee = 0.0,
     this.shiftId,
+    this.instaPayAccountId,
     this.phoneNumber,
     this.notes,
     required this.createdAt,
@@ -39,6 +41,7 @@ class OperationModel {
       commission: commission,
       networkFee: networkFee,
       shiftId: shiftId,
+      instaPayAccountId: instaPayAccountId,
       phoneNumber: phoneNumber,
       notes: notes,
       createdAt: createdAt,
@@ -55,6 +58,7 @@ class OperationModel {
       commission: entity.commission,
       networkFee: entity.networkFee,
       shiftId: entity.shiftId,
+      instaPayAccountId: entity.instaPayAccountId,
       phoneNumber: entity.phoneNumber,
       notes: entity.notes,
       createdAt: entity.createdAt,
@@ -71,6 +75,7 @@ class OperationModel {
       commission: data.commission,
       networkFee: data.networkFee,
       shiftId: data.shiftId,
+      instaPayAccountId: data.instaPayAccountId,
       phoneNumber: data.phoneNumber,
       notes: data.notes,
       createdAt: data.createdAt,

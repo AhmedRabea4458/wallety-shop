@@ -58,6 +58,13 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
+  Future<DebtEntity> insertCashLoanDebt(DebtEntity debt) async {
+    final model = DebtModel.fromEntity(debt);
+    final id = await localDataSource.insertCashLoanDebt(model);
+    return model.copyWith(id: id).toEntity();
+  }
+
+  @override
   Future<List<DebtEntity>> getDebtsByDebtor(int debtorId) {
     return localDataSource.getDebtsByDebtor(debtorId).then(
       (data) => data.map((m) => m.toEntity()).toList(),
@@ -79,5 +86,20 @@ class DebtRepositoryImpl implements DebtRepository {
   @override
   Future<void> markDebtAsPaid(int debtId) {
     return localDataSource.settleDebt(debtId);
+  }
+
+  @override
+  Future<void> updateDebtor(DebtorEntity debtor) {
+    return localDataSource.updateDebtor(DebtorModel.fromEntity(debtor));
+  }
+
+  @override
+  Future<void> updateDebt(DebtEntity debt) {
+    return localDataSource.updateDebt(DebtModel.fromEntity(debt));
+  }
+
+  @override
+  Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) {
+    return localDataSource.updateCashLoanDebtAmount(debtId, newAmount);
   }
 }

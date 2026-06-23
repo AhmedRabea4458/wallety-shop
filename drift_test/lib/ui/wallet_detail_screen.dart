@@ -1,26 +1,7 @@
-// ============================================================================
-// WALLET DETAIL SCREEN
-// ============================================================================
-// This screen demonstrates a one-to-many RELATION between wallets and
-// transactions, and shows how to watch a filtered Stream.
-//
-// KEY CONCEPTS SHOWN HERE:
-//   - A wallet has many transactions (foreign key relationship).
-//   - `watchTransactionsForWallet(wallet.id)` filters the Stream.
-//   - `createTransaction(...)` inserts a child row.
-//   - Because of ON DELETE CASCADE, deleting the wallet from the list screen
-//     would also delete these transactions automatically.
-// ============================================================================
-
 import 'package:flutter/material.dart';
 
 import 'package:drift_test/data/app_database.dart';
 
-/// Shows the transactions that belong to a single wallet.
-///
-/// This is the simplest possible relation example:
-///   - One Wallet (parent)
-///   - Many Transaction rows (children) whose `wallet_id` equals the wallet id.
 class WalletDetailScreen extends StatelessWidget {
   const WalletDetailScreen({
     super.key,
@@ -46,19 +27,8 @@ class WalletDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-
-      // -----------------------------------------------------------------------
-      // StreamBuilder on a filtered relation
-      // -----------------------------------------------------------------------
-      // Instead of watching every transaction in the database, we watch only
-      // the ones whose `walletId` matches this wallet's id.
-      //
-      // In SQL terms this query is roughly:
-      //   SELECT * FROM transactions WHERE wallet_id = ? ORDER BY created_at DESC
-      //
-      // Whenever a transaction is inserted, updated or deleted for this wallet,
-      // the Stream emits a new list and the UI updates.
       body: StreamBuilder<List<Transaction>>(
+        // Relationship: watch only transactions for this wallet.
         stream: database.watchTransactionsForWallet(wallet.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -99,14 +69,12 @@ class WalletDetailScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                // Long-press deletes a single transaction.
                 onLongPress: () => database.deleteTransaction(transaction.id),
               );
             },
           );
         },
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddTransactionDialog(context),
         child: const Icon(Icons.add),
@@ -114,9 +82,6 @@ class WalletDetailScreen extends StatelessWidget {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Dialog to insert a new transaction
-  // ---------------------------------------------------------------------------
   Future<void> _showAddTransactionDialog(BuildContext context) async {
     final noteController = TextEditingController();
     final amountController = TextEditingController();
@@ -163,17 +128,11 @@ class WalletDetailScreen extends StatelessWidget {
       },
     );
 
-    // If the user cancelled the dialog, amount will be null.
     if (amount == null) return;
 
     final note = noteController.text.trim();
     if (note.isEmpty) return;
 
-    // -------------------------------------------------------------------------
-    // INSERT child row with a foreign key
-    // -------------------------------------------------------------------------
-    // `walletId` must match an existing wallet id because of the foreign key.
-    // SQLite will reject the insert if the wallet does not exist.
     await database.createTransaction(
       walletId: wallet.id,
       amount: amount,

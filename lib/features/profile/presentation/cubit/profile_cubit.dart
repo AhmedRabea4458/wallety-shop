@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/repositories/operation_repository.dart';
@@ -24,7 +25,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         stats: stats,
       ));
     } catch (e) {
-      emit(ProfileError(e.toString()));
+      emit(ProfileError(ErrorMapper.map(e)));
     }
   }
 
@@ -36,7 +37,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         stats: stats,
       ));
     } catch (e) {
-      emit(ProfileError(e.toString()));
+      emit(ProfileError(ErrorMapper.map(e)));
     }
   }
 
@@ -109,17 +110,20 @@ class ProfileCubit extends Cubit<ProfileState> {
     final monthlyNetworkFee = monthlyOperations
         .fold<double>(0, (sum, o) => sum + o.networkFee);
 
-    final vodafoneOps = operations
+    final monthlyNetProfit = monthlyCommission - monthlyNetworkFee;
+
+    final vodafoneOps = monthlyOperations
         .where((o) => o.providerType == ProviderType.vodafoneCash);
-    final instaPayOps = operations
+    final instaPayOps = monthlyOperations
         .where((o) => o.providerType == ProviderType.instaPay);
 
     return ProfileStats(
-      totalTransactions: operations.length,
+      totalTransactions: monthlyOperations.length,
       totalDeposits: monthlyDeposit,
       totalWithdrawals: monthlyWithdrawal,
       commission: monthlyCommission,
       networkFee: monthlyNetworkFee,
+      netProfit: monthlyNetProfit,
       vodafoneCash: ProviderStats(
         operationCount: vodafoneOps.length,
         totalAmount: vodafoneOps.fold<double>(0, (sum, o) => sum + o.amount),
@@ -130,7 +134,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         operationCount: instaPayOps.length,
         totalAmount: instaPayOps.fold<double>(0, (sum, o) => sum + o.amount),
         totalCommission: instaPayOps.fold<double>(0, (sum, o) => sum + o.commission),
-        totalNetworkFee: 0,
+        totalNetworkFee: instaPayOps.fold<double>(0, (sum, o) => sum + o.networkFee),
       ),
     );
   }

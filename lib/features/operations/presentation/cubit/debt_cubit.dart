@@ -116,6 +116,7 @@ class DebtCubit extends Cubit<DebtState> {
     String? customerPhone,
     required double amount,
     String? notes,
+    bool isCashLoan = false,
   }) async {
     try {
       DebtorEntity debtor;
@@ -125,7 +126,7 @@ class DebtCubit extends Cubit<DebtState> {
       } else {
         debtor = await repository.insertDebtor(customerName, phone: customerPhone, notes: notes);
       }
-      await repository.insertDebt(DebtEntity(
+      final debt = DebtEntity(
         id: 0,
         debtorId: debtor.id,
         operationId: null,
@@ -133,13 +134,70 @@ class DebtCubit extends Cubit<DebtState> {
         providerType: null,
         amount: amount,
         isPaid: false,
+        isCashLoan: isCashLoan,
         createdAt: DateTime.now(),
-      ));
+      );
+      if (isCashLoan) {
+        await repository.insertCashLoanDebt(debt);
+        cashDrawerCubit.refreshCashDrawer();
+      } else {
+        await repository.insertDebt(debt);
+      }
       await loadDebtors();
       await loadOutstandingDebt();
     } catch (e) {
       debugPrint('createManualDebt error: $e');
       emit(DebtError(message: 'فشل إضافة الدين اليدوي'));
+      rethrow;
+    }
+  }
+
+  Future<void> editDebt({
+    required DebtEntity debt,
+    required DebtorEntity debtor,
+    required String newName,
+    required String newPhone,
+    required String newNotes,
+    required double newAmount,
+  }) async {
+    try {
+      final isManual = debt.operationId == null;
+
+      await repository.updateDebtor(DebtorEntity(
+        id: debtor.id,
+        name: isManual ? newName : debtor.name,
+        phone: isManual ? (newPhone.isEmpty ? null : newPhone) : debtor.phone,
+        notes: newNotes.isEmpty ? null : newNotes,
+        createdAt: debtor.createdAt,
+      ));
+
+      if (isManual) {
+        if (debt.isCashLoan && !debt.isPaid && newAmount != debt.amount) {
+          await repository.updateCashLoanDebtAmount(debt.id, newAmount);
+          cashDrawerCubit.refreshCashDrawer();
+        } else if (!debt.isCashLoan) {
+          await repository.updateDebt(DebtEntity(
+            id: debt.id,
+            debtorId: debt.debtorId,
+            operationId: debt.operationId,
+            operationType: debt.operationType,
+            providerType: debt.providerType,
+            amount: newAmount,
+            isPaid: debt.isPaid,
+            isCashLoan: debt.isCashLoan,
+            paidAt: debt.paidAt,
+            createdAt: debt.createdAt,
+          ));
+        }
+      }
+
+      await loadOutstandingDebt();
+      await loadDebtorDetail(debtor.id);
+      sl<OperationCubit>().getOperations();
+    } catch (e) {
+      debugPrint('editDebt error: $e');
+      emit(DebtError(message: 'فشل تحديث الدين'));
+      rethrow;
     }
   }
 }

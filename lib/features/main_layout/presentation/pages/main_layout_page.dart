@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/core/di/injection_container.dart';
+import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_cubit.dart';
 import 'package:smart_expense/features/expenses/presentation/pages/transactions_page.dart';
 import 'package:smart_expense/features/home/presentation/pages/home_page.dart';
@@ -10,6 +13,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
@@ -39,6 +43,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
     sl<WalletAdjustmentCubit>().loadAllAdjustments();
     sl<ActiveShiftCubit>().loadActiveShift();
     sl<DebtCubit>().loadOutstandingDebt();
+    sl<InstaPayAccountCubit>().loadAccounts();
 
     pages = [
       HomePage(
@@ -61,6 +66,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
         BlocProvider.value(value: sl<WalletAdjustmentCubit>()),
         BlocProvider.value(value: sl<ActiveShiftCubit>()),
         BlocProvider.value(value: sl<DebtCubit>()),
+        BlocProvider.value(value: sl<InstaPayAccountCubit>()),
       ],
       child: Scaffold(
         extendBody: true,
@@ -81,12 +87,34 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
             children: pages,
           ),
         ),
-        bottomNavigationBar: SafeArea(
-          child: CustomBottomNav(
-            currentIndex: currentIndex,
-            onTap: (index) => setState(() => currentIndex = index),
+        bottomNavigationBar: CustomBottomNav(
+          currentIndex: currentIndex,
+          onTap: (index) => setState(() => currentIndex = index),
+        ),
+        floatingActionButton: GestureDetector(
+          onTap: () => context.push(AppRoutes.addOperation),
+          child: Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.ctaGradientLinear,
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.fabGlow,
+                  blurRadius: 30,
+                  spreadRadius: 6,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.add_rounded,
+              color: AppColors.primaryForeground,
+              size: 30,
+            ),
           ),
         ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       ),
     );
   }

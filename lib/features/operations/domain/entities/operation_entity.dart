@@ -14,6 +14,7 @@ class OperationEntity {
   final double commission;
   final double networkFee;
   final int? shiftId;
+  final int? instaPayAccountId;
   final String? phoneNumber;
   final String? notes;
   final DateTime createdAt;
@@ -27,6 +28,7 @@ class OperationEntity {
     this.commission = 0.0,
     this.networkFee = 0.0,
     this.shiftId,
+    this.instaPayAccountId,
     this.phoneNumber,
     this.notes,
     required this.createdAt,

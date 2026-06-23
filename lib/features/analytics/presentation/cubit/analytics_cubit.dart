@@ -1,4 +1,5 @@
 import 'package:bloc/bloc.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/features/analytics/domain/entities/analytics_period.dart';
 import 'package:smart_expense/features/analytics/domain/repositories/analytics_repository.dart';
 import 'package:smart_expense/features/analytics/presentation/cubit/analytics_state.dart';
@@ -77,7 +78,7 @@ class AnalyticsCubit extends Cubit<AnalyticsState> {
         selectedPeriod: _selectedPeriod,
       ));
     } catch (e) {
-      emit(AnalyticsError('Failed to load analytics: $e'));
+      emit(AnalyticsError('فشل تحميل التحليلات: ${ErrorMapper.map(e)}'));
     }
   }
 }

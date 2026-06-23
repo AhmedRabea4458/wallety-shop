@@ -15,5 +15,6 @@ TextColumn get operationType =>
   TextColumn get phoneNumber => text().nullable()();
   TextColumn get notes => text().nullable()();
   BoolColumn get isDebt  => boolean().withDefault(const Constant(false))();
+  IntColumn get instaPayAccountId => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

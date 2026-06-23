@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
@@ -146,6 +147,18 @@ class ProfilePage extends StatelessWidget {
             const SliverToBoxAdapter(
               child: SizedBox(height: AppSpacing.space6),
             ),
+            // Net Profit Card
+            SliverToBoxAdapter(
+              child: BlocBuilder<ProfileCubit, ProfileState>(
+                builder: (context, state) {
+                  final netProfit = state is ProfileLoaded ? state.stats.netProfit : 0.0;
+                  return _NetProfitCard(netProfit: netProfit);
+                },
+              ),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AppSpacing.space6),
+            ),
             // Outstanding Debt Card
             const SliverToBoxAdapter(
               child: OutstandingDebtCard(),
@@ -210,6 +223,78 @@ class ProfilePage extends StatelessWidget {
             // Bottom padding
             const SliverToBoxAdapter(
               child: SizedBox(height: AppSpacing.space8),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NetProfitCard extends StatelessWidget {
+  final double netProfit;
+
+  const _NetProfitCard({required this.netProfit});
+
+  static String _format(double amount) {
+    return NumberFormat('#,##0.##', 'ar').format(amount);
+  }
+
+  Color _profitColor(BuildContext context) {
+    if (netProfit > 0) return AppColors.success;
+    if (netProfit < 0) return AppColors.destructive;
+    return AppColors.mutedForeground;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _profitColor(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpacing.space5),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(
+            color: AppColors.border50,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(
+                netProfit >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.space3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'صافي الربح',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                  ),
+                  const SizedBox(height: AppSpacing.space1),
+                  Text(
+                    '${_format(netProfit)} ج.م',
+                    style: AppTextStyles.headline.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

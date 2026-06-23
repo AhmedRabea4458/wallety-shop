@@ -22,22 +22,29 @@ class CashDrawerCubit extends Cubit<CashDrawerState> {
   }
 
   Future<void> refreshCashDrawer() async {
+    final hadData = state is CashDrawerLoaded;
     try {
       final cashDrawer = await repository.getCashDrawer();
       if (cashDrawer != null) {
         emit(CashDrawerLoaded(cashDrawer: cashDrawer));
       }
     } catch (e) {
-      emit(CashDrawerError(message: 'فشل تحديث الدرج النقدي'));
+      if (!hadData) {
+        emit(CashDrawerError(message: 'فشل تحديث الدرج النقدي'));
+      }
     }
   }
 
-  Future<void> updateInitialBalance(double newInitialBalance) async {
+  Future<void> updateBalance(double newBalance) async {
+    final hadData = state is CashDrawerLoaded;
     try {
-      await repository.updateInitialBalance(newInitialBalance);
+      await repository.updateBalance(newBalance);
       await refreshCashDrawer();
     } catch (e) {
-      emit(CashDrawerError(message: 'فشل تحديث الرصيد الافتتاحي'));
+      if (!hadData) {
+        emit(CashDrawerError(message: 'فشل تحديث رصيد الدرج النقدي'));
+      }
+      rethrow;
     }
   }
 }

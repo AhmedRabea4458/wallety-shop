@@ -115,6 +115,7 @@ class _ShiftHistoryPageState extends State<ShiftHistoryPage> {
                           totalWithdrawals: 0,
                           totalCommissions: 0,
                           totalNetworkFees: 0,
+                          netProfit: 0,
                           instaPayCount: 0,
                         );
                         final active = shift.endTime == null;

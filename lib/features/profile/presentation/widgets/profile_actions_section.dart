@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
+import 'package:smart_expense/core/errors/error_mapper.dart';
+import 'package:smart_expense/core/services/backup_restore_service.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
@@ -51,7 +53,7 @@ class ProfileActionsSection extends StatelessWidget {
               } catch (e) {
                 scaffoldMessenger.showSnackBar(
                   SnackBar(
-                    content: Text('حدث خطأ أثناء التصدير: $e'),
+                    content: Text('حدث خطأ أثناء التصدير: ${ErrorMapper.map(e)}'),
                     backgroundColor: AppColors.destructive,
                     duration: const Duration(seconds: 3),
                   ),
@@ -108,6 +110,95 @@ class ProfileActionsSection extends StatelessWidget {
             onTap: () => context.push(AppRoutes.walletSetup),
           ),
           Divider(
+            color: AppColors.border45,
+            indent: AppSpacing.space5,
+            endIndent: AppSpacing.space5,
+          ),
+           ActionRow(
+            icon: Icons.backup_rounded,
+            iconBackgroundColor: AppColors.primary10,
+            iconColor: AppColors.primary,
+            label: 'إنشاء نسخة احتياطية',
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await BackupRestoreService.backup();
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('تم إنشاء النسخة الاحتياطية بنجاح'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('فشل إنشاء النسخة الاحتياطية: ${ErrorMapper.map(e)}'),
+                    backgroundColor: AppColors.destructive,
+                    duration: const Duration(seconds: 4),
+                  ),
+                );
+              }
+            },
+          ),
+            Divider(
+            color: AppColors.border45,
+            indent: AppSpacing.space5,
+            endIndent: AppSpacing.space5,
+          ),
+           ActionRow(
+            icon: Icons.restore_from_trash_rounded,
+            iconBackgroundColor: AppColors.primary10,
+            iconColor: AppColors.primary,
+            label: 'استعادة نسخة احتياطية',
+            onTap: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                final filePath = await BackupRestoreService.pickBackupFile();
+                if (filePath == null || !context.mounted) return;
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.card,
+                    title: Text('تأكيد الاستعادة',
+                        style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
+                    content: Text(
+                        'سيتم حذف جميع البيانات الحالية واستبدالها بالنسخة الاحتياطية. هل أنت متأكد؟',
+                        style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('إلغاء')),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.destructive),
+                        child: const Text('استعادة'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  await BackupRestoreService.restore(filePath);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('تمت استعادة البيانات بنجاح'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('فشلت استعادة البيانات: ${ErrorMapper.map(e)}'),
+                      backgroundColor: AppColors.destructive,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+            Divider(
             color: AppColors.border45,
             indent: AppSpacing.space5,
             endIndent: AppSpacing.space5,

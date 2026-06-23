@@ -6,6 +6,7 @@ class DebtEntity {
   final String? providerType;
   final double amount;
   final bool isPaid;
+  final bool isCashLoan;
   final DateTime? paidAt;
   final DateTime createdAt;
 
@@ -17,6 +18,7 @@ class DebtEntity {
     this.providerType,
     required this.amount,
     required this.isPaid,
+    this.isCashLoan = false,
     this.paidAt,
     required this.createdAt,
   });

@@ -172,6 +172,28 @@ class _WalletSetupPageState extends State<WalletSetupPage> {
                 SliverToBoxAdapter(
                   child: SizedBox(height: AppSpacing.space6),
                 ),
+                // Empty state
+                if (wallets.isEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.space8),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'لا توجد محافظ لضبطها',
+                              style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground),
+                            ),
+                            const SizedBox(height: AppSpacing.space4),
+                            Text(
+                              'قم بإنشاء محفظة من صفحة إدارة المحافظ',
+                              style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 // Wallet inputs
                 SliverList(
                   delegate: SliverChildBuilderDelegate(

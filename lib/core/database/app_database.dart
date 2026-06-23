@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:smart_expense/core/database/tables/debtors_table.dart';
 import 'package:smart_expense/core/database/tables/debts_table.dart';
+import 'package:smart_expense/core/database/tables/instapay_accounts_table.dart';
 import 'dart:ui';
 
 import 'package:smart_expense/features/analytics/domain/entities/category_breakdown.dart';
@@ -40,13 +41,14 @@ LazyDatabase _openConnection() {
     ShiftsTable,
     DebtorsTable,
     DebtsTable,
+    InstaPayAccountsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -110,6 +112,17 @@ class AppDatabase extends _$AppDatabase {
           if (from <= 15) {
             await _recreateDebtsTableIfOperationIdNotNullable();
           }
+          if (from <= 16) {
+            await m.createTable(instaPayAccountsTable);
+            try {
+              await m.addColumn(operationsTable, operationsTable.instaPayAccountId);
+            } catch (_) {
+              // Column may already exist.
+            }
+          }
+          if (from <= 17) {
+            await m.addColumn(debtsTable, debtsTable.isCashLoan);
+          }
         },
       );
 
@@ -138,7 +151,7 @@ class AppDatabase extends _$AppDatabase {
         amount REAL NOT NULL,
         is_paid INTEGER NOT NULL DEFAULT 0 CHECK (is_paid IN (0, 1)),
         paid_at INTEGER,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now') * 1000)
       )
     ''');
     await customStatement('''
@@ -283,14 +296,11 @@ class AppDatabase extends _$AppDatabase {
     return (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingleOrNull();
   }
 
-  Future<void> updateCashDrawerInitialBalance(double newInitialBalance) async {
-    final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
-    final delta = newInitialBalance - cashDrawer.initialBalance;
-    final newBalance = cashDrawer.balance + delta;
+  Future<void> updateCashDrawerBalance(double newBalance) async {
     await (update(cashDrawerTable)..where((c) => c.id.equals(1))).write(
       CashDrawerTableCompanion(
-        initialBalance: Value(newInitialBalance),
         balance: Value(newBalance),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
@@ -690,6 +700,18 @@ Future<int> insertDebtor(DebtorsTableCompanion debtor) {
 Future<int> insertDebt(DebtsTableCompanion debt) {
   return into(debtsTable).insert(debt);
 }
+Future<int> insertCashLoanDebt(DebtsTableCompanion debt) async {
+  return await transaction(() async {
+    final amount = debt.amount.value;
+    final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    if (cashDrawer.balance < amount) {
+      throw InsufficientCashDrawerBalanceException();
+    }
+    await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
+        .write(CashDrawerTableCompanion(balance: Value(cashDrawer.balance - amount)));
+    return await into(debtsTable).insert(debt);
+  });
+}
 Future<List<DebtsTableData>> getDebtsByDebtor(int debtorId) {
   return (select(debtsTable)
         ..where((tbl) => tbl.debtorId.equals(debtorId)))
@@ -708,6 +730,35 @@ Future<double> getTotalOutstandingDebt() async {
   final result = await query.getSingle();
 
   return result.read(debtsTable.amount.sum()) ?? 0;
+}
+Future<List<InstaPayAccountsTableData>> getAllInstaPayAccounts() {
+  return select(instaPayAccountsTable).get();
+}
+
+Future<void> updateDebtorRecord(int id, DebtorsTableCompanion debtor) {
+  return (update(debtorsTable)..where((d) => d.id.equals(id))).write(debtor);
+}
+
+Future<void> updateDebtRecord(int id, DebtsTableCompanion debt) {
+  return (update(debtsTable)..where((d) => d.id.equals(id))).write(debt);
+}
+
+Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) async {
+  await transaction(() async {
+    final debt = await (select(debtsTable)..where((d) => d.id.equals(debtId))).getSingle();
+    final delta = newAmount - debt.amount;
+    if (delta != 0) {
+      final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      final newDrawerBalance = cashDrawer.balance - delta;
+      if (newDrawerBalance < 0) {
+        throw InsufficientCashDrawerBalanceException();
+      }
+      await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
+          .write(CashDrawerTableCompanion(balance: Value(newDrawerBalance)));
+      await (update(debtsTable)..where((d) => d.id.equals(debtId)))
+          .write(DebtsTableCompanion(amount: Value(newAmount)));
+    }
+  });
 }
 
 }

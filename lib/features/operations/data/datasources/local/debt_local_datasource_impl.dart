@@ -63,6 +63,25 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
         operationType: Value(debt.operationType),
         providerType: Value(debt.providerType),
         amount: Value(debt.amount),
+        isPaid: Value(debt.isPaid),
+        isCashLoan: Value(debt.isCashLoan),
+        createdAt: Value(debt.createdAt),
+      ),
+    );
+  }
+
+  @override
+  Future<int> insertCashLoanDebt(DebtModel debt) {
+    return database.insertCashLoanDebt(
+      DebtsTableCompanion(
+        debtorId: Value(debt.debtorId),
+        operationId: Value(debt.operationId),
+        operationType: Value(debt.operationType),
+        providerType: Value(debt.providerType),
+        amount: Value(debt.amount),
+        isPaid: Value(debt.isPaid),
+        isCashLoan: const Value(true),
+        createdAt: Value(debt.createdAt),
       ),
     );
   }
@@ -89,5 +108,32 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   @override
   Future<void> settleDebt(int debtId) {
     return database.settleDebt(debtId);
+  }
+
+  @override
+  Future<void> updateDebtor(DebtorModel debtor) {
+    return database.updateDebtorRecord(
+      debtor.id,
+      DebtorsTableCompanion(
+        name: Value(debtor.name),
+        phone: Value(debtor.phone),
+        notes: Value(debtor.notes),
+      ),
+    );
+  }
+
+  @override
+  Future<void> updateDebt(DebtModel debt) {
+    return database.updateDebtRecord(
+      debt.id,
+      DebtsTableCompanion(
+        amount: Value(debt.amount),
+      ),
+    );
+  }
+
+  @override
+  Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) {
+    return database.updateCashLoanDebtAmount(debtId, newAmount);
   }
 }

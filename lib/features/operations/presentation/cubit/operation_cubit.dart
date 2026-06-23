@@ -38,24 +38,25 @@ class OperationCubit extends Cubit<OperationState> {
   }
 
   Future<int> addOperation(OperationEntity operation, {bool isDebt = false}) async {
-    emit(OperationLoading());
+    final hadData = state is OperationLoaded;
+    if (!hadData) emit(OperationLoading());
     try {
       final id = await repository.addOperation(operation, isDebt: isDebt);
       debugPrint('addOperation: inserted op type=${operation.operationType.name}');
       await _refreshOperations();
       return id;
-    } on InsufficientBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientBalanceException {
+      if (!hadData) emit(OperationError('فشل إضافة العملية'));
       rethrow;
-    } on InsufficientCashDrawerBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientCashDrawerBalanceException {
+      if (!hadData) emit(OperationError('فشل إضافة العملية'));
       rethrow;
-    } on OperationLinkedToDebtException catch (e) {
-      emit(OperationError(e.toString()));
+    } on OperationLinkedToDebtException {
+      if (!hadData) emit(OperationError('فشل إضافة العملية'));
       rethrow;
     } catch (e) {
       debugPrint('addOperation error: $e');
-      emit(OperationError('فشل إضافة العملية'));
+      if (!hadData) emit(OperationError('فشل إضافة العملية'));
       rethrow;
     }
   }
@@ -74,45 +75,47 @@ class OperationCubit extends Cubit<OperationState> {
   }
 
   Future<void> updateOperation(OperationEntity operation) async {
-    emit(OperationLoading());
+    final hadData = state is OperationLoaded;
+    if (!hadData) emit(OperationLoading());
     try {
       await repository.updateOperation(operation);
       debugPrint('updateOperation: updated op id=${operation.id}');
       await _refreshOperations();
-    } on InsufficientBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientBalanceException {
+      if (!hadData) emit(OperationError('فشل تحديث العملية'));
       rethrow;
-    } on InsufficientCashDrawerBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientCashDrawerBalanceException {
+      if (!hadData) emit(OperationError('فشل تحديث العملية'));
       rethrow;
-    } on OperationLinkedToDebtException catch (e) {
-      emit(OperationError(e.toString()));
+    } on OperationLinkedToDebtException {
+      if (!hadData) emit(OperationError('فشل تحديث العملية'));
       rethrow;
     } catch (e) {
       debugPrint('updateOperation error: $e');
-      emit(OperationError('فشل تحديث العملية'));
+      if (!hadData) emit(OperationError('فشل تحديث العملية'));
       rethrow;
     }
   }
 
   Future<void> deleteOperation(int id) async {
-    emit(OperationLoading());
+    final hadData = state is OperationLoaded;
+    if (!hadData) emit(OperationLoading());
     try {
       await repository.deleteOperation(id);
       debugPrint('deleteOperation: deleted op id=$id');
       await _refreshOperations();
-    } on InsufficientBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientBalanceException {
+      if (!hadData) emit(OperationError('فشل حذف العملية'));
       rethrow;
-    } on InsufficientCashDrawerBalanceException catch (e) {
-      emit(OperationError(e.toString()));
+    } on InsufficientCashDrawerBalanceException {
+      if (!hadData) emit(OperationError('فشل حذف العملية'));
       rethrow;
-    } on OperationLinkedToDebtException catch (e) {
-      emit(OperationError(e.toString()));
+    } on OperationLinkedToDebtException {
+      if (!hadData) emit(OperationError('فشل حذف العملية'));
       rethrow;
     } catch (e) {
       debugPrint('deleteOperation error: $e');
-      emit(OperationError('فشل حذف العملية'));
+      if (!hadData) emit(OperationError('فشل حذف العملية'));
       rethrow;
     }
   }
@@ -200,7 +203,6 @@ class OperationCubit extends Cubit<OperationState> {
       emit(_buildLoadedState());
     } catch (e) {
       debugPrint('_refreshOperations error: $e');
-      emit(OperationError('فشل تحديث العمليات'));
     }
   }
 }

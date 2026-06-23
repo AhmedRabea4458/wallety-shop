@@ -8,8 +8,12 @@ abstract class DebtRepository {
   Future<Map<int, DebtEntity>> getOperationDebts();
   Future<DebtorEntity> insertDebtor(String name, {String? phone, String? notes});
   Future<DebtEntity> insertDebt(DebtEntity debt);
+  Future<DebtEntity> insertCashLoanDebt(DebtEntity debt);
   Future<List<DebtEntity>> getDebtsByDebtor(int debtorId);
   Future<List<DebtEntity>> getUnpaidDebts();
   Future<double> getTotalOutstandingDebt();
   Future<void> markDebtAsPaid(int debtId);
+  Future<void> updateDebtor(DebtorEntity debtor);
+  Future<void> updateDebt(DebtEntity debt);
+  Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);
 }

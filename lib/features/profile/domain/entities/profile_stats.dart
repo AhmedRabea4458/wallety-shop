@@ -24,6 +24,7 @@ class ProfileStats {
   final double totalWithdrawals;
   final double commission;
   final double networkFee;
+  final double netProfit;
   final ProviderStats vodafoneCash;
   final ProviderStats instaPay;
 
@@ -33,6 +34,7 @@ class ProfileStats {
     required this.totalWithdrawals,
     required this.commission,
     required this.networkFee,
+    required this.netProfit,
     required this.vodafoneCash,
     required this.instaPay,
   });
@@ -43,6 +45,7 @@ class ProfileStats {
         totalWithdrawals = 0,
         commission = 0,
         networkFee = 0,
+        netProfit = 0,
         vodafoneCash = const ProviderStats.empty(),
         instaPay = const ProviderStats.empty();
 }

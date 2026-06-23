@@ -1,4 +1,5 @@
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 
 class ShiftStats {
   final int totalOperations;
@@ -6,6 +7,7 @@ class ShiftStats {
   final double totalWithdrawals;
   final double totalCommissions;
   final double totalNetworkFees;
+  final double netProfit;
   final int instaPayCount;
 
   const ShiftStats({
@@ -14,6 +16,7 @@ class ShiftStats {
     required this.totalWithdrawals,
     required this.totalCommissions,
     required this.totalNetworkFees,
+    required this.netProfit,
     required this.instaPayCount,
   });
 
@@ -31,7 +34,7 @@ class ShiftStats {
       }
       commissions += o.commission;
       networkFees += o.networkFee;
-      if (o.providerType.name == 'instaPay') instaPayCount++;
+      if (o.providerType == ProviderType.instaPay) instaPayCount++;
     }
     return ShiftStats(
       totalOperations: ops.length,
@@ -39,6 +42,7 @@ class ShiftStats {
       totalWithdrawals: withdrawals,
       totalCommissions: commissions,
       totalNetworkFees: networkFees,
+      netProfit: commissions - networkFees,
       instaPayCount: instaPayCount,
     );
   }

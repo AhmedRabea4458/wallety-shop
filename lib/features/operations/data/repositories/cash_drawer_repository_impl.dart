@@ -14,7 +14,7 @@ class CashDrawerRepositoryImpl implements CashDrawerRepository {
   }
 
   @override
-  Future<void> updateInitialBalance(double newInitialBalance) async {
-    await localDataSource.updateInitialBalance(newInitialBalance);
+  Future<void> updateBalance(double newBalance) async {
+    await localDataSource.updateBalance(newBalance);
   }
 }
