@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:smart_expense/core/database/tables/debtors_table.dart';
 import 'package:smart_expense/core/database/tables/debts_table.dart';
 import 'package:smart_expense/core/database/tables/instapay_accounts_table.dart';
+import 'package:smart_expense/core/database/tables/debt_payments_table.dart';
 import 'dart:ui';
 
 import 'package:smart_expense/features/analytics/domain/entities/category_breakdown.dart';
@@ -42,13 +43,14 @@ LazyDatabase _openConnection() {
     DebtorsTable,
     DebtsTable,
     InstaPayAccountsTable,
+    DebtPaymentsTable,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -122,6 +124,15 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from <= 17) {
             await m.addColumn(debtsTable, debtsTable.isCashLoan);
+          }
+          if (from <= 18) {
+            await m.addColumn(debtsTable, debtsTable.debtType);
+          }
+          if (from <= 19) {
+            await m.createTable(debtPaymentsTable);
+          }
+          if (from <= 20) {
+            await m.addColumn(debtsTable, debtsTable.notes);
           }
         },
       );
@@ -633,20 +644,25 @@ class AppDatabase extends _$AppDatabase {
   Future<List<DebtorsTableData>> getAllDebtors() {
   return select(debtorsTable).get();
 }
-Future<DebtorsTableData?> getDebtorByPhone(String phone) {
-  return (select(debtorsTable)
-        ..where((tbl) => tbl.phone.equals(phone)))
-      .getSingleOrNull();
+Future<DebtorsTableData?> getDebtorByPhone(String phone) async {
+  final trimmed = phone.trim();
+  if (trimmed.isEmpty) return null;
+  final results = await (select(debtorsTable)
+        ..where((tbl) => tbl.phone.equals(trimmed)))
+      .get();
+  return results.isEmpty ? null : results.first;
 }
 Future<DebtorsTableData?> getDebtorById(int id) {
   return (select(debtorsTable)
         ..where((tbl) => tbl.id.equals(id)))
       .getSingleOrNull();
 }
-Future<DebtorsTableData?> getDebtorByName(String name) {
-  return (select(debtorsTable)
-        ..where((tbl) => tbl.name.equals(name)))
-      .getSingleOrNull();
+Future<DebtorsTableData?> getDebtorByName(String name) async {
+  final trimmed = name.trim();
+  final results = await (select(debtorsTable)
+        ..where((tbl) => tbl.name.lower().equals(trimmed.toLowerCase())))
+      .get();
+  return results.isEmpty ? null : results.first;
 }
 Future<DebtsTableData?> getDebtByOperationId(int operationId) {
   return (select(debtsTable)
@@ -671,27 +687,79 @@ Future<void> settleDebt(int debtId) async {
 
     if (debt.isPaid) return;
 
-    await (update(debtsTable)
-          ..where((d) => d.id.equals(debtId)))
-        .write(
-      DebtsTableCompanion(
-        isPaid: const Value(true),
-        paidAt: Value(DateTime.now()),
+    final payments = await (select(debtPaymentsTable)
+          ..where((p) => p.debtId.equals(debtId)))
+        .get();
+    final totalPaidSoFar = payments.fold(0.0, (sum, p) => sum + p.amount);
+    final remaining = debt.amount - totalPaidSoFar;
+
+    await payDebt(
+      debtId: debtId,
+      amount: remaining,
+      notes: 'تسوية كاملة',
+      paymentMethod: 'cash',
+    );
+  });
+}
+
+Future<List<DebtPaymentsTableData>> getPaymentsForDebts(List<int> debtIds) {
+  if (debtIds.isEmpty) return Future.value([]);
+  return (select(debtPaymentsTable)
+        ..where((tbl) => tbl.debtId.isIn(debtIds)))
+      .get();
+}
+
+Future<void> payDebt({
+  required int debtId,
+  required double amount,
+  String? notes,
+  String paymentMethod = 'cash',
+}) {
+  return transaction(() async {
+    final debt = await (select(debtsTable)..where((d) => d.id.equals(debtId))).getSingle();
+    if (debt.isPaid) {
+      throw Exception('الدين مدفوع بالفعل بالكامل');
+    }
+
+    final payments = await (select(debtPaymentsTable)
+          ..where((p) => p.debtId.equals(debtId)))
+        .get();
+    final totalPaidSoFar = payments.fold(0.0, (sum, p) => sum + p.amount);
+    final remaining = debt.amount - totalPaidSoFar;
+
+    if (amount <= 0) {
+      throw Exception('قيمة الدفعة يجب أن تكون أكبر من الصفر');
+    }
+    if (amount > remaining) {
+      throw Exception('قيمة الدفعة أكبر من المبلغ المتبقي المستحق');
+    }
+
+    await into(debtPaymentsTable).insert(
+      DebtPaymentsTableCompanion(
+        debtId: Value(debtId),
+        amount: Value(amount),
+        notes: Value(notes),
+        paymentMethod: Value(paymentMethod),
+        createdAt: Value(DateTime.now()),
       ),
     );
 
-    final cashDrawer =
-        await (select(cashDrawerTable)
-              ..where((c) => c.id.equals(1)))
-            .getSingle();
-
-    await (update(cashDrawerTable)
-          ..where((c) => c.id.equals(1)))
-        .write(
+    final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    await (update(cashDrawerTable)..where((c) => c.id.equals(1))).write(
       CashDrawerTableCompanion(
-        balance: Value(cashDrawer.balance + debt.amount),
+        balance: Value(cashDrawer.balance + amount),
       ),
     );
+
+    final isFullyPaid = (totalPaidSoFar + amount) == debt.amount;
+    if (isFullyPaid) {
+      await (update(debtsTable)..where((d) => d.id.equals(debtId))).write(
+        DebtsTableCompanion(
+          isPaid: const Value(true),
+          paidAt: Value(DateTime.now()),
+        ),
+      );
+    }
   });
 }
 Future<int> insertDebtor(DebtorsTableCompanion debtor) {
@@ -761,4 +829,14 @@ Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) async {
   });
 }
 
+Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebtorId}) {
+  return transaction(() async {
+    await (update(debtsTable)..where((d) => d.debtorId.equals(sourceDebtorId))).write(
+      DebtsTableCompanion(debtorId: Value(targetDebtorId)),
+    );
+    await (delete(debtorsTable)..where((d) => d.id.equals(sourceDebtorId))).go();
+  });
 }
+
+}
+

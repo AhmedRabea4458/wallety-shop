@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debtor_filter.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_state.dart';
+import 'package:smart_expense/shared/widgets/filter_chip_widget.dart';
 
 class DebtorsPage extends StatefulWidget {
   const DebtorsPage({super.key});
@@ -23,14 +26,7 @@ class _DebtorsPageState extends State<DebtorsPage> {
     super.initState();
     context.read<DebtCubit>().loadDebtors();
   }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (ModalRoute.of(context)?.isCurrent == true) {
-      context.read<DebtCubit>().loadDebtors();
-    }
-  }
+  final _scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -38,13 +34,15 @@ class _DebtorsPageState extends State<DebtorsPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
+          
           slivers: [
-            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.screenHorizontal,
-                  vertical: AppSpacing.space4,
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.screenHorizontal,
+                  right: AppSpacing.screenHorizontal,
+                  top: AppSpacing.space4,
+                  bottom: AppSpacing.space2,
                 ),
                 child: Row(
                   children: [
@@ -83,16 +81,59 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 ),
               ),
             ),
-            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            BlocBuilder<DebtCubit, DebtState>(
+              buildWhen: (previous, current) => current is DebtorsLoaded,
+              builder: (context, state) {
+                final activeFilter = state is DebtorsLoaded ? state.selectedFilter : DebtorFilter.outstanding;
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSpacing.screenHorizontal,
+                      right: AppSpacing.screenHorizontal,
+                      bottom: AppSpacing.space3,
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          FilterChipWidget(
+                            label: 'الكل',
+                            isActive: activeFilter == DebtorFilter.all || activeFilter == null,
+                            onTap: () => context.read<DebtCubit>().filterByDebtorType(DebtorFilter.all),
+                          ),
+                          const SizedBox(width: AppSpacing.space2),
+                          FilterChipWidget(
+                            label: 'آجل',
+                            isActive: activeFilter == DebtorFilter.outstanding,
+                            onTap: () => context.read<DebtCubit>().filterByDebtorType(DebtorFilter.outstanding),
+                          ),
+                          const SizedBox(width: AppSpacing.space2),
+                          FilterChipWidget(
+                            label: 'خالص',
+                            isActive: activeFilter == DebtorFilter.paid,
+                            onTap: () => context.read<DebtCubit>().filterByDebtorType(DebtorFilter.paid),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
             BlocBuilder<DebtCubit, DebtState>(
               buildWhen: (previous, current) =>
-                  current is DebtLoading ||
+                  (current is DebtLoading && (previous is DebtInitial || previous is DebtError)) ||
                   current is DebtError ||
                   current is DebtorsLoaded,
               builder: (context, state) {
                 if (state is DebtLoading) {
                   return const SliverToBoxAdapter(
-                    child: Center(child: CircularProgressIndicator()),
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(AppSpacing.space8),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
                   );
                 }
                 if (state is DebtError) {
@@ -107,11 +148,17 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 }
                 if (state is DebtorsLoaded) {
                   if (state.debtors.isEmpty) {
-                    return const SliverToBoxAdapter(
+                    String emptyMessage = 'لا يوجد مدينين';
+                    if (state.selectedFilter == DebtorFilter.outstanding) {
+                      emptyMessage = 'لا يوجد مدينين مستحقين';
+                    } else if (state.selectedFilter == DebtorFilter.paid) {
+                      emptyMessage = 'لا يوجد مدينين خالصين';
+                    }
+                    return SliverToBoxAdapter(
                       child: Center(
                         child: Padding(
-                          padding: EdgeInsets.all(AppSpacing.space8),
-                          child: Text('لا يوجد مدينين', style: TextStyle(color: AppColors.mutedForeground)),
+                          padding: const EdgeInsets.all(AppSpacing.space8),
+                          child: Text(emptyMessage, style: const TextStyle(color: AppColors.mutedForeground)),
                         ),
                       ),
                     );
@@ -120,13 +167,15 @@ class _DebtorsPageState extends State<DebtorsPage> {
                     delegate: SliverChildBuilderDelegate(
                       (context, index) {
                         final debtor = state.debtors[index];
+                        final balance = state.debtorBalances[debtor.id] ?? 0.0;
                         return _DebtorCard(
                           debtor: debtor,
+                          balance: balance,
                           onTap: () async {
                             final debtCubit = context.read<DebtCubit>();
                             await context.push(AppRoutes.debtorDetail, extra: debtor.id);
                             if (mounted) {
-                              debtCubit.loadDebtors();
+                              debtCubit.loadDebtors(silent: true);
                             }
                           },
                         );
@@ -249,9 +298,16 @@ class _DebtorsPageState extends State<DebtorsPage> {
 
 class _DebtorCard extends StatelessWidget {
   final DebtorEntity debtor;
+  final double balance;
   final VoidCallback onTap;
 
-  const _DebtorCard({required this.debtor, required this.onTap});
+  const _DebtorCard({
+    required this.debtor,
+    required this.balance,
+    required this.onTap,
+  });
+
+  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 
   @override
   Widget build(BuildContext context) {
@@ -290,6 +346,27 @@ class _DebtorCard extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(width: AppSpacing.space2),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${_f(balance)} ج.م',
+                  style: AppTextStyles.body.copyWith(
+                    color: balance > 0 ? AppColors.destructive : AppColors.mutedForeground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  balance > 0 ? 'مستحق' : 'خالص',
+                  style: AppTextStyles.caption.copyWith(
+                    color: balance > 0 ? AppColors.destructive : AppColors.success,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: AppSpacing.space2),
             const Icon(Icons.chevron_left, color: AppColors.mutedForeground),
           ],
         ),

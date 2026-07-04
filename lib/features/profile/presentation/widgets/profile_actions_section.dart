@@ -162,7 +162,7 @@ class ProfileActionsSection extends StatelessWidget {
                     title: Text('تأكيد الاستعادة',
                         style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
                     content: Text(
-                        'سيتم حذف جميع البيانات الحالية واستبدالها بالنسخة الاحتياطية. هل أنت متأكد؟',
+                        'سيتم حذف جميع البيانات الحالية واستبدالها بمحتويات النسخة الاحتياطية.',
                         style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
                     actions: [
                       TextButton(

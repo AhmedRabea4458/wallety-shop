@@ -3,6 +3,7 @@ import 'package:smart_expense/features/operations/data/models/debt_model.dart';
 import 'package:smart_expense/features/operations/data/models/debtor_model.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
 import 'package:smart_expense/features/operations/domain/repositories/debt_repository.dart';
 
 class DebtRepositoryImpl implements DebtRepository {
@@ -27,6 +28,13 @@ class DebtRepositoryImpl implements DebtRepository {
   @override
   Future<DebtorEntity?> getDebtorByPhone(String phone) {
     return localDataSource.getDebtorByPhone(phone).then(
+      (model) => model?.toEntity(),
+    );
+  }
+
+  @override
+  Future<DebtorEntity?> getDebtorByName(String name) {
+    return localDataSource.getDebtorByName(name).then(
       (model) => model?.toEntity(),
     );
   }
@@ -101,5 +109,22 @@ class DebtRepositoryImpl implements DebtRepository {
   @override
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) {
     return localDataSource.updateCashLoanDebtAmount(debtId, newAmount);
+  }
+
+  @override
+  Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebtorId}) {
+    return localDataSource.mergeDebtors(sourceDebtorId: sourceDebtorId, targetDebtorId: targetDebtorId);
+  }
+
+  @override
+  Future<List<DebtPaymentEntity>> getPaymentsForDebts(List<int> debtIds) {
+    return localDataSource.getPaymentsForDebts(debtIds).then(
+      (data) => data.map((m) => m.toEntity()).toList(),
+    );
+  }
+
+  @override
+  Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
+    return localDataSource.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }
 }

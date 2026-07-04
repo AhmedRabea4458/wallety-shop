@@ -23,7 +23,7 @@ class Transactions extends Table {
   RealColumn get amount => real()();
   TextColumn get note => text().withLength(min: 1, max: 200)();
   DateTimeColumn get createdAt => dateTime().named('created_at')();
-
+  
   @override
   List<String> get customConstraints => [
         'FOREIGN KEY(wallet_id) REFERENCES wallets(id) ON DELETE CASCADE',
@@ -36,6 +36,7 @@ class Transactions extends Table {
 // Drift database. Tables are registered via @DriftDatabase.
 // Run: dart run build_runner build
 @DriftDatabase(tables: [Wallets, Transactions])
+
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -50,7 +51,10 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> createWallet(String name, double balance) {
     return into(wallets).insert(
-      WalletsCompanion(name: Value(name), balance: Value(balance)),
+      WalletsCompanion(
+        name: Value(name),
+         balance: Value(balance)
+         ),
     );
   }
 

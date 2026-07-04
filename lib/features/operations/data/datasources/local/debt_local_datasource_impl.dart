@@ -3,6 +3,7 @@ import 'package:smart_expense/core/database/app_database.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/debt_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/models/debt_model.dart';
 import 'package:smart_expense/features/operations/data/models/debtor_model.dart';
+import 'package:smart_expense/features/operations/data/models/debt_payment_model.dart';
 
 class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   final AppDatabase database;
@@ -26,6 +27,13 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   @override
   Future<DebtorModel?> getDebtorByPhone(String phone) {
     return database.getDebtorByPhone(phone).then(
+      (data) => data != null ? DebtorModel.fromDrift(data) : null,
+    );
+  }
+
+  @override
+  Future<DebtorModel?> getDebtorByName(String name) {
+    return database.getDebtorByName(name).then(
       (data) => data != null ? DebtorModel.fromDrift(data) : null,
     );
   }
@@ -65,7 +73,9 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
         amount: Value(debt.amount),
         isPaid: Value(debt.isPaid),
         isCashLoan: Value(debt.isCashLoan),
+        debtType: Value(debt.debtType.value),
         createdAt: Value(debt.createdAt),
+        notes: Value(debt.notes),
       ),
     );
   }
@@ -81,7 +91,9 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
         amount: Value(debt.amount),
         isPaid: Value(debt.isPaid),
         isCashLoan: const Value(true),
+        debtType: Value(debt.debtType.value),
         createdAt: Value(debt.createdAt),
+        notes: Value(debt.notes),
       ),
     );
   }
@@ -128,6 +140,7 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
       debt.id,
       DebtsTableCompanion(
         amount: Value(debt.amount),
+        notes: Value(debt.notes),
       ),
     );
   }
@@ -135,5 +148,22 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   @override
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount) {
     return database.updateCashLoanDebtAmount(debtId, newAmount);
+  }
+
+  @override
+  Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebtorId}) {
+    return database.mergeDebtors(sourceDebtorId: sourceDebtorId, targetDebtorId: targetDebtorId);
+  }
+
+  @override
+  Future<List<DebtPaymentModel>> getPaymentsForDebts(List<int> debtIds) {
+    return database.getPaymentsForDebts(debtIds).then(
+      (data) => data.map((e) => DebtPaymentModel.fromDrift(e)).toList(),
+    );
+  }
+
+  @override
+  Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
+    return database.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }
 }

@@ -8,6 +8,7 @@ import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
 import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
@@ -47,6 +48,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   late DateTime _selectedDate;
   bool _isSaving = false;
   bool _isDebt = false;
+  bool _isSettlementDebt = false;
   int? _instaPayAccountId;
 
   final TextEditingController _amountController = TextEditingController();
@@ -185,6 +187,30 @@ class _AddOperationPageState extends State<AddOperationPage> {
           operationType: _selectedType.name,
           providerType: _selectedProvider.name,
           amount: amount + commission,
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+        );
+        await operationCubit.getOperations();
+      }
+      if (_isSettlementDebt && !_isEditing) {
+        if (!mounted) return;
+        final debtCubit = context.read<DebtCubit>();
+        String accountName = _selectedProvider.label;
+        final accountState = context.read<InstaPayAccountCubit>().state;
+        if (accountState is InstaPayAccountLoaded) {
+          final match = accountState.accounts.firstWhere(
+            (a) => a.id == _instaPayAccountId,
+            orElse: () => accountState.accounts.first,
+          );
+          accountName = match.name;
+        }
+        await debtCubit.createDebtFromOperation(
+          operationId: operationId,
+          customerName: accountName,
+          operationType: _selectedType.name,
+          providerType: _selectedProvider.name,
+          amount: amount,
+          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          debtType: DebtType.settlementDebt,
         );
         await operationCubit.getOperations();
       }
@@ -248,102 +274,106 @@ class _AddOperationPageState extends State<AddOperationPage> {
   void _showManageInstaPayAccountsDialog(BuildContext context) {
     final nameController = TextEditingController();
     InstaPayAccountEntity? editingAccount;
+    final instaPayCubit = context.read<InstaPayAccountCubit>();
 
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
-            builder: (context, state) {
-              final accounts = state is InstaPayAccountLoaded
-                  ? state.accounts
-                  : <InstaPayAccountEntity>[];
-              return AlertDialog(
-                backgroundColor: AppColors.card,
-                title: Text('إدارة حسابات InstaPay',
-                    style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-                content: SizedBox(
-                  width: double.maxFinite,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: nameController,
-                                textAlign: TextAlign.right,
-                                decoration: InputDecoration(
-                                  hintText: editingAccount != null ? 'تعديل الاسم' : 'اسم الحساب الجديد',
-                                  border: const OutlineInputBorder(),
+      builder: (ctx) => BlocProvider.value(
+        value: instaPayCubit,
+        child: StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+              builder: (context, state) {
+                final accounts = state is InstaPayAccountLoaded
+                    ? state.accounts
+                    : <InstaPayAccountEntity>[];
+                return AlertDialog(
+                  backgroundColor: AppColors.card,
+                  title: Text('إدارة حسابات InstaPay',
+                      style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: nameController,
+                                  textAlign: TextAlign.right,
+                                  decoration: InputDecoration(
+                                    hintText: editingAccount != null ? 'تعديل الاسم' : 'اسم الحساب الجديد',
+                                    border: const OutlineInputBorder(),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: AppSpacing.space2),
-                            ElevatedButton(
-                              onPressed: () async {
-                                final name = nameController.text.trim();
-                                if (name.isEmpty) return;
-                                final cubit = context.read<InstaPayAccountCubit>();
-                                if (editingAccount != null) {
-                                  await cubit.updateAccount(InstaPayAccountEntity(
-                                    id: editingAccount!.id,
-                                    name: name,
-                                    createdAt: editingAccount!.createdAt,
-                                  ));
-                                } else {
-                                  await cubit.addAccount(name);
-                                }
-                                nameController.clear();
-                                setDialogState(() => editingAccount = null);
-                              },
-                              child: Text(editingAccount != null ? 'تعديل' : 'إضافة'),
-                            ),
+                              const SizedBox(width: AppSpacing.space2),
+                              ElevatedButton(
+                                onPressed: () async {
+                                  final name = nameController.text.trim();
+                                  if (name.isEmpty) return;
+                                  final cubit = context.read<InstaPayAccountCubit>();
+                                  if (editingAccount != null) {
+                                    await cubit.updateAccount(InstaPayAccountEntity(
+                                      id: editingAccount!.id,
+                                      name: name,
+                                      createdAt: editingAccount!.createdAt,
+                                    ));
+                                  } else {
+                                    await cubit.addAccount(name);
+                                  }
+                                  nameController.clear();
+                                  setDialogState(() => editingAccount = null);
+                                },
+                                child: Text(editingAccount != null ? 'تعديل' : 'إضافة'),
+                              ),
+                            ],
+                          ),
+                          if (accounts.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.space4),
+                            const Divider(),
+                            ...accounts.map((a) => ListTile(
+                                  title: Text(a.name),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_rounded, size: 18),
+                                        onPressed: () {
+                                          nameController.text = a.name;
+                                          setDialogState(() => editingAccount = a);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                        onPressed: () async {
+                                          await context.read<InstaPayAccountCubit>().deleteAccount(a.id);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                )),
                           ],
-                        ),
-                        if (accounts.isNotEmpty) ...[
-                          const SizedBox(height: AppSpacing.space4),
-                          const Divider(),
-                          ...accounts.map((a) => ListTile(
-                                title: Text(a.name),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit_rounded, size: 18),
-                                      onPressed: () {
-                                        nameController.text = a.name;
-                                        setDialogState(() => editingAccount = a);
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                      onPressed: () async {
-                                        await context.read<InstaPayAccountCubit>().deleteAccount(a.id);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              )),
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('إغلاق'),
-                  ),
-                ],
-              );
-        },
-      );
-    },
-  ),
-);
-}
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('إغلاق'),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
@@ -520,6 +550,9 @@ class _AddOperationPageState extends State<AddOperationPage> {
                               final accounts = state is InstaPayAccountLoaded
                                   ? state.accounts
                                   : <InstaPayAccountEntity>[];
+                              final accountIds = accounts.map((a) => a.id).toSet();
+                              final effectiveAccountId =
+                                  accountIds.contains(_instaPayAccountId) ? _instaPayAccountId : null;
                               return Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppSpacing.space5,
@@ -554,7 +587,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                       children: [
                                         Expanded(
                                           child: DropdownButtonFormField<int>(
-                                            value: _instaPayAccountId,
+                                            value: effectiveAccountId,
                                             isExpanded: true,
                                             decoration: const InputDecoration(
                                               border: InputBorder.none,
@@ -707,6 +740,22 @@ class _AddOperationPageState extends State<AddOperationPage> {
                       onDebtChanged: (v) => setState(() => _isDebt = v),
                       customerNameController: _customerNameController,
                       customerPhoneController: _customerPhoneController,
+                    ),
+                  ),
+                ),
+              if (!_isEditing && _selectedType == OperationType.withdrawal && _selectedProvider == ProviderType.instaPay)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                    child: CheckboxListTile(
+                      value: _isSettlementDebt,
+                      onChanged: _isSaving ? null : (v) => setState(() => _isSettlementDebt = v ?? false),
+                      title: Text('إنشاء دين تسوية', style: AppTextStyles.body.copyWith(color: AppColors.foreground)),
+                      subtitle: Text('تتبع المبلغ المستحق على حساب InstaPay',
+                          style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground)),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      activeColor: AppColors.primary,
                     ),
                   ),
                 ),

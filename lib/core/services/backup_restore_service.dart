@@ -34,6 +34,7 @@ class BackupRestoreService {
       'debtors': (await db.select(db.debtorsTable).get()).map(_debtorToJson).toList(),
       'debts': (await db.select(db.debtsTable).get()).map(_debtToJson).toList(),
       'instaPayAccounts': (await db.select(db.instaPayAccountsTable).get()).map(_instaPayAccountToJson).toList(),
+      'debtPayments': (await db.select(db.debtPaymentsTable).get()).map(_debtPaymentToJson).toList(),
     };
 
     final json = const JsonEncoder.withIndent('  ').convert(data);
@@ -68,13 +69,15 @@ class BackupRestoreService {
     final db = _db;
 
     await db.transaction(() async {
+      await db.delete(db.debtPaymentsTable).go();
       await db.delete(db.debtsTable).go();
       await db.delete(db.debtorsTable).go();
-      await db.delete(db.operationsTable).go();
       await db.delete(db.walletAdjustmentsTable).go();
+      await db.delete(db.operationsTable).go();
       await db.delete(db.shiftsTable).go();
       await db.delete(db.walletsTable).go();
       await db.delete(db.cashDrawerTable).go();
+      await db.delete(db.instaPayAccountsTable).go();
 
       for (final w in (data['wallets'] as List).cast<Map<String, dynamic>>()) {
         await db.into(db.walletsTable).insert(
@@ -160,6 +163,7 @@ class BackupRestoreService {
             amount: Value((d['amount'] as num).toDouble()),
             isPaid: Value((d['isPaid'] as bool?) ?? false),
             isCashLoan: Value((d['isCashLoan'] as bool?) ?? false),
+            debtType: Value((d['debtType'] as String?) ?? 'customerDebt'),
             paidAt: Value(d['paidAt'] != null ? DateTime.parse(d['paidAt'] as String) : null),
             createdAt: Value(DateTime.parse(d['createdAt'] as String)),
           ),
@@ -183,6 +187,19 @@ class BackupRestoreService {
             id: Value(a['id'] as int),
             name: Value(a['name'] as String),
             createdAt: Value(DateTime.parse(a['createdAt'] as String)),
+          ),
+        );
+      }
+
+      for (final p in (data['debtPayments'] as List?)?.cast<Map<String, dynamic>>() ?? []) {
+        await db.into(db.debtPaymentsTable).insert(
+          DebtPaymentsTableCompanion(
+            id: Value(p['id'] as int),
+            debtId: Value(p['debtId'] as int),
+            amount: Value((p['amount'] as num).toDouble()),
+            notes: Value(p['notes'] as String?),
+            paymentMethod: Value((p['paymentMethod'] as String?) ?? 'cash'),
+            createdAt: Value(DateTime.parse(p['createdAt'] as String)),
           ),
         );
       }
@@ -271,6 +288,7 @@ class BackupRestoreService {
         'amount': d.amount,
         'isPaid': d.isPaid,
         'isCashLoan': d.isCashLoan,
+        'debtType': d.debtType,
         'paidAt': d.paidAt?.toIso8601String(),
         'createdAt': d.createdAt.toIso8601String(),
       };
@@ -279,6 +297,15 @@ class BackupRestoreService {
         'id': a.id,
         'name': a.name,
         'createdAt': a.createdAt.toIso8601String(),
+      };
+
+  static Map<String, dynamic> _debtPaymentToJson(DebtPaymentsTableData p) => {
+        'id': p.id,
+        'debtId': p.debtId,
+        'amount': p.amount,
+        'notes': p.notes,
+        'paymentMethod': p.paymentMethod,
+        'createdAt': p.createdAt.toIso8601String(),
       };
 
   static String _dateStamp(DateTime d) {

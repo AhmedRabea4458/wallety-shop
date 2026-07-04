@@ -57,6 +57,8 @@ final appRouter = GoRouter(
             BlocProvider.value(value: sl<OperationCubit>()),
             BlocProvider.value(value: sl<WalletCubit>()),
             BlocProvider.value(value: sl<ActiveShiftCubit>()),
+            BlocProvider.value(value: sl<DebtCubit>()),
+            BlocProvider.value(value: sl<InstaPayAccountCubit>()),
           ],
           child: AddOperationPage(operationToEdit: operation),
         );

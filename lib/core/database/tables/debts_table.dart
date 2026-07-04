@@ -11,6 +11,8 @@ class DebtsTable extends Table {
   RealColumn get amount => real()();
   BoolColumn get isPaid => boolean().withDefault(const Constant(false))();
   BoolColumn get isCashLoan => boolean().withDefault(const Constant(false))();
+  TextColumn get debtType => text().withDefault(const Constant('customerDebt'))();
+  TextColumn get notes => text().nullable()();
 
  DateTimeColumn get paidAt => dateTime().nullable()();
  DateTimeColumn get createdAt =>

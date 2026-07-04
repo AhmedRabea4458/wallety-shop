@@ -1,5 +1,6 @@
 import 'package:smart_expense/core/database/app_database.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 
 class DebtModel {
   final int id;
@@ -10,6 +11,8 @@ class DebtModel {
   final double amount;
   final bool isPaid;
   final bool isCashLoan;
+  final DebtType debtType;
+  final String? notes;
   final DateTime? paidAt;
   final DateTime createdAt;
 
@@ -22,6 +25,8 @@ class DebtModel {
     required this.amount,
     required this.isPaid,
     this.isCashLoan = false,
+    this.debtType = DebtType.customerDebt,
+    this.notes,
     this.paidAt,
     required this.createdAt,
   });
@@ -36,6 +41,8 @@ class DebtModel {
       amount: amount,
       isPaid: isPaid,
       isCashLoan: isCashLoan,
+      debtType: debtType,
+      notes: notes,
       paidAt: paidAt,
       createdAt: createdAt,
     );
@@ -51,6 +58,8 @@ class DebtModel {
       amount: entity.amount,
       isPaid: entity.isPaid,
       isCashLoan: entity.isCashLoan,
+      debtType: entity.debtType,
+      notes: entity.notes,
       paidAt: entity.paidAt,
       createdAt: entity.createdAt,
     );
@@ -66,6 +75,8 @@ class DebtModel {
       amount: data.amount,
       isPaid: data.isPaid,
       isCashLoan: data.isCashLoan,
+      debtType: DebtType.fromString(data.debtType),
+      notes: data.notes,
       paidAt: data.paidAt,
       createdAt: data.createdAt,
     );
@@ -73,6 +84,7 @@ class DebtModel {
 
   DebtModel copyWith({
     int? id,
+    String? notes,
   }) {
     return DebtModel(
       id: id ?? this.id,
@@ -83,6 +95,8 @@ class DebtModel {
       amount: amount,
       isPaid: isPaid,
       isCashLoan: isCashLoan,
+      debtType: debtType,
+      notes: notes ?? this.notes,
       paidAt: paidAt,
       createdAt: createdAt,
     );

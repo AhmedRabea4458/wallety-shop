@@ -9,6 +9,8 @@ import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_state.dart';
@@ -56,7 +58,11 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                           color: AppColors.card,
                           borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
-                        child: const Icon(Icons.close_rounded, color: AppColors.foreground, size: 20),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.foreground,
+                          size: 20,
+                        ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.space3),
@@ -64,7 +70,9 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                       child: Text(
                         'تفاصيل الآجل',
                         textAlign: TextAlign.center,
-                        style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+                        style: AppTextStyles.headline.copyWith(
+                          color: AppColors.foreground,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48),
@@ -74,10 +82,11 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
             ),
             SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
             BlocBuilder<DebtCubit, DebtState>(
-              buildWhen: (previous, current) =>
-                  current is DebtLoading ||
-                  current is DebtError ||
-                  current is DebtorDetailLoaded,
+              buildWhen:
+                  (previous, current) =>
+                      current is DebtLoading ||
+                      current is DebtError ||
+                      current is DebtorDetailLoaded,
               builder: (context, state) {
                 if (state is DebtLoading) {
                   return const SliverToBoxAdapter(
@@ -87,19 +96,36 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                 if (state is DebtError) {
                   return SliverToBoxAdapter(
                     child: Center(
-                      child: Text(state.message, style: AppTextStyles.body.copyWith(color: AppColors.destructive)),
+                      child: Text(
+                        state.message,
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.destructive,
+                        ),
+                      ),
                     ),
                   );
                 }
                 if (state is DebtorDetailLoaded) {
-                  final totalUnpaid = state.debts
-                      .where((d) => !d.isPaid)
-                      .fold(0.0, (sum, d) => sum + d.amount);
+                  final totalUnpaid = state.debts.where((d) => !d.isPaid).fold(
+                    0.0,
+                    (sum, d) {
+                      final debtPayments = state.payments.where(
+                        (p) => p.debtId == d.id,
+                      );
+                      final paid = debtPayments.fold(
+                        0.0,
+                        (s, p) => s + p.amount,
+                      );
+                      return sum + (d.amount - paid);
+                    },
+                  );
                   return SliverMainAxisGroup(
                     slivers: [
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.screenHorizontal,
+                          ),
                           child: Container(
                             padding: const EdgeInsets.all(AppSpacing.space4),
                             decoration: BoxDecoration(
@@ -111,73 +137,176 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _row('الاسم', state.debtor.name),
-                                if (state.debtor.phone != null && state.debtor.phone!.isNotEmpty)
+                                if (state.debtor.phone != null &&
+                                    state.debtor.phone!.isNotEmpty)
                                   _row('الهاتف', state.debtor.phone!),
                                 const Divider(color: AppColors.border50),
-                                _row('إجمالي المستحق', '${_f(totalUnpaid)} ج.م'),
+                                _row('الرصيد الحالي', '${_f(totalUnpaid)} ج.م'),
                                 _row('عدد الديون', '${state.debts.length}'),
                               ],
                             ),
                           ),
                         ),
                       ),
-                      SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space6)),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpacing.space6),
+                      ),
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.screenHorizontal,
+                          ),
                           child: Text(
                             'الديون',
-                            style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+                            style: AppTextStyles.headline.copyWith(
+                              color: AppColors.foreground,
+                            ),
                           ),
                         ),
                       ),
-                      SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space3)),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpacing.space3),
+                      ),
                       if (state.debts.isEmpty)
                         SliverToBoxAdapter(
                           child: Padding(
                             padding: const EdgeInsets.all(AppSpacing.space8),
                             child: Center(
-                              child: Text('لا توجد ديون',
-                                  style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
+                              child: Text(
+                                'لا توجد ديون',
+                                style: AppTextStyles.body.copyWith(
+                                  color: AppColors.mutedForeground,
+                                ),
+                              ),
                             ),
                           ),
                         )
                       else
                         SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final debt = state.debts[index];
-                              return _DebtTile(
-                                debt: debt,
-                                debtor: state.debtor,
-                            onSettle: () async {
-                              final debtCubit = this.context.read<DebtCubit>();
-                              final confirm = await showDialog<bool>(
-                                context: this.context,
-                                builder: (ctx) => AlertDialog(
-                                  title: Text('تسوية الدين', style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-                                  content: Text('هل أنت متأكد من تسوية هذا الدين؟'),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-                                    ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تسوية')),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true && mounted) {
-                                await debtCubit.markDebtAsPaid(debt.id);
-                                sl<OperationCubit>().getOperations();
-                                if (mounted) {
-                                  debtCubit.loadDebtorDetail(widget.debtorId);
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final debt = state.debts[index];
+                            final debtPayments = state.payments.where(
+                              (p) => p.debtId == debt.id,
+                            );
+                            final paidAmount = debtPayments.fold(
+                              0.0,
+                              (sum, p) => sum + p.amount,
+                            );
+                            final remainingBalance = debt.amount - paidAmount;
+                            return _DebtTile(
+                              debt: debt,
+                              debtor: state.debtor,
+                              remainingBalance: remainingBalance,
+                              paidAmount: paidAmount,
+                              onPay:
+                                  () => _showPayDebtDialog(
+                                    context,
+                                    debt,
+                                    remainingBalance,
+                                    state.debtor.id,
+                                  ),
+                              onSettle: () async {
+                                final debtCubit =
+                                    this.context.read<DebtCubit>();
+                                final confirm = await showDialog<bool>(
+                                  context: this.context,
+                                  builder:
+                                      (ctx) => AlertDialog(
+                                        title: Text(
+                                          'تسوية الدين',
+                                          style: AppTextStyles.headline
+                                              .copyWith(
+                                                color: AppColors.foreground,
+                                              ),
+                                        ),
+                                        content: Text(
+                                          'هل أنت متأكد من تسوية هذا الدين؟',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, false),
+                                            child: const Text('إلغاء'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed:
+                                                () => Navigator.pop(ctx, true),
+                                            child: const Text('تسوية'),
+                                          ),
+                                        ],
+                                      ),
+                                );
+                                if (confirm == true && mounted) {
+                                  await debtCubit.markDebtAsPaid(debt.id);
+                                  sl<OperationCubit>().getOperations();
+                                  if (mounted) {
+                                    debtCubit.loadDebtorDetail(widget.debtorId);
+                                  }
                                 }
-                              }
-                            },
-                            onEdit: () => _showEditDebtDialog(context, debt, state.debtor),
-                              );
-                            },
-                            childCount: state.debts.length,
+                              },
+                              onEdit:
+                                  () => _showEditDebtDialog(
+                                    context,
+                                    debt,
+                                    state.debtor,
+                                  ),
+                            );
+                          }, childCount: state.debts.length),
+                        ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpacing.space6),
+                      ),
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.screenHorizontal,
+                          ),
+                          child: Text(
+                            'سجل الدفعات',
+                            style: AppTextStyles.headline.copyWith(
+                              color: AppColors.foreground,
+                            ),
                           ),
                         ),
-                      SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space8)),
+                      ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpacing.space3),
+                      ),
+                      if (state.payments.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(AppSpacing.space8),
+                            child: Center(
+                              child: Text(
+                                'لا توجد دفعات مسجلة',
+                                style: AppTextStyles.body.copyWith(
+                                  color: AppColors.mutedForeground,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final sortedPayments = List<DebtPaymentEntity>.from(
+                              state.payments,
+                            )..sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt),
+                            );
+                            final payment = sortedPayments[index];
+                            return _PaymentTile(payment: payment);
+                          }, childCount: state.payments.length),
+                        ),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: AppSpacing.space8),
+                      ),
                     ],
                   );
                 }
@@ -196,14 +325,153 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
-          Text(value, style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.mutedForeground,
+            ),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.foreground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _showEditDebtDialog(BuildContext context, DebtEntity debt, DebtorEntity debtor) {
+  void _showPayDebtDialog(
+    BuildContext context,
+    DebtEntity debt,
+    double remainingBalance,
+    int debtorId,
+  ) {
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final debtCubit = context.read<DebtCubit>();
+
+    showDialog(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.card,
+            title: Text(
+              'سداد جزء من الدين',
+              style: AppTextStyles.headline.copyWith(
+                color: AppColors.foreground,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'المبلغ المتبقي المستحق: ${_f(remainingBalance)} ج.م',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space3),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.right,
+                    decoration: const InputDecoration(
+                      hintText: 'قيمة الدفعة',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                  TextField(
+                    controller: notesController,
+                    textAlign: TextAlign.right,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      hintText: 'ملاحظات (اختياري)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final amountText = amountController.text.trim();
+                  if (amountText.isEmpty) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('الرجاء إدخال قيمة الدفعة'),
+                        backgroundColor: AppColors.destructive,
+                      ),
+                    );
+                    return;
+                  }
+                  final amount = parseArabicNumerals(amountText);
+                  if (amount <= 0) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('يجب أن تكون قيمة الدفعة أكبر من الصفر'),
+                        backgroundColor: AppColors.destructive,
+                      ),
+                    );
+                    return;
+                  }
+                  if (amount > remainingBalance) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'المبلغ لا يمكن أن يتجاوز المتبقي (${_f(remainingBalance)} ج.م)',
+                        ),
+                        backgroundColor: AppColors.destructive,
+                      ),
+                    );
+                    return;
+                  }
+
+                  final navigator = Navigator.of(ctx);
+                  try {
+                    await debtCubit.payDebt(
+                      debtId: debt.id,
+                      amount: amount,
+                      notes:
+                          notesController.text.trim().isEmpty
+                              ? null
+                              : notesController.text.trim(),
+                      debtorId: debtorId,
+                    );
+                    navigator.pop();
+                  } catch (e) {
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          e.toString().replaceAll('Exception: ', ''),
+                        ),
+                        backgroundColor: AppColors.destructive,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('سداد'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  void _showEditDebtDialog(
+    BuildContext context,
+    DebtEntity debt,
+    DebtorEntity debtor,
+  ) {
     final isManual = debt.operationId == null;
     final nameController = TextEditingController(text: debtor.name);
     final phoneController = TextEditingController(text: debtor.phone ?? '');
@@ -216,122 +484,165 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.card,
-        title: Text('تعديل الدين', style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!isManual)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.space3),
-                  margin: const EdgeInsets.only(bottom: AppSpacing.space3),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                  ),
-                  child: Text(
-                    'هذا الدين مرتبط بعملية - يمكن تعديل الملاحظات فقط',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.warning),
-                  ),
-                ),
-              if (isManual) ...[
-                if (debt.isCashLoan)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(AppSpacing.space3),
-                    margin: const EdgeInsets.only(bottom: AppSpacing.space3),
-                    decoration: BoxDecoration(
-                      color: AppColors.warning.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                    ),
-                    child: Text(
-                      'تغيير المبلغ سيعدل رصيد الدرج النقدي تلقائياً',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.warning),
-                    ),
-                  ),
-                TextField(
-                  controller: nameController,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(hintText: 'اسم العميل', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: AppSpacing.space2),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(hintText: 'رقم الهاتف (اختياري)', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: AppSpacing.space2),
-              ],
-              TextField(
-                controller: notesController,
-                textAlign: TextAlign.right,
-                maxLines: 2,
-                decoration: const InputDecoration(hintText: 'ملاحظات (اختياري)', border: OutlineInputBorder()),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.card,
+            title: Text(
+              'تعديل الدين',
+              style: AppTextStyles.headline.copyWith(
+                color: AppColors.foreground,
               ),
-              if (isManual) ...[
-                const SizedBox(height: AppSpacing.space2),
-                TextField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.right,
-                  decoration: const InputDecoration(hintText: 'المبلغ', border: OutlineInputBorder()),
-                ),
-              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!isManual)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.space3),
+                      margin: const EdgeInsets.only(bottom: AppSpacing.space3),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        'هذا الدين مرتبط بعملية - يمكن تعديل الملاحظات فقط',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.warning,
+                        ),
+                      ),
+                    ),
+                  if (isManual) ...[
+                    if (debt.isCashLoan)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.space3),
+                        margin: const EdgeInsets.only(
+                          bottom: AppSpacing.space3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'تغيير المبلغ سيعدل رصيد الدرج النقدي تلقائياً',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.warning,
+                          ),
+                        ),
+                      ),
+                    TextField(
+                      controller: nameController,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'اسم العميل',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    TextField(
+                      controller: phoneController,
+                      keyboardType: TextInputType.phone,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'رقم الهاتف (اختياري)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                  ],
+                  TextField(
+                    controller: notesController,
+                    textAlign: TextAlign.right,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      hintText: 'ملاحظات (اختياري)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  if (isManual) ...[
+                    const SizedBox(height: AppSpacing.space2),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'المبلغ',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final newName = nameController.text.trim();
+                  final newPhone = phoneController.text.trim();
+                  final newNotes = notesController.text.trim();
+                  final amountText = amountController.text.trim();
+                  final newAmount =
+                      amountText.isEmpty
+                          ? 0.0
+                          : parseArabicNumerals(amountText);
+
+                  if (isManual) {
+                    if (newName.isEmpty) {
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('اسم العميل مطلوب'),
+                          backgroundColor: AppColors.destructive,
+                        ),
+                      );
+                      return;
+                    }
+                    if (newAmount <= 0) {
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('المبلغ غير صحيح'),
+                          backgroundColor: AppColors.destructive,
+                        ),
+                      );
+                      return;
+                    }
+                  }
+
+                  final navigator = Navigator.of(ctx);
+                  try {
+                    await debtCubit.editDebt(
+                      debt: debt,
+                      debtor: debtor,
+                      newName: newName,
+                      newPhone: newPhone,
+                      newNotes: newNotes,
+                      newAmount: newAmount,
+                    );
+                    navigator.pop();
+                  } catch (e) {
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('فشل تحديث الدين'),
+                        backgroundColor: AppColors.destructive,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('حفظ'),
+              ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () async {
-              final newName = nameController.text.trim();
-              final newPhone = phoneController.text.trim();
-              final newNotes = notesController.text.trim();
-              final amountText = amountController.text.trim();
-              final newAmount = amountText.isEmpty ? 0.0 : parseArabicNumerals(amountText);
-
-              if (isManual) {
-                if (newName.isEmpty) {
-                  scaffoldMessenger.showSnackBar(
-                    const SnackBar(content: Text('اسم العميل مطلوب'), backgroundColor: AppColors.destructive),
-                  );
-                  return;
-                }
-                if (newAmount <= 0) {
-                  scaffoldMessenger.showSnackBar(
-                    const SnackBar(content: Text('المبلغ غير صحيح'), backgroundColor: AppColors.destructive),
-                  );
-                  return;
-                }
-              }
-
-              final navigator = Navigator.of(ctx);
-              try {
-                await debtCubit.editDebt(
-                  debt: debt,
-                  debtor: debtor,
-                  newName: newName,
-                  newPhone: newPhone,
-                  newNotes: newNotes,
-                  newAmount: newAmount,
-                );
-                navigator.pop();
-              } catch (e) {
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(content: Text('فشل تحديث الدين'), backgroundColor: AppColors.destructive),
-                );
-              }
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -339,106 +650,312 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
 class _DebtTile extends StatelessWidget {
   final DebtEntity debt;
   final DebtorEntity debtor;
+  final double remainingBalance;
+  final double paidAmount;
   final VoidCallback onSettle;
+  final VoidCallback onPay;
   final VoidCallback onEdit;
 
   const _DebtTile({
     required this.debt,
     required this.debtor,
+    required this.remainingBalance,
+    required this.paidAmount,
     required this.onSettle,
+    required this.onPay,
     required this.onEdit,
   });
 
+ @override
+Widget build(BuildContext context) {
+  final String typeLabel;
+  final Color color;
+  final String providerLabel;
+
+  if (debt.isCashLoan) {
+    typeLabel = 'دين نقدي من الدرج';
+    color = AppColors.warning;
+    providerLabel = '';
+  } else {
+    final isDeposit = debt.operationType == 'deposit';
+    typeLabel = isDeposit ? 'إيداع' : 'سحب';
+    color = isDeposit ? AppColors.destructive : AppColors.success;
+    providerLabel =
+        debt.providerType == 'instaPay' ? 'InstaPay' : 'Vodafone Cash';
+  }
+
+  return Container(
+    margin: const EdgeInsets.symmetric(
+      horizontal: AppSpacing.screenHorizontal,
+      vertical: AppSpacing.space1,
+    ),
+    padding: const EdgeInsets.all(AppSpacing.space4),
+    decoration: BoxDecoration(
+      color: debt.isPaid ? AppColors.cardSecondary : AppColors.card,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      border: Border.all(color: AppColors.border50),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        typeLabel,
+                        style: AppTextStyles.caption.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+
+                      if (providerLabel.isNotEmpty)
+                        Text(
+                          providerLabel,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.mutedForeground,
+                            fontSize: 10,
+                          ),
+                        ),
+
+                      if (debt.isCashLoan)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space2,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning.withValues(alpha: .15),
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: Text(
+                            'دين نقدي',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.warning,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space2,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (debt.debtType ==
+                                      DebtType.settlementDebt
+                                  ? AppColors.primary
+                                  : AppColors.mutedForeground)
+                              .withValues(alpha: .15),
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          debt.debtType.label,
+                          style: AppTextStyles.caption.copyWith(
+                            color:
+                                debt.debtType ==
+                                        DebtType.settlementDebt
+                                    ? AppColors.primary
+                                    : AppColors.mutedForeground,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  if (paidAmount > 0 && !debt.isPaid) ...[
+                    Text(
+                      'المبلغ الأصلي: ${_f(debt.amount)} ج.م',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'المتبقي: ${_f(remainingBalance)} ج.م',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.foreground,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ] else
+                    Text(
+                      '${_f(debt.amount)} ج.م',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.foreground,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (debt.notes != null && debt.notes!.trim().isNotEmpty) ...[
+  const SizedBox(height: 10),
+  Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(AppSpacing.space3),
+    decoration: BoxDecoration(
+      color: AppColors.background,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      border: Border.all(color: AppColors.border50),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.sticky_note_2_outlined,
+          size: 18,
+          color: AppColors.primary,
+        ),
+        const SizedBox(width: AppSpacing.space2),
+        Expanded(
+          child: Text(
+            debt.notes!,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.foreground,
+              height: 1.4,
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+],
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        const Divider(height: 1),
+
+        const SizedBox(height: 8),
+
+        if (!debt.isPaid)
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 18,
+                ),
+              ),
+              TextButton(
+                onPressed: onPay,
+                child: const Text('سداد'),
+              ),
+              TextButton(
+                onPressed: onSettle,
+                child: const Text('تسوية'),
+              ),
+            ],
+          )
+        else
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                onPressed: onEdit,
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 18,
+                ),
+              ),
+              const Icon(
+                Icons.check_circle,
+                color: AppColors.success,
+              ),
+            ],
+          ),
+      ],
+    ),
+  );
+}
+
+  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
+}
+
+class _PaymentTile extends StatelessWidget {
+  final DebtPaymentEntity payment;
+
+  const _PaymentTile({required this.payment});
+
   @override
   Widget build(BuildContext context) {
-    final String typeLabel;
-    final Color color;
-    final String providerLabel;
-
-    if (debt.isCashLoan) {
-      typeLabel = 'دين نقدي من الدرج';
-      color = AppColors.warning;
-      providerLabel = '';
-    } else {
-      final isDeposit = debt.operationType == 'deposit';
-      typeLabel = isDeposit ? 'إيداع' : 'سحب';
-      color = isDeposit ? AppColors.destructive : AppColors.success;
-      providerLabel = debt.providerType == 'instaPay' ? 'InstaPay' : 'Vodafone Cash';
-    }
-
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: AppSpacing.screenHorizontal,
         vertical: AppSpacing.space1,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space4, vertical: AppSpacing.space3),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.space4,
+        vertical: AppSpacing.space3,
+      ),
       decoration: BoxDecoration(
-        color: debt.isPaid ? AppColors.cardSecondary : AppColors.card,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border50),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(typeLabel,
-                        style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w600)),
-                    if (providerLabel.isNotEmpty) ...[
-                      const SizedBox(width: AppSpacing.space1),
-                      Text(providerLabel,
-                          style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground, fontSize: 10)),
-                    ],
-                    if (debt.isCashLoan) ...[
-                      const SizedBox(width: AppSpacing.space2),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space2, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: Text('دين نقدي',
-                            style: AppTextStyles.caption.copyWith(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.w600)),
-                      ),
-                    ],
-                  ],
+                Text(
+                  'دفعة بقيمة ${_f(payment.amount)} ج.م',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                Text('${_f(debt.amount)} ج.م',
-                    style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w700)),
+                if (payment.notes != null && payment.notes!.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.space1),
+                  Text(
+                    payment.notes!,
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.space1),
+                Text(
+                  'طريقة الدفع: ${payment.paymentMethod == 'cash' ? 'نقدي' : payment.paymentMethod}',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.mutedForeground,
+                    fontSize: 10,
+                  ),
+                ),
               ],
             ),
           ),
-          if (!debt.isPaid)
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_rounded, color: AppColors.mutedForeground, size: 18),
-                  tooltip: 'تعديل',
-                ),
-                TextButton(
-                  onPressed: onSettle,
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                  child: const Text('تسوية'),
-                ),
-              ],
-            )
-          else
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: onEdit,
-                  icon: const Icon(Icons.edit_rounded, color: AppColors.mutedForeground, size: 18),
-                  tooltip: 'تعديل',
-                ),
-                const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
-              ],
+          Text(
+            DateFormat('yyyy/MM/dd hh:mm a', 'ar').format(payment.createdAt),
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.mutedForeground,
             ),
+          ),
         ],
       ),
     );
