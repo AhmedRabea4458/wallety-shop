@@ -8,6 +8,7 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
+import 'package:smart_expense/core/utils/date_formatter.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
@@ -224,9 +225,9 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                             index,
                           ) {
                             final debt = activeDebts[index];
-                            final debtPayments = state.payments.where(
-                              (p) => p.debtId == debt.id,
-                            );
+                            final debtPayments = state.payments
+                                .where((p) => p.debtId == debt.id)
+                                .toList();
                             final paidAmount = debtPayments.fold(
                               0.0,
                               (sum, p) => sum + p.amount,
@@ -237,6 +238,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                               debtor: state.debtor,
                               remainingBalance: remainingBalance,
                               paidAmount: paidAmount,
+                              payments: debtPayments,
                               onPay:
                                   () => _showPayDebtDialog(
                                     context,
@@ -344,9 +346,9 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                               index,
                             ) {
                               final debt = paidDebts[index];
-                              final debtPayments = state.payments.where(
-                                (p) => p.debtId == debt.id,
-                              );
+                              final debtPayments = state.payments
+                                  .where((p) => p.debtId == debt.id)
+                                  .toList();
                               final paidAmount = debtPayments.fold(
                                 0.0,
                                 (sum, p) => sum + p.amount,
@@ -357,6 +359,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                 debtor: state.debtor,
                                 remainingBalance: remainingBalance,
                                 paidAmount: paidAmount,
+                                payments: debtPayments,
                                 onPay: () {},
                                 onSettle: () {},
                                 onEdit:
@@ -960,6 +963,7 @@ class _DebtTile extends StatelessWidget {
   final DebtorEntity debtor;
   final double remainingBalance;
   final double paidAmount;
+  final List<DebtPaymentEntity> payments;
   final VoidCallback onSettle;
   final VoidCallback onPay;
   final VoidCallback onEdit;
@@ -969,13 +973,16 @@ class _DebtTile extends StatelessWidget {
     required this.debtor,
     required this.remainingBalance,
     required this.paidAmount,
+    this.payments = const [],
     required this.onSettle,
     required this.onPay,
     required this.onEdit,
   });
 
- @override
-Widget build(BuildContext context) {
+  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
+
+  @override
+  Widget build(BuildContext context) {
   final String typeLabel;
   final Color color;
   final String providerLabel;
@@ -1062,13 +1069,11 @@ Widget build(BuildContext context) {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: (debt.debtType ==
-                                      DebtType.settlementDebt
+                          color: (debt.debtType == DebtType.settlementDebt
                                   ? AppColors.primary
                                   : AppColors.mutedForeground)
                               .withValues(alpha: .15),
-                          borderRadius:
-                              BorderRadius.circular(AppRadius.sm),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                         child: Text(
                           debt.debtType.label,
@@ -1086,63 +1091,121 @@ Widget build(BuildContext context) {
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
-                  if (paidAmount > 0 && !debt.isPaid) ...[
+                    // Date created
                     Text(
-                      'المبلغ الأصلي: ${_f(debt.amount)} ج.م',
+                      DateFormatter.formatFullDateTime(debt.createdAt),
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.mutedForeground,
+                        fontSize: 11,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'المتبقي: ${_f(remainingBalance)} ج.م',
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.foreground,
-                        fontWeight: FontWeight.bold,
+
+                    const SizedBox(height: 8),
+
+                    // Amounts breakdown: Original, Paid, Remaining
+                    if (paidAmount > 0) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'المبلغ الأصلي:',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
+                            ),
+                          ),
+                          Text(
+                            '${_f(debt.amount)} ج.م',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ] else
-                    Text(
-                      '${_f(debt.amount)} ج.م',
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.foreground,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'تم سداد:',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.success,
+                            ),
+                          ),
+                          Text(
+                            '${_f(paidAmount)} ج.م',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'المتبقي:',
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.foreground,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${_f(remainingBalance)} ج.م',
+                            style: AppTextStyles.body.copyWith(
+                              color: debt.isPaid
+                                  ? AppColors.success
+                                  : AppColors.destructive,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Text(
+                        '${_f(debt.amount)} ج.م',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.foreground,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+
                     if (debt.notes != null && debt.notes!.trim().isNotEmpty) ...[
-  const SizedBox(height: 10),
-  Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(AppSpacing.space3),
-    decoration: BoxDecoration(
-      color: AppColors.background,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-      border: Border.all(color: AppColors.border50),
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.sticky_note_2_outlined,
-          size: 18,
-          color: AppColors.primary,
-        ),
-        const SizedBox(width: AppSpacing.space2),
-        Expanded(
-          child: Text(
-            debt.notes!,
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.foreground,
-              height: 1.4,
-            ),
-          ),
-        ),
-      ],
-    ),
-  ),
-],
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(AppSpacing.space3),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          border: Border.all(color: AppColors.border50),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.sticky_note_2_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: AppSpacing.space2),
+                            Expanded(
+                              child: Text(
+                                debt.notes!,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.foreground,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                 ],
               ),
             ),
@@ -1167,10 +1230,6 @@ Widget build(BuildContext context) {
                   Icons.edit_rounded,
                   size: 18,
                 ),
-              ),
-              TextButton(
-                onPressed: onPay,
-                child: const Text('سداد'),
               ),
               TextButton(
                 onPressed: onSettle,
@@ -1199,14 +1258,14 @@ Widget build(BuildContext context) {
     ),
   );
 }
-
-  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 }
 
 class _PaymentTile extends StatelessWidget {
   final DebtPaymentEntity payment;
 
   const _PaymentTile({required this.payment});
+
+  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 
   @override
   Widget build(BuildContext context) {
@@ -1259,7 +1318,7 @@ class _PaymentTile extends StatelessWidget {
             ),
           ),
           Text(
-            DateFormat('yyyy/MM/dd hh:mm a', 'ar').format(payment.createdAt),
+            DateFormatter.formatFullDateTime(payment.createdAt),
             style: AppTextStyles.caption.copyWith(
               color: AppColors.mutedForeground,
             ),
@@ -1268,6 +1327,4 @@ class _PaymentTile extends StatelessWidget {
       ),
     );
   }
-
-  static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 }
