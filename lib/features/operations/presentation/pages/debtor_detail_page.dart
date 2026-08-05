@@ -125,6 +125,16 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                       return sum + (d.amount - paid);
                     },
                   );
+
+                  // Stage 3 — Debtor Summary extra stats
+                  final totalOriginal = state.debts.fold(0.0, (s, d) => s + d.amount);
+                  final totalPaid = state.payments.fold(0.0, (s, p) => s + p.amount);
+                  final lastPayment = state.payments.isNotEmpty
+                      ? state.payments.reduce(
+                          (a, b) => a.createdAt.isAfter(b.createdAt) ? a : b,
+                        )
+                      : null;
+
                   return SliverMainAxisGroup(
                     slivers: [
                       SliverToBoxAdapter(
@@ -150,6 +160,14 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                 _row('الرصيد الحالي', '${_f(totalUnpaid)} ج.م'),
                                 _row('الديون المستحقة', '${activeDebts.length}'),
                                 _row('الديون المدفوعة', '${paidDebts.length}'),
+                                const Divider(color: AppColors.border50),
+                                _row('إجمالي أصل الدين', '${_f(totalOriginal)} ج.م'),
+                                _row('إجمالي المدفوع', '${_f(totalPaid)} ج.م'),
+                                if (lastPayment != null)
+                                  _row(
+                                    'آخر دفعة',
+                                    DateFormatter.formatTransactionDate(lastPayment.createdAt),
+                                  ),
                                 if (activeDebts.isNotEmpty) ...[
                                   const SizedBox(height: AppSpacing.space3),
                                   const Divider(color: AppColors.border50),
