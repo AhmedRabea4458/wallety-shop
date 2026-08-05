@@ -387,4 +387,60 @@ class DebtCubit extends Cubit<DebtState> {
     _selectedFilter = type;
     emit(_buildLoadedState());
   }
+
+  /// Pays multiple active debts for a debtor in a single atomic transaction.
+  /// Debts are settled oldest-first. A partial payment is recorded for the
+  /// last debt if the total amount runs out before the debt is fully cleared.
+  Future<void> bulkPayDebts({
+    required int debtorId,
+    required double totalAmount,
+    String? notes,
+  }) async {
+    try {
+      // Load all debts + their payments for this debtor
+      final debts = await repository.getDebtsByDebtor(debtorId);
+      final debtIds = debts.map((d) => d.id).toList();
+      final payments = await repository.getPaymentsForDebts(debtIds);
+
+      final paymentsByDebt = <int, double>{};
+      for (final p in payments) {
+        paymentsByDebt[p.debtId] = (paymentsByDebt[p.debtId] ?? 0.0) + p.amount;
+      }
+
+      // Active debts only, sorted oldest-first
+      final activeDebts = debts
+          .where((d) => !d.isPaid)
+          .toList()
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+      if (activeDebts.isEmpty) {
+        throw Exception('لا توجد ديون مستحقة');
+      }
+
+      final availableTotal = activeDebts.fold(0.0, (sum, d) {
+        final paid = paymentsByDebt[d.id] ?? 0.0;
+        return sum + (d.amount - paid);
+      });
+
+      if (totalAmount > availableTotal) {
+        throw Exception(
+          'المبلغ (${totalAmount.toStringAsFixed(0)} ج.م) أكبر من إجمالي الديون المستحقة (${availableTotal.toStringAsFixed(0)} ج.م)',
+        );
+      }
+
+      await repository.bulkPayDebts(
+        debtIds: activeDebts.map((d) => d.id).toList(),
+        totalAmount: totalAmount,
+        notes: notes,
+      );
+
+      cashDrawerCubit.refreshCashDrawer();
+      await loadOutstandingDebt();
+      await loadDebtorDetail(debtorId);
+      sl<OperationCubit>().getOperations();
+    } catch (e) {
+      debugPrint('bulkPayDebts error: $e');
+      rethrow;
+    }
+  }
 }

@@ -24,4 +24,7 @@ abstract class DebtLocalDataSource {
   // Partial Payments
   Future<List<DebtPaymentModel>> getPaymentsForDebts(List<int> debtIds);
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'});
+
+  // Bulk Payment
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes});
 }

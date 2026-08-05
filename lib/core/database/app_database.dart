@@ -838,5 +838,37 @@ Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebto
   });
 }
 
+/// Pays multiple debts in one atomic transaction, oldest-first.
+/// [debtIds] must already be sorted oldest-first by the caller.
+/// [totalAmount] is the customer's total payment — distributed across debts
+/// until exhausted. Partial payment is recorded for the last debt if needed.
+Future<void> bulkPayDebts({
+  required List<int> debtIds,
+  required double totalAmount,
+  String? notes,
+}) {
+  return transaction(() async {
+    double remaining = totalAmount;
+    final noteText = notes != null && notes.trim().isNotEmpty
+        ? notes.trim()
+        : 'دفعة سريعة';
+
+    for (final id in debtIds) {
+      if (remaining <= 0) break;
+
+      final debt = await (select(debtsTable)..where((d) => d.id.equals(id))).getSingle();
+      if (debt.isPaid) continue;
+
+      final payments = await (select(debtPaymentsTable)..where((p) => p.debtId.equals(id))).get();
+      final paidSoFar = payments.fold(0.0, (s, p) => s + p.amount);
+      final debtRemaining = debt.amount - paidSoFar;
+
+      final payAmount = remaining >= debtRemaining ? debtRemaining : remaining;
+      await payDebt(debtId: id, amount: payAmount, notes: noteText, paymentMethod: 'cash');
+      remaining -= payAmount;
+    }
+  });
+}
+
 }
 

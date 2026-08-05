@@ -127,4 +127,9 @@ class DebtRepositoryImpl implements DebtRepository {
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
     return localDataSource.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }
+
+  @override
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes}) {
+    return localDataSource.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes);
+  }
 }

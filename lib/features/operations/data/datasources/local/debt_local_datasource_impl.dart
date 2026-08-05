@@ -166,4 +166,9 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
     return database.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }
+
+  @override
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes}) {
+    return database.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes);
+  }
 }

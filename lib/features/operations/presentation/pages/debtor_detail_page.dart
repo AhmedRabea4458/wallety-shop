@@ -149,6 +149,35 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                 _row('الرصيد الحالي', '${_f(totalUnpaid)} ج.م'),
                                 _row('الديون المستحقة', '${activeDebts.length}'),
                                 _row('الديون المدفوعة', '${paidDebts.length}'),
+                                if (activeDebts.isNotEmpty) ...[
+                                  const SizedBox(height: AppSpacing.space3),
+                                  const Divider(color: AppColors.border50),
+                                  const SizedBox(height: AppSpacing.space1),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => _showBulkPayDialog(
+                                        context,
+                                        state.debtor.id,
+                                        totalUnpaid,
+                                        state.debts,
+                                        state.payments,
+                                      ),
+                                      icon: const Icon(Icons.payments_outlined, size: 18),
+                                      label: const Text('دفعة من الرصيد'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: AppColors.primaryForeground,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: AppSpacing.space3,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(AppRadius.md),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -549,6 +578,200 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
               ),
             ],
           ),
+    );
+  }
+
+  void _showBulkPayDialog(
+    BuildContext context,
+    int debtorId,
+    double totalUnpaid,
+    List<DebtEntity> debts,
+    List<DebtPaymentEntity> payments,
+  ) {
+    final amountController = TextEditingController();
+    final notesController = TextEditingController();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final debtCubit = context.read<DebtCubit>();
+    bool isSaving = false;
+
+    // Build preview: active debts sorted oldest-first
+    final paymentsByDebt = <int, double>{};
+    for (final p in payments) {
+      paymentsByDebt[p.debtId] = (paymentsByDebt[p.debtId] ?? 0.0) + p.amount;
+    }
+    final activeDebts = debts.where((d) => !d.isPaid).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+    showDialog(
+      context: context,
+      barrierDismissible: !isSaving,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppColors.card,
+            title: Text(
+              'دفعة من الرصيد',
+              style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'إجمالي المستحق: ${_f(totalUnpaid)} ج.م',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space1),
+                  Text(
+                    'يتم توزيع الدفعة تلقائياً من الأقدم إلى الأحدث',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  TextField(
+                    controller: amountController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.right,
+                    autofocus: true,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(
+                      hintText: 'قيمة الدفعة',
+                      suffixText: 'ج.م',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                  TextField(
+                    controller: notesController,
+                    textAlign: TextAlign.right,
+                    maxLines: 2,
+                    enabled: !isSaving,
+                    decoration: const InputDecoration(
+                      hintText: 'ملاحظات (اختياري)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  // Preview section
+                  Text(
+                    'الديون المستحقة (${activeDebts.length})',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.mutedForeground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                  ...activeDebts.map((d) {
+                    final paid = paymentsByDebt[d.id] ?? 0.0;
+                    final remaining = d.amount - paid;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.space1),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            paid > 0
+                                ? 'متبقي ${_f(remaining)} ج.م'
+                                : '${_f(d.amount)} ج.م',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.foreground,
+                            ),
+                          ),
+                          Text(
+                            '${d.createdAt.day}/${d.createdAt.month}/${d.createdAt.year}',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final amountText = amountController.text.trim();
+                        if (amountText.isEmpty) {
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('الرجاء إدخال المبلغ'),
+                              backgroundColor: AppColors.destructive,
+                            ),
+                          );
+                          return;
+                        }
+                        final amount = parseArabicNumerals(amountText);
+                        if (amount <= 0) {
+                          scaffoldMessenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('يجب أن يكون المبلغ أكبر من الصفر'),
+                              backgroundColor: AppColors.destructive,
+                            ),
+                          );
+                          return;
+                        }
+                        final notesText = notesController.text.trim();
+                        setDialogState(() => isSaving = true);
+                        final navigator = Navigator.of(ctx);
+                        try {
+                          await debtCubit.bulkPayDebts(
+                            debtorId: debtorId,
+                            totalAmount: amount,
+                            notes: notesText.isEmpty ? null : notesText,
+                          );
+                          navigator.pop();
+                          if (mounted) {
+                            scaffoldMessenger.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'تم سداد ${_f(amount)} ج.م بنجاح',
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isSaving = false);
+                          scaffoldMessenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                e.toString().replaceAll('Exception: ', ''),
+                              ),
+                              backgroundColor: AppColors.destructive,
+                            ),
+                          );
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.primaryForeground,
+                ),
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('تأكيد السداد'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
