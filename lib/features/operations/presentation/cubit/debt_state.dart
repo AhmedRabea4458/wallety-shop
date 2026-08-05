@@ -13,8 +13,14 @@ class DebtorsLoaded extends DebtState {
   final List<DebtorEntity> debtors;
   final Map<int, double> debtorBalances;
   final DebtorFilter? selectedFilter;
+  final String searchQuery;
 
-  DebtorsLoaded({required this.debtors, required this.debtorBalances, this.selectedFilter});
+  DebtorsLoaded({
+    required this.debtors,
+    required this.debtorBalances,
+    this.selectedFilter,
+    this.searchQuery = '',
+  });
 }
 
 class DebtorDetailLoaded extends DebtState {

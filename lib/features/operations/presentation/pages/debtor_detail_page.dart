@@ -26,6 +26,8 @@ class DebtorDetailPage extends StatefulWidget {
 }
 
 class _DebtorDetailPageState extends State<DebtorDetailPage> {
+  bool _isPaidExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -106,7 +108,10 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                   );
                 }
                 if (state is DebtorDetailLoaded) {
-                  final totalUnpaid = state.debts.where((d) => !d.isPaid).fold(
+                  final activeDebts = state.debts.where((d) => !d.isPaid).toList();
+                  final paidDebts = state.debts.where((d) => d.isPaid).toList();
+
+                  final totalUnpaid = activeDebts.fold(
                     0.0,
                     (sum, d) {
                       final debtPayments = state.payments.where(
@@ -142,7 +147,8 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                   _row('الهاتف', state.debtor.phone!),
                                 const Divider(color: AppColors.border50),
                                 _row('الرصيد الحالي', '${_f(totalUnpaid)} ج.م'),
-                                _row('عدد الديون', '${state.debts.length}'),
+                                _row('الديون المستحقة', '${activeDebts.length}'),
+                                _row('الديون المدفوعة', '${paidDebts.length}'),
                               ],
                             ),
                           ),
@@ -151,13 +157,14 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                       SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.space6),
                       ),
+                      // Active Debts Header
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: AppSpacing.screenHorizontal,
                           ),
                           child: Text(
-                            'الديون',
+                            'الديون المستحقة (${activeDebts.length})',
                             style: AppTextStyles.headline.copyWith(
                               color: AppColors.foreground,
                             ),
@@ -167,13 +174,13 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                       SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.space3),
                       ),
-                      if (state.debts.isEmpty)
+                      if (activeDebts.isEmpty)
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.space8),
+                            padding: const EdgeInsets.all(AppSpacing.space6),
                             child: Center(
                               child: Text(
-                                'لا توجد ديون',
+                                'لا توجد ديون مستحقة',
                                 style: AppTextStyles.body.copyWith(
                                   color: AppColors.mutedForeground,
                                 ),
@@ -187,7 +194,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                             context,
                             index,
                           ) {
-                            final debt = state.debts[index];
+                            final debt = activeDebts[index];
                             final debtPayments = state.payments.where(
                               (p) => p.debtId == debt.id,
                             );
@@ -254,8 +261,86 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                     state.debtor,
                                   ),
                             );
-                          }, childCount: state.debts.length),
+                          }, childCount: activeDebts.length),
                         ),
+                      // Paid Debts Section (Collapsible)
+                      if (paidDebts.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: SizedBox(height: AppSpacing.space4),
+                        ),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.screenHorizontal,
+                            ),
+                            child: InkWell(
+                              onTap: () => setState(() => _isPaidExpanded = !_isPaidExpanded),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              child: Container(
+                                padding: const EdgeInsets.all(AppSpacing.space3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.card,
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(color: AppColors.border50),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'الديون المدفوعة (${paidDebts.length})',
+                                      style: AppTextStyles.body.copyWith(
+                                        color: AppColors.mutedForeground,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Icon(
+                                      _isPaidExpanded
+                                          ? Icons.keyboard_arrow_up_rounded
+                                          : Icons.keyboard_arrow_down_rounded,
+                                      color: AppColors.mutedForeground,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (_isPaidExpanded) ...[
+                          SliverToBoxAdapter(
+                            child: SizedBox(height: AppSpacing.space3),
+                          ),
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final debt = paidDebts[index];
+                              final debtPayments = state.payments.where(
+                                (p) => p.debtId == debt.id,
+                              );
+                              final paidAmount = debtPayments.fold(
+                                0.0,
+                                (sum, p) => sum + p.amount,
+                              );
+                              final remainingBalance = debt.amount - paidAmount;
+                              return _DebtTile(
+                                debt: debt,
+                                debtor: state.debtor,
+                                remainingBalance: remainingBalance,
+                                paidAmount: paidAmount,
+                                onPay: () {},
+                                onSettle: () {},
+                                onEdit:
+                                    () => _showEditDebtDialog(
+                                      context,
+                                      debt,
+                                      state.debtor,
+                                    ),
+                              );
+                            }, childCount: paidDebts.length),
+                          ),
+                        ],
+                      ],
                       SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.space6),
                       ),

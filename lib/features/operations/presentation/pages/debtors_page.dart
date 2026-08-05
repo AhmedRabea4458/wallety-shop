@@ -21,12 +21,21 @@ class DebtorsPage extends StatefulWidget {
 }
 
 class _DebtorsPageState extends State<DebtorsPage> {
+  final _searchController = TextEditingController();
+  final _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     context.read<DebtCubit>().loadDebtors();
   }
-  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +43,7 @@ class _DebtorsPageState extends State<DebtorsPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
-          
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(
               child: Padding(
@@ -78,6 +87,51 @@ class _DebtorsPageState extends State<DebtorsPage> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            // Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: AppSpacing.screenHorizontal,
+                  right: AppSpacing.screenHorizontal,
+                  bottom: AppSpacing.space3,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.card,
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    border: Border.all(color: AppColors.border50),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    textAlign: TextAlign.right,
+                    onChanged: (v) {
+                      setState(() {});
+                      context.read<DebtCubit>().searchDebtors(v);
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'بحث باسم العميل أو رقم الهاتف...',
+                      hintStyle: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mutedForeground, size: 20),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear_rounded, color: AppColors.mutedForeground, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                                context.read<DebtCubit>().searchDebtors('');
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space4,
+                        vertical: AppSpacing.space3,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -149,7 +203,9 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 if (state is DebtorsLoaded) {
                   if (state.debtors.isEmpty) {
                     String emptyMessage = 'لا يوجد مدينين';
-                    if (state.selectedFilter == DebtorFilter.outstanding) {
+                    if (state.searchQuery.isNotEmpty) {
+                      emptyMessage = 'لا توجد نتائج للبحث "${state.searchQuery}"';
+                    } else if (state.selectedFilter == DebtorFilter.outstanding) {
                       emptyMessage = 'لا يوجد مدينين مستحقين';
                     } else if (state.selectedFilter == DebtorFilter.paid) {
                       emptyMessage = 'لا يوجد مدينين خالصين';

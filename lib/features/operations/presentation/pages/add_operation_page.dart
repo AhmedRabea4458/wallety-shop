@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/core/utils/arabic_numerals.dart';
+import 'package:smart_expense/core/utils/date_formatter.dart';
 import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
@@ -245,7 +245,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   }
 
   Future<void> _pickDate() async {
-    final picked = await showDatePicker(
+    final pickedDate = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
@@ -253,7 +253,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
               surface: AppColors.surface,
               onSurface: AppColors.foreground,
@@ -264,9 +264,36 @@ class _AddOperationPageState extends State<AddOperationPage> {
       },
     );
 
-    if (picked != null) {
+    if (pickedDate != null && mounted) {
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_selectedDate),
+        builder: (context, child) {
+          return Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: AppColors.primary,
+                surface: AppColors.surface,
+                onSurface: AppColors.foreground,
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+
+      if (pickedTime == null) return;
+
+      final finalDateTime = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+
       setState(() {
-        _selectedDate = picked;
+        _selectedDate = finalDateTime;
       });
     }
   }
@@ -375,19 +402,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final dateOnly = DateTime(date.year, date.month, date.day);
 
-    if (dateOnly == today) {
-      return 'اليوم، ${DateFormat('d MMMM y', 'ar').format(date)}';
-    } else if (dateOnly == today.subtract(const Duration(days: 1))) {
-      return 'أمس، ${DateFormat('d MMMM y', 'ar').format(date)}';
-    } else {
-      return DateFormat('EEEE، d MMMM y', 'ar').format(date);
-    }
-  }
 
   @override
   void dispose() {
@@ -722,7 +737,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     horizontal: AppSpacing.screenHorizontal,
                   ),
                   child: DateSelector(
-                    dateLabel: _formatDate(_selectedDate),
+                    dateLabel: DateFormatter.formatFullDateTime(_selectedDate),
                     onTap: _isSaving ? null : _pickDate,
                   ),
                 ),

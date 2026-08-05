@@ -13,13 +13,14 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 class DebtCubit extends Cubit<DebtState> {
   final DebtRepository repository;
   final CashDrawerCubit cashDrawerCubit;
-DebtorFilter? _selectedFilter = DebtorFilter.outstanding;
+  DebtorFilter? _selectedFilter = DebtorFilter.outstanding;
+  String _searchQuery = '';
   double totalOutstanding = 0;
   double totalOutstandingCustomerDebt = 0;
   double totalOutstandingSettlementDebt = 0;
   List<DebtEntity> unpaidDebts = [];
   List<DebtorEntity> _allDebtors = [];
-Map<int, double> _debtorBalances = {};
+  Map<int, double> _debtorBalances = {};
 
   DebtCubit(this.repository, {required this.cashDrawerCubit}) : super(DebtInitial());
 
@@ -78,11 +79,26 @@ Map<int, double> _debtorBalances = {};
         break;
     }
 
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      filtered = filtered.where((d) {
+        final nameMatch = d.name.toLowerCase().contains(q);
+        final phoneMatch = d.phone != null && d.phone!.toLowerCase().contains(q);
+        return nameMatch || phoneMatch;
+      }).toList();
+    }
+
     return DebtorsLoaded(
       debtors: filtered,
       debtorBalances: _debtorBalances,
       selectedFilter: _selectedFilter,
+      searchQuery: _searchQuery,
     );
+  }
+
+  void searchDebtors(String query) {
+    _searchQuery = query;
+    emit(_buildLoadedState());
   }
 
   Future<DebtorEntity?> getDebtorById(int id) async {

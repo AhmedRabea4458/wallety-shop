@@ -30,12 +30,59 @@ class DateFormatter {
     }
   }
 
-  /// Returns a group key for date grouping.
-  /// 
-  /// - Today: "اليوم"
-  /// - Yesterday: "أمس"
-  /// - Current year: "12 يونيو"
-  /// - Previous year: "12 يونيو 2025"
+  static String formatFullDateTime(DateTime date) {
+    final now = DateTime.now();
+    final timeStr = DateFormat('h:mm a', 'ar').format(date);
+    if (date.year == now.year) {
+      final dayMonth = DateFormat('d MMMM', 'ar').format(date);
+      return '$dayMonth • $timeStr';
+    } else {
+      final fullDate = DateFormat('d MMMM y', 'ar').format(date);
+      return '$fullDate • $timeStr';
+    }
+  }
+
+  static String formatDateOnly(DateTime date) {
+    final now = DateTime.now();
+    if (date.year == now.year) {
+      return DateFormat('d MMMM', 'ar').format(date);
+    }
+    return DateFormat('d MMMM y', 'ar').format(date);
+  }
+
+  static String formatTimeOnly(DateTime date) {
+    return DateFormat('h:mm a', 'ar').format(date);
+  }
+
+  static String formatRelativeTime(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inSeconds < 60) {
+      return 'الآن';
+    } else if (diff.inMinutes < 60) {
+      final mins = diff.inMinutes;
+      if (mins == 1) return 'منذ دقيقة';
+      if (mins == 2) return 'منذ دقيقتين';
+      if (mins >= 3 && mins <= 10) return 'منذ $mins دقائق';
+      return 'منذ $mins دقيقة';
+    } else if (diff.inHours < 24) {
+      final hours = diff.inHours;
+      if (hours == 1) return 'منذ ساعة';
+      if (hours == 2) return 'منذ ساعتين';
+      if (hours >= 3 && hours <= 10) return 'منذ $hours ساعات';
+      return 'منذ $hours ساعة';
+    } else if (diff.inDays < 7) {
+      final days = diff.inDays;
+      if (days == 1) return 'أمس';
+      if (days == 2) return 'منذ يومين';
+      if (days >= 3 && days <= 10) return 'منذ $days أيام';
+      return 'منذ $days يوم';
+    } else {
+      return formatDateOnly(date);
+    }
+  }
+
   static String groupKey(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
