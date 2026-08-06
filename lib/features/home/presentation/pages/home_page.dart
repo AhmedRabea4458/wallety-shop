@@ -190,42 +190,78 @@ class HomePage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space4),
                     ),
-                    // Outstanding Debt Card
+                    // Outstanding Debt & Payable Cards
                     BlocBuilder<DebtCubit, DebtState>(
                       builder: (context, debtState) {
-                        final totalOutstanding = context.read<DebtCubit>().totalOutstanding;
-                        if (totalOutstanding > 0) {
-                          return SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                              child: Container(
-                                padding: const EdgeInsets.all(AppSpacing.space4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
-                                    ),
-                                    const SizedBox(width: AppSpacing.space2),
-                                    Expanded(
-                                      child: Text(
-                                        'إجمالي الآجل: ${_formatAmount(totalOutstanding)} ج.م',
-                                        style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
+                        final debtCubit = context.read<DebtCubit>();
+                        final totalOutstanding = debtCubit.totalOutstanding;
+                        final totalPayable = debtCubit.totalOutstandingPayable;
+
+                        if (totalOutstanding <= 0 && totalPayable <= 0) {
+                          return const SliverToBoxAdapter(child: SizedBox.shrink());
                         }
-                        return const SliverToBoxAdapter(child: SizedBox.shrink());
+
+                        return SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                            child: Column(
+                              children: [
+                                if (totalOutstanding > 0)
+                                  Container(
+                                    padding: const EdgeInsets.all(AppSpacing.space4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.card,
+                                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
+                                        ),
+                                        const SizedBox(width: AppSpacing.space2),
+                                        Expanded(
+                                          child: Text(
+                                            'إجمالي الآجل: ${_formatAmount(totalOutstanding)} ج.م',
+                                            style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (totalOutstanding > 0 && totalPayable > 0)
+                                  const SizedBox(height: AppSpacing.space3),
+                                if (totalPayable > 0)
+                                  Container(
+                                    padding: const EdgeInsets.all(AppSpacing.space4),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.card,
+                                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                                      border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
+                                        ),
+                                        const SizedBox(width: AppSpacing.space2),
+                                        Expanded(
+                                          child: Text(
+                                            'إجمالي المستحقات عليّ: ${_formatAmount(totalPayable)} ج.م',
+                                            style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
                     ),
                     SliverToBoxAdapter(

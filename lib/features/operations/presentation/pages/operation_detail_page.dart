@@ -281,14 +281,23 @@ class _DebtBanner extends StatelessWidget {
           future: context.read<DebtCubit>().getDebtorById(debt.debtorId),
           builder: (context, snapshot) {
             final debtorName = snapshot.data?.name ?? '--';
+            final isPayable = debt.debtType == DebtType.payable;
+            final isPaid = debt.isPaid;
+            final cardColor = isPayable
+                ? (isPaid ? AppColors.success : AppColors.warning)
+                : (isPaid ? AppColors.success : AppColors.warning);
+            final titleText = isPayable
+                ? (isPaid ? 'تم سداد المستحق عليّ بالكامل' : 'عملية ذات مستحق عليّ (صرف مؤجل)')
+                : (isPaid ? 'تم سداد الآجل بالكامل' : 'عملية آجل عميل');
+
             return Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.space4),
               decoration: BoxDecoration(
-                color: debt.isPaid ? AppColors.success.withValues(alpha: 0.1) : AppColors.warning.withValues(alpha: 0.1),
+                color: cardColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: debt.isPaid ? AppColors.success.withValues(alpha: 0.3) : AppColors.warning.withValues(alpha: 0.3),
+                  color: cardColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -298,23 +307,23 @@ class _DebtBanner extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        debt.isPaid ? Icons.check_circle_rounded : Icons.access_time_rounded,
-                        color: debt.isPaid ? AppColors.success : AppColors.warning,
+                        isPaid ? Icons.check_circle_rounded : (isPayable ? Icons.pending_actions_rounded : Icons.access_time_rounded),
+                        color: cardColor,
                         size: 20,
                       ),
                       const SizedBox(width: AppSpacing.space2),
                       Text(
-                        debt.isPaid ? 'تم سداد الآجل' : 'عملية آجل',
+                        titleText,
                         style: AppTextStyles.body.copyWith(
-                          color: debt.isPaid ? AppColors.success : AppColors.warning,
+                          color: cardColor,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: AppSpacing.space2),
+                  const SizedBox(height: AppSpacing.space3),
                   Text(
-                    'العميل: $debtorName',
+                    isPayable ? 'المستحق له: $debtorName' : 'العميل: $debtorName',
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.foreground,
                       fontWeight: FontWeight.w600,
@@ -322,18 +331,38 @@ class _DebtBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.space1),
                   Text(
-                    'مبلغ الدين: ${NumberFormat('#,##0.##', 'ar').format(debt.amount)} ج.م',
+                    isPayable
+                        ? 'مبلغ المستحق المتبقي: ${NumberFormat('#,##0.##', 'ar').format(debt.amount)} ج.م'
+                        : 'مبلغ الدين: ${NumberFormat('#,##0.##', 'ar').format(debt.amount)} ج.م',
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.foreground,
+                      fontWeight: isPayable ? FontWeight.w700 : FontWeight.normal,
                     ),
                   ),
-                  if (debt.isPaid && debt.paidAt != null)
+                  const SizedBox(height: AppSpacing.space1),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isPaid ? AppColors.success.withValues(alpha: 0.15) : AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Text(
+                      'الحالة: ${isPaid ? "خالص ومسدد" : "مستحق غير مسدد"}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: isPaid ? AppColors.success : AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (debt.isPaid && debt.paidAt != null) ...[
+                    const SizedBox(height: AppSpacing.space2),
                     Text(
                       'تاريخ السداد: ${DateFormatter.formatTransactionDate(debt.paidAt!)}',
                       style: AppTextStyles.caption.copyWith(
                         color: AppColors.mutedForeground,
                       ),
                     ),
+                  ],
                 ],
               ),
             );

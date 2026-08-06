@@ -389,7 +389,9 @@ class _OperationsList extends StatelessWidget {
                               child: Row(
                                 children: [
                                   Text(
-                                    debt.isPaid ? '🟢 تم السداد' : '🟠 آجل',
+                                    debt.isPaid
+                                        ? '🟢 تم السداد'
+                                        : (debt.debtType == DebtType.payable ? '🟠 مستحق عليّ' : '🟠 آجل'),
                                     style: AppTextStyles.caption.copyWith(
                                       color: debt.isPaid ? AppColors.success : AppColors.warning,
                                       fontWeight: FontWeight.w600,

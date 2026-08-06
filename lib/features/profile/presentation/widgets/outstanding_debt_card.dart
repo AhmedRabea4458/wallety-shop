@@ -25,63 +25,109 @@ class OutstandingDebtCard extends StatelessWidget {
         final totalSettlementDebt = debtCubit.totalOutstandingSettlementDebt;
         final unpaidDebts = debtCubit.unpaidDebts;
         
-        if (totalOutstanding > 0) {
+        final totalPayable = debtCubit.totalOutstandingPayable;
+        
+        if (totalOutstanding > 0 || totalPayable > 0) {
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-            child: Container(
-              padding: const EdgeInsets.all(AppSpacing.space4),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: const Icon(Icons.credit_card_off_rounded, color: AppColors.warning, size: 20),
-                      ),
-                      const SizedBox(width: AppSpacing.space3),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              children: [
+                if (totalOutstanding > 0)
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.space4),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              'إجمالي الآجل',
-                              style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.warning.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: const Icon(Icons.credit_card_off_rounded, color: AppColors.warning, size: 20),
                             ),
-                            Text(
-                              '${_formatAmount(totalOutstanding)} ج.م',
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                color: AppColors.foreground,
-                                fontWeight: FontWeight.w700,
+                            const SizedBox(width: AppSpacing.space3),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'إجمالي الآجل (مستحقات لنا)',
+                                    style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                                  ),
+                                  Text(
+                                    '${_formatAmount(totalOutstanding)} ج.م',
+                                    style: AppTextStyles.bodyLarge.copyWith(
+                                      color: AppColors.foreground,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Text(
-                        '${unpaidDebts.length} دين',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
-                      ),
-                    ],
+                        const SizedBox(height: AppSpacing.space3),
+                        const Divider(),
+                        const SizedBox(height: AppSpacing.space2),
+                        _debtTypeRow('آجل العملاء', totalCustomerDebt, AppColors.warning),
+                        const SizedBox(height: AppSpacing.space2),
+                        _debtTypeRow('ديون التسوية', totalSettlementDebt, AppColors.primary),
+                      ],
+                    ),
                   ),
+                if (totalOutstanding > 0 && totalPayable > 0)
                   const SizedBox(height: AppSpacing.space3),
-                  const Divider(),
-                  const SizedBox(height: AppSpacing.space2),
-                  _debtTypeRow('ديون العملاء', totalCustomerDebt, AppColors.warning),
-                  const SizedBox(height: AppSpacing.space2),
-                  _debtTypeRow('ديون التسوية', totalSettlementDebt, AppColors.primary),
-                ],
-              ),
+                if (totalPayable > 0)
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.space4),
+                    decoration: BoxDecoration(
+                      color: AppColors.card,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF97316).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(AppRadius.sm),
+                          ),
+                          child: const Icon(Icons.output_rounded, color: Color(0xFFF97316), size: 20),
+                        ),
+                        const SizedBox(width: AppSpacing.space3),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'إجمالي المستحقات عليّ (مؤجل الصرف)',
+                                style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                              ),
+                              Text(
+                                '${_formatAmount(totalPayable)} ج.م',
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  color: AppColors.foreground,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           );
         }

@@ -176,7 +176,9 @@ class OperationList extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(AppRadius.sm),
                                 ),
                                 child: Text(
-                                  debt.isPaid ? '🟢 تم السداد' : '🟠 آجل',
+                                  debt.isPaid
+                                      ? (debt.debtType == DebtType.payable ? '🟢 تم السداد' : '🟢 تم السداد')
+                                      : (debt.debtType == DebtType.payable ? '🟠 مستحق عليّ' : '🟠 آجل'),
                                   style: AppTextStyles.caption.copyWith(
                                     color: debt.isPaid ? AppColors.success : AppColors.warning,
                                     fontWeight: FontWeight.w600,
