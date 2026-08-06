@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:smart_expense/core/database/app_database.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/shift_local_datasource.dart';
+import 'package:smart_expense/features/operations/data/models/debt_model.dart';
+import 'package:smart_expense/features/operations/data/models/debt_payment_model.dart';
 import 'package:smart_expense/features/operations/data/models/operation_model.dart';
 import 'package:smart_expense/features/operations/data/models/shift_model.dart';
 
@@ -55,4 +57,18 @@ class ShiftLocalDataSourceImpl implements ShiftLocalDataSource {
 
   @override
   Future<void> repairActiveShifts() => database.repairActiveShifts();
+
+  @override
+  Future<List<DebtModel>> getDebtsInTimeframe(DateTime start, DateTime? end) {
+    return database.getDebtsInTimeframe(start, end).then(
+      (data) => data.map((e) => DebtModel.fromDrift(e)).toList(),
+    );
+  }
+
+  @override
+  Future<List<DebtPaymentModel>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end) {
+    return database.getDebtPaymentsInTimeframe(start, end).then(
+      (data) => data.map((e) => DebtPaymentModel.fromDrift(e)).toList(),
+    );
+  }
 }

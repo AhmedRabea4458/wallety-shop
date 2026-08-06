@@ -1,3 +1,5 @@
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/shift_entity.dart';
 
@@ -9,4 +11,6 @@ abstract class ShiftRepository {
   Future<void> closeShift(int id, double closingBalance);
   Future<List<OperationEntity>> getOperationsByShiftId(int shiftId);
   Future<void> repairActiveShifts();
+  Future<List<DebtEntity>> getDebtsInTimeframe(DateTime start, DateTime? end);
+  Future<List<DebtPaymentEntity>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end);
 }

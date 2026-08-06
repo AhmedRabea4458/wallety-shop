@@ -308,4 +308,48 @@ void main() {
     expect(await db.select(db.debtsTable).get(), isEmpty);
     expect(await db.select(db.debtPaymentsTable).get(), isEmpty);
   });
+
+  test('Payables backup and restore data integrity test', () async {
+    final db = AppDatabase();
+
+    // 1. Insert a payable with operation link, notes, and partial payment
+    await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+      CashDrawerTableCompanion(
+        id: const Value(1),
+        balance: const Value(10000.0),
+        initialBalance: const Value(10000.0),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+
+    final debtorId = await db.insertDebtor(
+      const DebtorsTableCompanion(name: Value('Supplier Corp')),
+    );
+    final debtId = await db.insertDebt(
+      DebtsTableCompanion(
+        debtorId: Value(debtorId),
+        amount: const Value(5000.0),
+        isPaid: const Value(false),
+        debtType: const Value('payable'),
+        notes: Value('Deferred payout notes'),
+        createdAt: Value(DateTime.now()),
+      ),
+    );
+    await db.payDebt(
+      debtId: debtId,
+      amount: 1500.0,
+      notes: 'Partial settlement',
+    );
+
+    // 2. Verify values before backup
+    final debtsBefore = await db.getDebtsByDebtor(debtorId);
+    expect(debtsBefore.length, 1);
+    expect(debtsBefore.first.debtType, 'payable');
+    expect(debtsBefore.first.notes, 'Deferred payout notes');
+
+    final paymentsBefore = await db.getPaymentsForDebts([debtId]);
+    expect(paymentsBefore.length, 1);
+    expect(paymentsBefore.first.amount, 1500.0);
+    expect(paymentsBefore.first.notes, 'Partial settlement');
+  });
 }

@@ -964,6 +964,27 @@ Future<double> getTotalOutstandingDebt() async {
 
   return result.read(debtsTable.amount.sum()) ?? 0;
 }
+
+Future<List<DebtsTableData>> getDebtsInTimeframe(DateTime start, DateTime? end) {
+  final query = select(debtsTable)..where((d) => d.createdAt.isBiggerOrEqualValue(start));
+  if (end != null) {
+    query.where((d) => d.createdAt.isSmallerOrEqualValue(end));
+  }
+  return query.get();
+}
+
+Future<List<DebtPaymentsTableData>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end) {
+  final query = select(debtPaymentsTable)..where((p) => p.createdAt.isBiggerOrEqualValue(start));
+  if (end != null) {
+    query.where((p) => p.createdAt.isSmallerOrEqualValue(end));
+  }
+  return query.get();
+}
+
+Future<Map<int, DebtsTableData>> getAllDebtsMap() async {
+  final allDebts = await select(debtsTable).get();
+  return {for (final d in allDebts) d.id: d};
+}
 Future<List<InstaPayAccountsTableData>> getAllInstaPayAccounts() {
   return select(instaPayAccountsTable).get();
 }

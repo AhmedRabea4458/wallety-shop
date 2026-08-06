@@ -111,6 +111,8 @@ class _ShiftHistoryPageState extends State<ShiftHistoryPage> {
                         final shift = state.shifts[index];
                         final stats = state.shiftStats[shift.id] ?? ShiftStats(
                           totalOperations: 0,
+                          depositCount: 0,
+                          withdrawalCount: 0,
                           totalDeposits: 0,
                           totalWithdrawals: 0,
                           totalCommissions: 0,

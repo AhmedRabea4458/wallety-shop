@@ -164,6 +164,7 @@ class BackupRestoreService {
             isPaid: Value((d['isPaid'] as bool?) ?? false),
             isCashLoan: Value((d['isCashLoan'] as bool?) ?? false),
             debtType: Value((d['debtType'] as String?) ?? 'customerDebt'),
+            notes: Value(d['notes'] as String?),
             paidAt: Value(d['paidAt'] != null ? DateTime.parse(d['paidAt'] as String) : null),
             createdAt: Value(DateTime.parse(d['createdAt'] as String)),
           ),
@@ -289,6 +290,7 @@ class BackupRestoreService {
         'isPaid': d.isPaid,
         'isCashLoan': d.isCashLoan,
         'debtType': d.debtType,
+        'notes': d.notes,
         'paidAt': d.paidAt?.toIso8601String(),
         'createdAt': d.createdAt.toIso8601String(),
       };

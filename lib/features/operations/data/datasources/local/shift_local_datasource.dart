@@ -1,3 +1,5 @@
+import 'package:smart_expense/features/operations/data/models/debt_model.dart';
+import 'package:smart_expense/features/operations/data/models/debt_payment_model.dart';
 import 'package:smart_expense/features/operations/data/models/operation_model.dart';
 import 'package:smart_expense/features/operations/data/models/shift_model.dart';
 
@@ -9,4 +11,6 @@ abstract class ShiftLocalDataSource {
   Future<void> closeShift(int id, double closingBalance);
   Future<List<OperationModel>> getOperationsByShiftId(int shiftId);
   Future<void> repairActiveShifts();
+  Future<List<DebtModel>> getDebtsInTimeframe(DateTime start, DateTime? end);
+  Future<List<DebtPaymentModel>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end);
 }

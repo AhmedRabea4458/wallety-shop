@@ -31,48 +31,59 @@ class ShiftPdfService {
         theme: theme,
         pageFormat: PdfPageFormat.a4,
         textDirection: pw.TextDirection.rtl,
-        build: (context) => [
-          pw.Center(
-            child: pw.Text(
-              'تقرير الوردية',
-              style: pw.TextStyle(font: font, fontSize: 22, fontWeight: pw.FontWeight.bold),
-              textDirection: pw.TextDirection.rtl,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.Center(
-            child: pw.Text(
-              _dt(shift.startTime),
-              style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.grey700),
-              textDirection: pw.TextDirection.rtl,
-            ),
-          ),
-          pw.SizedBox(height: 24),
-          _sectionTitle('معلومات الوردية', font),
-          pw.SizedBox(height: 8),
-          _infoTable(shift, stats, font),
-          pw.SizedBox(height: 24),
-          _sectionTitle('ملخص العمليات', font),
-          pw.SizedBox(height: 8),
-          _statsTable(stats, font),
-          pw.SizedBox(height: 24),
-          _sectionTitle('تفاصيل العمليات', font),
-          pw.SizedBox(height: 8),
-          if (operations.isEmpty)
-            pw.Text(
-              'لا توجد عمليات في هذه الوردية',
-              style: pw.TextStyle(font: font, fontSize: 12, color: PdfColors.grey600),
-              textDirection: pw.TextDirection.rtl,
-            )
-          else
-            _operationsTable(operations, font),
-        ],
+        build:
+            (context) => [
+              pw.Center(
+                child: pw.Text(
+                  'تقرير الوردية',
+                  style: pw.TextStyle(
+                    font: font,
+                    fontSize: 22,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                  textDirection: pw.TextDirection.rtl,
+                ),
+              ),
+              pw.SizedBox(height: 8),
+              pw.Center(
+                child: pw.Text(
+                  _dt(shift.startTime),
+                  style: pw.TextStyle(
+                    font: font,
+                    fontSize: 12,
+                    color: PdfColors.grey700,
+                  ),
+                  textDirection: pw.TextDirection.rtl,
+                ),
+              ),
+              pw.SizedBox(height: 24),
+              _sectionTitle('معلومات الوردية', font),
+              pw.SizedBox(height: 8),
+              _infoTable(shift, stats, font),
+              pw.SizedBox(height: 24),
+              _sectionTitle('ملخص العمليات', font),
+              pw.SizedBox(height: 8),
+              _statsTable(stats, font),
+              pw.SizedBox(height: 24),
+              _sectionTitle('تفاصيل العمليات', font),
+              pw.SizedBox(height: 8),
+              if (operations.isEmpty)
+                pw.Text(
+                  'لا توجد عمليات في هذه الوردية',
+                  style: pw.TextStyle(
+                    font: font,
+                    fontSize: 12,
+                    color: PdfColors.grey600,
+                  ),
+                  textDirection: pw.TextDirection.rtl,
+                )
+              else
+                _operationsTable(operations, font),
+            ],
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (_) async => pdf.save(),
-    );
+    await Printing.layoutPdf(onLayout: (_) async => pdf.save());
   }
 
   static Future<pw.Font?> _loadArabicFont() async {
@@ -89,25 +100,40 @@ class ShiftPdfService {
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 4),
       decoration: const pw.BoxDecoration(
-        border: pw.Border(bottom: pw.BorderSide(color: PdfColors.blueGrey800, width: 1)),
+        border: pw.Border(
+          bottom: pw.BorderSide(color: PdfColors.blueGrey800, width: 1),
+        ),
       ),
       child: pw.Text(
         title,
-        style: pw.TextStyle(font: font, fontSize: 14, fontWeight: pw.FontWeight.bold),
+        style: pw.TextStyle(
+          font: font,
+          fontSize: 14,
+          fontWeight: pw.FontWeight.bold,
+        ),
         textDirection: pw.TextDirection.rtl,
       ),
     );
   }
 
-  static pw.Widget _infoTable(ShiftEntity shift, ShiftStats stats, pw.Font font) {
+  static pw.Widget _infoTable(
+    ShiftEntity shift,
+    ShiftStats stats,
+    pw.Font font,
+  ) {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
       children: [
         _tableRow('بداية الوردية', _dt(shift.startTime), font),
-        if (shift.endTime != null) _tableRow('نهاية الوردية', _dt(shift.endTime!), font),
+        if (shift.endTime != null)
+          _tableRow('نهاية الوردية', _dt(shift.endTime!), font),
         _tableRow('رصيد البداية', '${_f(shift.openingCashDrawer)} ج.م', font),
         if (shift.closingCashDrawer != null)
-          _tableRow('رصيد النهاية', '${_f(shift.closingCashDrawer!)} ج.م', font),
+          _tableRow(
+            'رصيد النهاية',
+            '${_f(shift.closingCashDrawer!)} ج.م',
+            font,
+          ),
         _tableRow('إجمالي العمليات', stats.totalOperations.toString(), font),
       ],
     );
@@ -127,7 +153,10 @@ class ShiftPdfService {
     );
   }
 
-  static pw.Widget _operationsTable(List<OperationEntity> operations, pw.Font font) {
+  static pw.Widget _operationsTable(
+    List<OperationEntity> operations,
+    pw.Font font,
+  ) {
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
       children: [
@@ -140,14 +169,19 @@ class ShiftPdfService {
             _cell('المبلغ', font, isHeader: true),
           ],
         ),
-        ...operations.reversed.map((op) => pw.TableRow(
-          children: [
-            _cell(_time(op.createdAt), font),
-            _cell(op.providerType.label, font),
-            _cell(op.operationType == OperationType.deposit ? 'إيداع' : 'سحب', font),
-            _cell('${_f(op.amount)} ج.م', font),
-          ],
-        )),
+        ...operations.reversed.map(
+          (op) => pw.TableRow(
+            children: [
+              _cell(_time(op.createdAt), font),
+              _cell(op.providerType.label, font),
+              _cell(
+                op.operationType == OperationType.deposit ? 'إيداع' : 'سحب',
+                font,
+              ),
+              _cell('${_f(op.amount)} ج.م', font),
+            ],
+          ),
+        ),
       ],
     );
   }
@@ -155,14 +189,8 @@ class ShiftPdfService {
   static pw.TableRow _tableRow(String label, String value, pw.Font font) {
     return pw.TableRow(
       children: [
-        pw.Expanded(
-          flex: 2,
-          child: _cell(label, font, isHeader: true),
-        ),
-        pw.Expanded(
-          flex: 3,
-          child: _cell(value, font),
-        ),
+        pw.Expanded(flex: 2, child: _cell(label, font, isHeader: true)),
+        pw.Expanded(flex: 3, child: _cell(value, font)),
       ],
     );
   }
@@ -184,6 +212,7 @@ class ShiftPdfService {
   }
 
   static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
-  static String _dt(DateTime d) => DateFormat('yyyy/MM/dd  hh:mm a', 'ar').format(d);
+  static String _dt(DateTime d) =>
+      DateFormat('yyyy/MM/dd  hh:mm a', 'ar').format(d);
   static String _time(DateTime d) => DateFormat('hh:mm a', 'ar').format(d);
 }

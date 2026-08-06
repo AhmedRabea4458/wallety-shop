@@ -1,6 +1,8 @@
 import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/shift_local_datasource.dart';
 import 'package:smart_expense/features/operations/data/models/shift_model.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/shift_entity.dart';
 import 'package:smart_expense/features/operations/domain/repositories/shift_repository.dart';
@@ -60,4 +62,18 @@ class ShiftRepositoryImpl implements ShiftRepository {
 
   @override
   Future<void> repairActiveShifts() => localDataSource.repairActiveShifts();
+
+  @override
+  Future<List<DebtEntity>> getDebtsInTimeframe(DateTime start, DateTime? end) {
+    return localDataSource.getDebtsInTimeframe(start, end).then(
+      (data) => data.map((m) => m.toEntity()).toList(),
+    );
+  }
+
+  @override
+  Future<List<DebtPaymentEntity>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end) {
+    return localDataSource.getDebtPaymentsInTimeframe(start, end).then(
+      (data) => data.map((m) => m.toEntity()).toList(),
+    );
+  }
 }
