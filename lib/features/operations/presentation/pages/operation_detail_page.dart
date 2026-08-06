@@ -6,6 +6,7 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/core/utils/date_formatter.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
@@ -21,10 +22,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/wallet_stat
 class OperationDetailPage extends StatelessWidget {
   final OperationEntity operation;
 
-  const OperationDetailPage({
-    super.key,
-    required this.operation,
-  });
+  const OperationDetailPage({super.key, required this.operation});
 
   static Color _getOperationTypeColor(OperationType type) {
     switch (type) {
@@ -114,10 +112,7 @@ class OperationDetailPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(
-                          color: AppColors.border50,
-                          width: 1,
-                        ),
+                        border: Border.all(color: AppColors.border50, width: 1),
                       ),
                       child: Column(
                         children: [
@@ -127,11 +122,7 @@ class OperationDetailPage extends StatelessWidget {
                               color: AppColors.withAlpha(typeColor, 0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(
-                              typeIcon,
-                              color: typeColor,
-                              size: 32,
-                            ),
+                            child: Icon(typeIcon, color: typeColor, size: 32),
                           ),
                           const SizedBox(height: AppSpacing.space4),
                           Text(
@@ -160,10 +151,7 @@ class OperationDetailPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: AppColors.card,
                         borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(
-                          color: AppColors.border50,
-                          width: 1,
-                        ),
+                        border: Border.all(color: AppColors.border50, width: 1),
                       ),
                       child: Column(
                         children: [
@@ -173,20 +161,24 @@ class OperationDetailPage extends StatelessWidget {
                           ),
                           const Divider(color: AppColors.border45),
                           if (operation.providerType == ProviderType.instaPay)
-                            BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+                            BlocBuilder<
+                              InstaPayAccountCubit,
+                              InstaPayAccountState
+                            >(
                               builder: (context, state) {
                                 String accountName = '--';
                                 if (state is InstaPayAccountLoaded) {
                                   final account = state.accounts.firstWhere(
                                     (a) => a.id == operation.instaPayAccountId,
-                                    orElse: () => InstaPayAccountEntity(
-                                      id: 0,
-                                      name: 'غير معروف',
-                                      createdAt: DateTime.now(),
-                                    ),
+                                    orElse:
+                                        () => InstaPayAccountEntity(
+                                          id: 0,
+                                          name: 'غير معروف',
+                                          createdAt: DateTime.now(),
+                                        ),
                                   );
                                   accountName = account.name;
-                         }
+                                }
                                 return Column(
                                   children: [
                                     _DetailRow(
@@ -198,21 +190,28 @@ class OperationDetailPage extends StatelessWidget {
                                 );
                               },
                             ),
-                          if (operation.providerType == ProviderType.vodafoneCash)
+                          if (operation.providerType ==
+                              ProviderType.vodafoneCash)
                             BlocBuilder<WalletCubit, WalletState>(
                               builder: (context, state) {
-                                final walletName = state is WalletLoaded
-                                    ? state.wallets.firstWhere(
-                                        (w) => w.id == operation.walletId,
-                                        orElse: () => WalletEntity(
-                                          id: 0,
-                                          name: 'غير معروف',
-                                          balance: 0,
-                                          color: const Color(0xFF6366F1),
-                                          createdAt: DateTime.now(),
-                                        ),
-                                      ).name
-                                    : '--';
+                                final walletName =
+                                    state is WalletLoaded
+                                        ? state.wallets
+                                            .firstWhere(
+                                              (w) => w.id == operation.walletId,
+                                              orElse:
+                                                  () => WalletEntity(
+                                                    id: 0,
+                                                    name: 'غير معروف',
+                                                    balance: 0,
+                                                    color: const Color(
+                                                      0xFF6366F1,
+                                                    ),
+                                                    createdAt: DateTime.now(),
+                                                  ),
+                                            )
+                                            .name
+                                        : '--';
                                 return Column(
                                   children: [
                                     _DetailRow(
@@ -231,24 +230,32 @@ class OperationDetailPage extends StatelessWidget {
                           const Divider(color: AppColors.border45),
                           _DetailRow(
                             label: 'العمولة',
-                            value: '${operation.commission.toStringAsFixed(0)} ج.م',
+                            value:
+                                '${operation.commission.toStringAsFixed(0)} ج.م',
                           ),
-                          if (operation.providerType == ProviderType.vodafoneCash) ...[
+                          if (operation.providerType ==
+                              ProviderType.vodafoneCash) ...[
                             const Divider(color: AppColors.border45),
                             _DetailRow(
                               label: 'رسوم الشبكة',
-                              value: '${operation.networkFee.toStringAsFixed(0)} ج.م',
+                              value:
+                                  '${operation.networkFee.toStringAsFixed(0)} ج.م',
                             ),
                           ],
                           const Divider(color: AppColors.border45),
                           _DetailRow(
                             label: 'الملاحظات',
-                            value: operation.notes?.isNotEmpty == true ? operation.notes! : '--',
+                            value:
+                                operation.notes?.isNotEmpty == true
+                                    ? operation.notes!
+                                    : '--',
                           ),
                           const Divider(color: AppColors.border45),
                           _DetailRow(
                             label: 'التاريخ',
-                            value: DateFormatter.formatTransactionDate(operation.createdAt),
+                            value: DateFormatter.formatTransactionDate(
+                              operation.createdAt,
+                            ),
                           ),
                         ],
                       ),
@@ -274,7 +281,10 @@ class _DebtBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<OperationCubit, OperationState>(
       builder: (context, state) {
-        final debt = state is OperationLoaded ? state.operationDebts[operation.id] : null;
+        final debt =
+            state is OperationLoaded
+                ? state.operationDebts[operation.id]
+                : null;
         if (debt == null) return const SizedBox.shrink();
 
         return FutureBuilder<DebtorEntity?>(
@@ -283,12 +293,16 @@ class _DebtBanner extends StatelessWidget {
             final debtorName = snapshot.data?.name ?? '--';
             final isPayable = debt.debtType == DebtType.payable;
             final isPaid = debt.isPaid;
-            final cardColor = isPayable
-                ? (isPaid ? AppColors.success : AppColors.warning)
-                : (isPaid ? AppColors.success : AppColors.warning);
-            final titleText = isPayable
-                ? (isPaid ? 'تم سداد المستحق عليّ بالكامل' : 'عملية ذات مستحق عليّ (صرف مؤجل)')
-                : (isPaid ? 'تم سداد الآجل بالكامل' : 'عملية آجل عميل');
+            final cardColor =
+                isPayable
+                    ? (isPaid ? AppColors.success : AppColors.warning)
+                    : (isPaid ? AppColors.success : AppColors.warning);
+            final titleText =
+                isPayable
+                    ? (isPaid
+                        ? 'تم سداد المستحق عليّ بالكامل'
+                        : 'عملية ذات مستحق عليّ (صرف مؤجل)')
+                    : (isPaid ? 'تم سداد الآجل بالكامل' : 'عملية آجل عميل');
 
             return Container(
               width: double.infinity,
@@ -307,7 +321,11 @@ class _DebtBanner extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        isPaid ? Icons.check_circle_rounded : (isPayable ? Icons.pending_actions_rounded : Icons.access_time_rounded),
+                        isPaid
+                            ? Icons.check_circle_rounded
+                            : (isPayable
+                                ? Icons.pending_actions_rounded
+                                : Icons.access_time_rounded),
                         color: cardColor,
                         size: 20,
                       ),
@@ -323,7 +341,9 @@ class _DebtBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.space3),
                   Text(
-                    isPayable ? 'المستحق له: $debtorName' : 'العميل: $debtorName',
+                    isPayable
+                        ? 'المستحق له: $debtorName'
+                        : 'العميل: $debtorName',
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.foreground,
                       fontWeight: FontWeight.w600,
@@ -336,14 +356,21 @@ class _DebtBanner extends StatelessWidget {
                         : 'مبلغ الدين: ${NumberFormat('#,##0.##', 'ar').format(debt.amount)} ج.م',
                     style: AppTextStyles.body.copyWith(
                       color: AppColors.foreground,
-                      fontWeight: isPayable ? FontWeight.w700 : FontWeight.normal,
+                      fontWeight:
+                          isPayable ? FontWeight.w700 : FontWeight.normal,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space1),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.space3,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: isPaid ? AppColors.success.withValues(alpha: 0.15) : AppColors.warning.withValues(alpha: 0.15),
+                      color:
+                          isPaid
+                              ? AppColors.success.withValues(alpha: 0.15)
+                              : AppColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: Text(
@@ -377,10 +404,7 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
