@@ -23,7 +23,6 @@ class OutstandingDebtCard extends StatelessWidget {
         final totalOutstanding = debtCubit.totalOutstanding;
         final totalCustomerDebt = debtCubit.totalOutstandingCustomerDebt;
         final totalSettlementDebt = debtCubit.totalOutstandingSettlementDebt;
-        final unpaidDebts = debtCubit.unpaidDebts;
         
         final totalPayable = debtCubit.totalOutstandingPayable;
         
