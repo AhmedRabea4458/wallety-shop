@@ -168,7 +168,6 @@ class DebtCubit extends Cubit<DebtState> {
         paymentsByDebt[p.debtId] = (paymentsByDebt[p.debtId] ?? 0.0) + p.amount;
       }
 
-      double total = 0;
       double customerTotal = 0;
       double payableTotal = 0;
       double settlementTotal = 0;
@@ -176,7 +175,6 @@ class DebtCubit extends Cubit<DebtState> {
       for (final d in unpaid) {
         final paid = paymentsByDebt[d.id] ?? 0.0;
         final remaining = d.amount - paid;
-        total += remaining;
         if (d.debtType == DebtType.customerDebt) {
           customerTotal += remaining;
         } else if (d.debtType == DebtType.payable) {
@@ -186,13 +184,15 @@ class DebtCubit extends Cubit<DebtState> {
         }
       }
 
+      final totalCustomerReceivables = customerTotal + settlementTotal;
+
       unpaidDebts = unpaid;
-      totalOutstanding = total;
+      totalOutstanding = totalCustomerReceivables;
       totalOutstandingCustomerDebt = customerTotal;
       totalOutstandingPayable = payableTotal;
       totalOutstandingSettlementDebt = settlementTotal;
       emit(OutstandingDebtLoaded(
-        totalOutstanding: total,
+        totalOutstanding: totalCustomerReceivables,
         totalCustomerDebt: customerTotal,
         totalPayable: payableTotal,
         totalSettlementDebt: settlementTotal,
