@@ -9,6 +9,11 @@ abstract class OperationRepository {
     required String customerName,
     String? customerPhone,
   });
+  Future<int> addFullWithdrawalPayable(
+    OperationEntity operation, {
+    required String customerName,
+    String? customerPhone,
+  });
   Future<void> updateOperation(OperationEntity operation);
   Future<void> deleteOperation(int id);
 }

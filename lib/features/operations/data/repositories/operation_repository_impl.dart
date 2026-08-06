@@ -46,6 +46,20 @@ class OperationRepositoryImpl implements OperationRepository {
   }
 
   @override
+  Future<int> addFullWithdrawalPayable(
+    OperationEntity operation, {
+    required String customerName,
+    String? customerPhone,
+  }) {
+    final model = OperationModel.fromEntity(operation);
+    return localDataSource.insertFullWithdrawalPayable(
+      model: model,
+      customerName: customerName,
+      customerPhone: customerPhone,
+    );
+  }
+
+  @override
   Future<void> updateOperation(OperationEntity operation) async {
     if (operation.id != 0) {
       final hasDebt = await debtDataSource.getDebtByOperationId(operation.id);

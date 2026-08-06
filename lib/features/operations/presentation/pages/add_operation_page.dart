@@ -53,6 +53,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   bool _isSaving = false;
   bool _isDebt = false;
   bool _isSettlementDebt = false;
+  bool _isCreatePayable = false;
   int? _instaPayAccountId;
 
   final TextEditingController _amountController = TextEditingController();
@@ -176,6 +177,21 @@ class _AddOperationPageState extends State<AddOperationPage> {
       if (_isEditing) {
         await operationCubit.updateOperation(entity);
         operationId = entity.id;
+      } else if (_isCreatePayable) {
+        // Deferred cash payout: record operation + create payable, do not touch cash drawer
+        final name = _customerNameController.text.trim();
+        if (name.isEmpty) {
+          setState(() => _isSaving = false);
+          _showError('اسم المستحق له مطلوب');
+          return;
+        }
+        operationId = await operationCubit.addFullWithdrawalPayable(
+          entity,
+          customerName: name,
+          customerPhone: _customerPhoneController.text.trim().isEmpty
+              ? null
+              : _customerPhoneController.text.trim(),
+        );
       } else {
         operationId = await operationCubit.addOperation(entity, isDebt: _isDebt);
       }
@@ -219,6 +235,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
         await operationCubit.getOperations();
       }
       if (!mounted) return;
+      if (_isCreatePayable && !_isEditing) {
+        if (!mounted) return;
+        final nameText = _customerNameController.text.trim();
+        if (nameText.isNotEmpty) {
+          context.read<DebtCubit>().loadDebtors(silent: true);
+          context.read<CashDrawerCubit>().refreshCashDrawer();
+        }
+      }
       _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
       Navigator.pop(context);
     } on InsufficientCashDrawerBalanceException {
@@ -939,6 +963,94 @@ class _AddOperationPageState extends State<AddOperationPage> {
                       contentPadding: EdgeInsets.zero,
                       controlAffinity: ListTileControlAffinity.leading,
                       activeColor: AppColors.primary,
+                    ),
+                  ),
+                ),
+              if (!_isEditing && _selectedType == OperationType.withdrawal)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _isCreatePayable ? AppColors.warning.withValues(alpha: 0.08) : AppColors.card,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(
+                          color: _isCreatePayable ? AppColors.warning.withValues(alpha: 0.4) : AppColors.border50,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          CheckboxListTile(
+                            value: _isCreatePayable,
+                            onChanged: _isSaving
+                                ? null
+                                : (v) => setState(() {
+                                      _isCreatePayable = v ?? false;
+                                      if (!_isCreatePayable) {
+                                        _customerNameController.clear();
+                                        _customerPhoneController.clear();
+                                      }
+                                    }),
+                            title: Text(
+                              'تسجيل كمستحق مؤجل',
+                              style: AppTextStyles.body.copyWith(
+                                color: _isCreatePayable ? AppColors.warning : AppColors.foreground,
+                                fontWeight: _isCreatePayable ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'سيتم تسجيل المبلغ كمستحق دون خصمه من الدرج',
+                              style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.space4,
+                              vertical: AppSpacing.space1,
+                            ),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: AppColors.warning,
+                          ),
+                          if (_isCreatePayable) ...[
+                            const Divider(height: 1),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.space4,
+                                AppSpacing.space3,
+                                AppSpacing.space4,
+                                AppSpacing.space4,
+                              ),
+                              child: Column(
+                                children: [
+                                  TextField(
+                                    controller: _customerNameController,
+                                    textAlign: TextAlign.right,
+                                    decoration: InputDecoration(
+                                      labelText: 'اسم المستحق له (مطلوب)',
+                                      hintText: 'أدخل اسم العميل / الجهة',
+                                      border: const OutlineInputBorder(),
+                                      labelStyle: AppTextStyles.caption.copyWith(
+                                        color: AppColors.warning,
+                                      ),
+                                    ),
+                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
+                                  ),
+                                  const SizedBox(height: AppSpacing.space3),
+                                  TextField(
+                                    controller: _customerPhoneController,
+                                    keyboardType: TextInputType.phone,
+                                    textAlign: TextAlign.right,
+                                    decoration: const InputDecoration(
+                                      labelText: 'رقم الهاتف (اختياري)',
+                                      hintText: '01XXXXXXXXX',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),

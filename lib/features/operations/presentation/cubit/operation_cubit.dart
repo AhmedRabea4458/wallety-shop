@@ -84,6 +84,29 @@ class OperationCubit extends Cubit<OperationState> {
     }
   }
 
+  Future<int> addFullWithdrawalPayable(
+    OperationEntity operation, {
+    required String customerName,
+    String? customerPhone,
+  }) async {
+    final hadData = state is OperationLoaded;
+    if (!hadData) emit(OperationLoading());
+    try {
+      final id = await repository.addFullWithdrawalPayable(
+        operation,
+        customerName: customerName,
+        customerPhone: customerPhone,
+      );
+      debugPrint('addFullWithdrawalPayable: inserted op id=$id with full linked payable');
+      await _refreshOperations();
+      return id;
+    } catch (e) {
+      debugPrint('addFullWithdrawalPayable error: $e');
+      if (!hadData) emit(OperationError('فشل إضافة مستحق السحب المؤجل'));
+      rethrow;
+    }
+  }
+
   Future<int?> getActiveShiftId() async {
     try {
       final ops = await repository.getOperations();

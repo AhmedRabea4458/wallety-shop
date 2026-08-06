@@ -509,6 +509,73 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<int> addFullWithdrawalPayable({
+    required OperationsTableCompanion operation,
+    required String customerName,
+    String? customerPhone,
+  }) {
+    return transaction(() async {
+      final walletId = operation.walletId.value;
+      final providerType = operation.providerType.value;
+      final type = operation.operationType.value;
+      final amount = operation.amount.value;
+
+      if (type != 'withdrawal') {
+        throw Exception('addFullWithdrawalPayable can only be used for withdrawal operations');
+      }
+
+      // 1. Vodafone Cash affects wallet balance by full requested withdrawal amount
+      if (providerType == 'vodafoneCash') {
+        final wallet = await (select(walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+        await (update(walletsTable)..where((w) => w.id.equals(walletId)))
+            .write(WalletsTableCompanion(balance: Value(wallet.balance + amount)));
+      }
+
+      // 2. Insert withdrawal operation
+      final operationId = await into(operationsTable).insert(operation);
+
+      // 3. Do NOT modify cash drawer (cash is retained, not paid out)
+
+      // 4. Find or create debtor
+      DebtorsTableData debtor;
+      DebtorsTableData? existing;
+      if (customerPhone != null && customerPhone.trim().isNotEmpty) {
+        existing = await getDebtorByPhone(customerPhone.trim());
+      }
+      existing ??= await getDebtorByName(customerName.trim());
+
+      if (existing != null) {
+        debtor = existing;
+      } else {
+        final debtorId = await into(debtorsTable).insert(
+          DebtorsTableCompanion(
+            name: Value(customerName.trim()),
+            phone: Value((customerPhone != null && customerPhone.trim().isNotEmpty) ? customerPhone.trim() : null),
+          ),
+        );
+        debtor = (await (select(debtorsTable)..where((d) => d.id.equals(debtorId))).getSingle());
+      }
+
+      // 5. Create linked payable for full withdrawal amount
+      await into(debtsTable).insert(
+        DebtsTableCompanion(
+          debtorId: Value(debtor.id),
+          operationId: Value(operationId),
+          operationType: const Value('withdrawal'),
+          providerType: Value(providerType),
+          amount: Value(amount),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          debtType: const Value('payable'),
+          notes: Value('مستحق كامل من سحب مؤجل بتاريخ ${DateTime.now().toString().split(' ')[0]}'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      return operationId;
+    });
+  }
+
   Future<void> updateOperationWithBalanceUpdate(OperationsTableCompanion operation) {
     return transaction(() async {
       final operationId = operation.id.value;

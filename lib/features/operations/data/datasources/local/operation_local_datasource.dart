@@ -9,6 +9,11 @@ abstract class OperationLocalDataSource {
     required String customerName,
     String? customerPhone,
   });
+  Future<int> insertFullWithdrawalPayable({
+    required OperationModel model,
+    required String customerName,
+    String? customerPhone,
+  });
   Future<void> updateOperation(OperationModel model);
   Future<void> deleteOperation(int id);
 }
