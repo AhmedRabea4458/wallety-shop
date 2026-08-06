@@ -1,10 +1,21 @@
 enum DebtType {
   customerDebt,
+  payable,
   settlementDebt;
 
-  String get value => this == customerDebt ? 'customerDebt' : 'settlementDebt';
+  String get value {
+    switch (this) {
+      case DebtType.customerDebt:
+        return 'customerDebt';
+      case DebtType.payable:
+        return 'payable';
+      case DebtType.settlementDebt:
+        return 'settlementDebt';
+    }
+  }
 
   static DebtType fromString(String? value) {
+    if (value == 'payable') return DebtType.payable;
     if (value == 'settlementDebt') return DebtType.settlementDebt;
     return DebtType.customerDebt;
   }
@@ -12,9 +23,12 @@ enum DebtType {
   String get label {
     switch (this) {
       case DebtType.customerDebt:
-        return 'دين عميل';
+        return 'آجل عميل';
+      case DebtType.payable:
+        return 'مستحق علي';
       case DebtType.settlementDebt:
         return 'دين تسوية';
     }
   }
 }
+

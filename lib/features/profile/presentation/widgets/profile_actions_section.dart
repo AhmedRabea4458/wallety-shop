@@ -82,7 +82,7 @@ class ProfileActionsSection extends StatelessWidget {
             icon: Icons.credit_card_off_rounded,
             iconBackgroundColor: AppColors.warning.withValues(alpha: 0.15),
             iconColor: AppColors.warning,
-            label: 'سجل الآجل',
+            label: 'الذمم',
             onTap: () => context.push(AppRoutes.debtors),
           ),
           Divider(

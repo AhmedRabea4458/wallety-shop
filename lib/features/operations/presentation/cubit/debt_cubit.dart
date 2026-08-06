@@ -15,23 +15,35 @@ class DebtCubit extends Cubit<DebtState> {
   final CashDrawerCubit cashDrawerCubit;
   DebtorFilter? _selectedFilter = DebtorFilter.outstanding;
   String _searchQuery = '';
+  DebtType activeLiabilityType = DebtType.customerDebt;
   double totalOutstanding = 0;
   double totalOutstandingCustomerDebt = 0;
+  double totalOutstandingPayable = 0;
   double totalOutstandingSettlementDebt = 0;
   List<DebtEntity> unpaidDebts = [];
   List<DebtorEntity> _allDebtors = [];
-  Map<int, double> _debtorBalances = {};
+  Map<int, double> _customerBalances = {};
+  Map<int, double> _payableBalances = {};
+  Set<int> _debtorsWithCustomerDebt = {};
+  Set<int> _debtorsWithPayables = {};
 
   DebtCubit(this.repository, {required this.cashDrawerCubit}) : super(DebtInitial());
 
-  Future<void> loadDebtors({bool silent = false}) async {
+  void selectLiabilityType(DebtType type) {
+    activeLiabilityType = type;
+    emit(_buildLoadedState());
+  }
+
+  Future<void> loadDebtors({bool silent = false, DebtType? liabilityType}) async {
+    if (liabilityType != null) {
+      activeLiabilityType = liabilityType;
+    }
     if (!silent) {
       emit(DebtLoading());
     }
     try {
       final debtors = await repository.getAllDebtors();
       final unpaidDebts = await repository.getUnpaidDebts();
-      final Map<int, double> debtorBalances = {};
 
       final unpaidDebtIds = unpaidDebts.map((d) => d.id).toList();
       final payments = await repository.getPaymentsForDebts(unpaidDebtIds);
@@ -40,42 +52,61 @@ class DebtCubit extends Cubit<DebtState> {
         paymentsByDebt[p.debtId] = (paymentsByDebt[p.debtId] ?? 0.0) + p.amount;
       }
 
-      for (final debtor in debtors) {
-        debtorBalances[debtor.id] = 0.0;
-      }
+      final Map<int, double> customerBalances = {for (var d in debtors) d.id: 0.0};
+      final Map<int, double> payableBalances = {for (var d in debtors) d.id: 0.0};
+      final Set<int> debtorsWithCustomerDebt = {};
+      final Set<int> debtorsWithPayables = {};
+
       for (final debt in unpaidDebts) {
         final paid = paymentsByDebt[debt.id] ?? 0.0;
         final remaining = debt.amount - paid;
-        debtorBalances[debt.debtorId] = (debtorBalances[debt.debtorId] ?? 0.0) + remaining;
+        if (debt.debtType == DebtType.payable) {
+          payableBalances[debt.debtorId] = (payableBalances[debt.debtorId] ?? 0.0) + remaining;
+          debtorsWithPayables.add(debt.debtorId);
+        } else {
+          customerBalances[debt.debtorId] = (customerBalances[debt.debtorId] ?? 0.0) + remaining;
+          debtorsWithCustomerDebt.add(debt.debtorId);
+        }
       }
+
       _allDebtors = debtors;
-      _debtorBalances = debtorBalances;
+      _customerBalances = customerBalances;
+      _payableBalances = payableBalances;
+      _debtorsWithCustomerDebt = debtorsWithCustomerDebt;
+      _debtorsWithPayables = debtorsWithPayables;
       emit(_buildLoadedState());
     } catch (e) {
       debugPrint('loadDebtors error: $e');
-      emit(DebtError(message: 'فشل تحميل المدينين'));
+      emit(DebtError(message: 'فشل تحميل البيانات'));
     }
   }
 
   DebtorsLoaded _buildLoadedState() {
+    final isPayable = activeLiabilityType == DebtType.payable;
+    final activeBalances = isPayable ? _payableBalances : _customerBalances;
+    final relevantDebtorIds = isPayable ? _debtorsWithPayables : _debtorsWithCustomerDebt;
+
+    // Filter debtors that either have balance or belong to this liability category
     List<DebtorEntity> filtered = _allDebtors;
 
     switch (_selectedFilter) {
       case DebtorFilter.outstanding:
         filtered = _allDebtors.where(
-          (d) => (_debtorBalances[d.id] ?? 0) > 0,
+          (d) => (activeBalances[d.id] ?? 0) > 0,
         ).toList();
         break;
 
       case DebtorFilter.paid:
         filtered = _allDebtors.where(
-          (d) => (_debtorBalances[d.id] ?? 0) == 0,
+          (d) => relevantDebtorIds.contains(d.id) && (activeBalances[d.id] ?? 0) == 0,
         ).toList();
         break;
 
       case DebtorFilter.all:
       case null:
-        filtered = _allDebtors;
+        filtered = _allDebtors.where(
+          (d) => relevantDebtorIds.contains(d.id) || (activeBalances[d.id] ?? 0) > 0,
+        ).toList();
         break;
     }
 
@@ -90,9 +121,10 @@ class DebtCubit extends Cubit<DebtState> {
 
     return DebtorsLoaded(
       debtors: filtered,
-      debtorBalances: _debtorBalances,
+      debtorBalances: activeBalances,
       selectedFilter: _selectedFilter,
       searchQuery: _searchQuery,
+      activeLiabilityType: activeLiabilityType,
     );
   }
 
@@ -261,6 +293,7 @@ class DebtCubit extends Cubit<DebtState> {
     required double amount,
     String? notes,
     bool isCashLoan = false,
+    DebtType debtType = DebtType.customerDebt,
   }) async {
     try {
       DebtorEntity debtor;
@@ -288,6 +321,7 @@ class DebtCubit extends Cubit<DebtState> {
         amount: amount,
         isPaid: false,
         isCashLoan: isCashLoan,
+        debtType: debtType,
         notes: notes,
         createdAt: DateTime.now(),
       );

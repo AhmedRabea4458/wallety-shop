@@ -7,6 +7,7 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_filter.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
@@ -69,7 +70,7 @@ class _DebtorsPageState extends State<DebtorsPage> {
                     const SizedBox(width: AppSpacing.space3),
                     Expanded(
                       child: Text(
-                        'سجل الآجل',
+                        'الذمم',
                         textAlign: TextAlign.center,
                         style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
                       ),
@@ -90,55 +91,72 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 ),
               ),
             ),
+            // Liability Type Selector Tabs
+            BlocBuilder<DebtCubit, DebtState>(
+              buildWhen: (previous, current) => current is DebtorsLoaded,
+              builder: (context, state) {
+                final currentType = state is DebtorsLoaded ? state.activeLiabilityType : DebtType.customerDebt;
+                return SliverToBoxAdapter(
+                  child: _buildTabSelector(context, currentType),
+                );
+              },
+            ),
             // Search Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: AppSpacing.screenHorizontal,
-                  right: AppSpacing.screenHorizontal,
-                  bottom: AppSpacing.space3,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: AppColors.border50),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    textAlign: TextAlign.right,
-                    onChanged: (v) {
-                      setState(() {});
-                      context.read<DebtCubit>().searchDebtors(v);
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'بحث باسم العميل أو رقم الهاتف...',
-                      hintStyle: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
-                      prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mutedForeground, size: 20),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, color: AppColors.mutedForeground, size: 18),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {});
-                                context.read<DebtCubit>().searchDebtors('');
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.space4,
-                        vertical: AppSpacing.space3,
+            BlocBuilder<DebtCubit, DebtState>(
+              buildWhen: (previous, current) => current is DebtorsLoaded,
+              builder: (context, state) {
+                final isPayable = state is DebtorsLoaded && state.activeLiabilityType == DebtType.payable;
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSpacing.screenHorizontal,
+                      right: AppSpacing.screenHorizontal,
+                      bottom: AppSpacing.space3,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: AppColors.border50),
+                      ),
+                      child: TextField(
+                        controller: _searchController,
+                        textAlign: TextAlign.right,
+                        onChanged: (v) {
+                          setState(() {});
+                          context.read<DebtCubit>().searchDebtors(v);
+                        },
+                        decoration: InputDecoration(
+                          hintText: isPayable ? 'بحث باسم الشخص/الجهة أو الهاتف...' : 'بحث باسم العميل أو رقم الهاتف...',
+                          hintStyle: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.mutedForeground, size: 20),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear_rounded, color: AppColors.mutedForeground, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                    context.read<DebtCubit>().searchDebtors('');
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space4,
+                            vertical: AppSpacing.space3,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
             BlocBuilder<DebtCubit, DebtState>(
               buildWhen: (previous, current) => current is DebtorsLoaded,
               builder: (context, state) {
                 final activeFilter = state is DebtorsLoaded ? state.selectedFilter : DebtorFilter.outstanding;
+                final isPayable = state is DebtorsLoaded && state.activeLiabilityType == DebtType.payable;
                 return SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(
@@ -157,7 +175,7 @@ class _DebtorsPageState extends State<DebtorsPage> {
                           ),
                           const SizedBox(width: AppSpacing.space2),
                           FilterChipWidget(
-                            label: 'آجل',
+                            label: isPayable ? 'مستحق' : 'آجل',
                             isActive: activeFilter == DebtorFilter.outstanding,
                             onTap: () => context.read<DebtCubit>().filterByDebtorType(DebtorFilter.outstanding),
                           ),
@@ -201,14 +219,15 @@ class _DebtorsPageState extends State<DebtorsPage> {
                   );
                 }
                 if (state is DebtorsLoaded) {
+                  final isPayable = state.activeLiabilityType == DebtType.payable;
                   if (state.debtors.isEmpty) {
-                    String emptyMessage = 'لا يوجد مدينين';
+                    String emptyMessage = isPayable ? 'لا توجد مستحقات عليّ' : 'لا يوجد آجل للعملاء';
                     if (state.searchQuery.isNotEmpty) {
                       emptyMessage = 'لا توجد نتائج للبحث "${state.searchQuery}"';
                     } else if (state.selectedFilter == DebtorFilter.outstanding) {
-                      emptyMessage = 'لا يوجد مدينين مستحقين';
+                      emptyMessage = isPayable ? 'لا توجد مستحقات معلقة' : 'لا يوجد مدينين مستحقين';
                     } else if (state.selectedFilter == DebtorFilter.paid) {
-                      emptyMessage = 'لا يوجد مدينين خالصين';
+                      emptyMessage = isPayable ? 'لا توجد مستحقات خالصين' : 'لا يوجد مدينين خالصين';
                     }
                     return SliverToBoxAdapter(
                       child: Center(
@@ -250,6 +269,81 @@ class _DebtorsPageState extends State<DebtorsPage> {
     );
   }
 
+  Widget _buildTabSelector(BuildContext context, DebtType currentType) {
+    final isCustomer = currentType == DebtType.customerDebt;
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.screenHorizontal,
+        vertical: AppSpacing.space2,
+      ),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border50),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.read<DebtCubit>().selectLiabilityType(DebtType.customerDebt),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+                decoration: BoxDecoration(
+                  color: isCustomer ? AppColors.primary10 : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: isCustomer ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🟢 ', style: TextStyle(fontSize: 12)),
+                    Text(
+                      'آجل العملاء',
+                      style: AppTextStyles.body.copyWith(
+                        color: isCustomer ? AppColors.primary : AppColors.mutedForeground,
+                        fontWeight: isCustomer ? FontWeight.w700 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.space2),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => context.read<DebtCubit>().selectLiabilityType(DebtType.payable),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.space2),
+                decoration: BoxDecoration(
+                  color: !isCustomer ? AppColors.warning.withValues(alpha: 0.15) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: !isCustomer ? Border.all(color: AppColors.warning.withValues(alpha: 0.4)) : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('🟠 ', style: TextStyle(fontSize: 12)),
+                    Text(
+                      'المستحقات عليّ',
+                      style: AppTextStyles.body.copyWith(
+                        color: !isCustomer ? AppColors.warning : AppColors.mutedForeground,
+                        fontWeight: !isCustomer ? FontWeight.w700 : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showManualDebtDialog(BuildContext context) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -257,96 +351,113 @@ class _DebtorsPageState extends State<DebtorsPage> {
     final notesController = TextEditingController();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final debtCubit = context.read<DebtCubit>();
+    final activeLiability = debtCubit.activeLiabilityType;
+    final isPayable = activeLiability == DebtType.payable;
     bool isCashLoan = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-        title: Text('إضافة آجل يدوي', style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(hintText: 'اسم العميل', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(hintText: 'رقم الهاتف (اختياري)', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              TextField(
-                controller: amountController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.right,
-                decoration: const InputDecoration(hintText: 'المبلغ', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              TextField(
-                controller: notesController,
-                textAlign: TextAlign.right,
-                maxLines: 2,
-                decoration: const InputDecoration(hintText: 'ملاحظات (اختياري)', border: OutlineInputBorder()),
-              ),
-              const SizedBox(height: AppSpacing.space2),
-              CheckboxListTile(
-                value: isCashLoan,
-                onChanged: (v) => setDialogState(() => isCashLoan = v ?? false),
-                title: Text('دين نقدي من الدرج', style: AppTextStyles.body.copyWith(color: AppColors.foreground)),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-                activeColor: AppColors.primary,
-              ),
-            ],
+          title: Text(
+            isPayable ? 'إضافة مستحق يدوي' : 'إضافة آجل يدوي',
+            style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
           ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    hintText: isPayable ? 'اسم الشخص / الجهة' : 'اسم العميل',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(hintText: 'رقم الهاتف (اختياري)', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.right,
+                  decoration: const InputDecoration(hintText: 'المبلغ', border: OutlineInputBorder()),
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                TextField(
+                  controller: notesController,
+                  textAlign: TextAlign.right,
+                  maxLines: 2,
+                  decoration: const InputDecoration(hintText: 'ملاحظات (اختياري)', border: OutlineInputBorder()),
+                ),
+                if (!isPayable) ...[
+                  const SizedBox(height: AppSpacing.space2),
+                  CheckboxListTile(
+                    value: isCashLoan,
+                    onChanged: (v) => setDialogState(() => isCashLoan = v ?? false),
+                    title: Text('دين نقدي من الدرج', style: AppTextStyles.body.copyWith(color: AppColors.foreground)),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: AppColors.primary,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final amountText = amountController.text.trim();
+                if (name.isEmpty) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text(isPayable ? 'اسم الشخص / الجهة مطلوب' : 'اسم العميل مطلوب'),
+                      backgroundColor: AppColors.destructive,
+                    ),
+                  );
+                  return;
+                }
+                final amount = double.tryParse(amountText) ?? 0;
+                if (amount <= 0) {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(content: Text('المبلغ غير صحيح'), backgroundColor: AppColors.destructive),
+                  );
+                  return;
+                }
+                final notes = notesController.text.trim();
+                debtCubit.createManualDebt(
+                  customerName: name,
+                  customerPhone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                  amount: amount,
+                  notes: notes.isEmpty ? null : notes,
+                  isCashLoan: isCashLoan,
+                  debtType: activeLiability,
+                ).then((_) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(
+                      content: Text(isPayable ? 'تم إضافة المستحق بنجاح' : 'تم إضافة الدين بنجاح'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }).catchError((e) {
+                  scaffoldMessenger.showSnackBar(
+                    SnackBar(content: Text(e.toString()), backgroundColor: AppColors.destructive),
+                  );
+                });
+                Navigator.pop(ctx);
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final amountText = amountController.text.trim();
-              if (name.isEmpty) {
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(content: Text('اسم العميل مطلوب'), backgroundColor: AppColors.destructive),
-                );
-                return;
-              }
-              final amount = double.tryParse(amountText) ?? 0;
-              if (amount <= 0) {
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(content: Text('المبلغ غير صحيح'), backgroundColor: AppColors.destructive),
-                );
-                return;
-              }
-              final notes = notesController.text.trim();
-              debtCubit.createManualDebt(
-                customerName: name,
-                customerPhone: phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
-                amount: amount,
-                notes: notes.isEmpty ? null : notes,
-                isCashLoan: isCashLoan,
-              ).then((_) {
-                scaffoldMessenger.showSnackBar(
-                  const SnackBar(content: Text('تم إضافة الدين بنجاح'), duration: Duration(seconds: 2)),
-                );
-              }).catchError((e) {
-                scaffoldMessenger.showSnackBar(
-                  SnackBar(content: Text(e.toString()), backgroundColor: AppColors.destructive),
-                );
-              });
-              Navigator.pop(ctx);
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
       ),
     );
   }
@@ -430,3 +541,4 @@ class _DebtorCard extends StatelessWidget {
     );
   }
 }
+
