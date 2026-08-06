@@ -133,11 +133,6 @@ class DebtCubit extends Cubit<DebtState> {
     emit(_buildLoadedState());
   }
 
-  void filterByDebtorType(DebtorFilter filter) {
-    _selectedFilter = filter;
-    emit(_buildLoadedState());
-  }
-
   Future<DebtorEntity?> getDebtorById(int id) async {
     try {
       return await repository.getDebtorById(id);
@@ -486,5 +481,10 @@ class DebtCubit extends Cubit<DebtState> {
       debugPrint('bulkPayDebts error: $e');
       rethrow;
     }
+  }
+
+  void filterByDebtorType(DebtorFilter filter) {
+    _selectedFilter = filter;
+    emit(_buildLoadedState());
   }
 }
