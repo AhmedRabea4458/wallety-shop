@@ -27,6 +27,10 @@ import 'package:smart_expense/features/expenses/presentation/widgets/date_select
 import 'package:smart_expense/features/expenses/presentation/widgets/description_field.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
+import 'package:intl/intl.dart';
+import 'package:smart_expense/core/errors/exceptions.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/save_transaction_button.dart';
 
 class AddOperationPage extends StatefulWidget {
@@ -217,11 +221,175 @@ class _AddOperationPageState extends State<AddOperationPage> {
       if (!mounted) return;
       _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
       Navigator.pop(context);
+    } on InsufficientCashDrawerBalanceException {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      if (_selectedType == OperationType.withdrawal && !_isEditing) {
+        final cashState = context.read<CashDrawerCubit>().state;
+        final availableCash = cashState is CashDrawerLoaded ? cashState.cashDrawer.balance : 0.0;
+        final remainder = (amount - commission) - availableCash;
+
+        final result = await _showInsufficientBalanceDialog(
+          context,
+          requestedAmount: amount,
+          availableCash: availableCash,
+          remainderAmount: remainder > 0 ? remainder : 0.0,
+        );
+
+        if (result == null || !mounted) return;
+
+        setState(() => _isSaving = true);
+        try {
+          await operationCubit.addPartialWithdrawal(
+            entity,
+            customerName: result['name']!,
+            customerPhone: result['phone'],
+          );
+          if (!mounted) return;
+          context.read<DebtCubit>().loadDebtors(silent: true);
+          context.read<CashDrawerCubit>().refreshCashDrawer();
+          _showSuccess('تم تسجيل عملية السحب الجزئي والمستحق بنجاح');
+          Navigator.pop(context);
+        } catch (e) {
+          if (!mounted) return;
+          setState(() => _isSaving = false);
+          _showError(ErrorMapper.map(e));
+        }
+      } else {
+        _showError('رصيد الدرج النقدي غير كافٍ');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isSaving = false);
       _showError(ErrorMapper.map(e));
     }
+  }
+
+  Future<Map<String, String?>?> _showInsufficientBalanceDialog(
+    BuildContext context, {
+    required double requestedAmount,
+    required double availableCash,
+    required double remainderAmount,
+  }) {
+    final nameController = TextEditingController();
+    final phoneController = TextEditingController();
+
+    return showDialog<Map<String, String?>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final isNameValid = nameController.text.trim().isNotEmpty;
+          return AlertDialog(
+            backgroundColor: AppColors.card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
+                const SizedBox(width: AppSpacing.space2),
+                Text(
+                  'رصيد النقود غير كافٍ',
+                  style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'رصيد الدرج لا يكفي للسحب بالكامل. يمكنك دفع المتوفر وتسجيل الباقي كمستحق تلقائياً:',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.space3),
+                    decoration: BoxDecoration(
+                      color: AppColors.background,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.border50),
+                    ),
+                    child: Column(
+                      children: [
+                        _dialogAmountRow('المبلغ المطلوب بالسحب', requestedAmount, AppColors.foreground),
+                        const SizedBox(height: AppSpacing.space2),
+                        _dialogAmountRow('المبلغ المتوفر كاش', availableCash, AppColors.primary),
+                        const Divider(height: AppSpacing.space3),
+                        _dialogAmountRow('المتبقي كمستحق للعميل', remainderAmount, AppColors.warning, isBold: true),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space4),
+                  TextField(
+                    controller: nameController,
+                    textAlign: TextAlign.right,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المستحق له (مطلوب)',
+                      hintText: 'أدخل اسم العميل / الجهة',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space3),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    textAlign: TextAlign.right,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الهاتف (اختياري)',
+                      hintText: '01XXXXXXXXX',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, null),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                onPressed: isNameValid
+                    ? () {
+                        Navigator.pop(ctx, {
+                          'name': nameController.text.trim(),
+                          'phone': phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                        });
+                      }
+                    : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.primaryForeground,
+                ),
+                child: const Text('تأكيد وتسجيل المستحق'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _dialogAmountRow(String label, double value, Color color, {bool isBold = false}) {
+    final format = NumberFormat('#,##0.##', 'ar');
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+        ),
+        Text(
+          '${format.format(value)} ج.م',
+          style: AppTextStyles.body.copyWith(
+            color: color,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 
   void _showError(String message) {

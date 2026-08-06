@@ -61,6 +61,29 @@ class OperationCubit extends Cubit<OperationState> {
     }
   }
 
+  Future<int> addPartialWithdrawal(
+    OperationEntity operation, {
+    required String customerName,
+    String? customerPhone,
+  }) async {
+    final hadData = state is OperationLoaded;
+    if (!hadData) emit(OperationLoading());
+    try {
+      final id = await repository.addPartialWithdrawal(
+        operation,
+        customerName: customerName,
+        customerPhone: customerPhone,
+      );
+      debugPrint('addPartialWithdrawal: inserted op id=$id with linked payable');
+      await _refreshOperations();
+      return id;
+    } catch (e) {
+      debugPrint('addPartialWithdrawal error: $e');
+      if (!hadData) emit(OperationError('فشل إضافة عملية السحب الجزئي'));
+      rethrow;
+    }
+  }
+
   Future<int?> getActiveShiftId() async {
     try {
       final ops = await repository.getOperations();

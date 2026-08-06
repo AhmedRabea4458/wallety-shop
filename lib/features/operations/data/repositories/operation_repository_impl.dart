@@ -32,6 +32,20 @@ class OperationRepositoryImpl implements OperationRepository {
   }
 
   @override
+  Future<int> addPartialWithdrawal(
+    OperationEntity operation, {
+    required String customerName,
+    String? customerPhone,
+  }) {
+    final model = OperationModel.fromEntity(operation);
+    return localDataSource.insertPartialWithdrawal(
+      model: model,
+      customerName: customerName,
+      customerPhone: customerPhone,
+    );
+  }
+
+  @override
   Future<void> updateOperation(OperationEntity operation) async {
     if (operation.id != 0) {
       final hasDebt = await debtDataSource.getDebtByOperationId(operation.id);

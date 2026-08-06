@@ -429,6 +429,86 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<int> addPartialWithdrawalWithPayable({
+    required OperationsTableCompanion operation,
+    required String customerName,
+    String? customerPhone,
+  }) {
+    return transaction(() async {
+      final walletId = operation.walletId.value;
+      final providerType = operation.providerType.value;
+      final type = operation.operationType.value;
+      final amount = operation.amount.value;
+      final commission = operation.commission.value;
+
+      if (type != 'withdrawal') {
+        throw Exception('addPartialWithdrawalWithPayable can only be used for withdrawal operations');
+      }
+
+      // 1. Vodafone Cash affects wallet balance by full requested withdrawal amount
+      if (providerType == 'vodafoneCash') {
+        final wallet = await (select(walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+        await (update(walletsTable)..where((w) => w.id.equals(walletId)))
+            .write(WalletsTableCompanion(balance: Value(wallet.balance + amount)));
+      }
+
+      // 2. Insert withdrawal operation with full requested amount
+      final operationId = await into(operationsTable).insert(operation);
+
+      // 3. Calculate cash drawer deduction and payable remainder
+      final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      final availableCash = cashDrawer.balance;
+
+      // Net cash required from drawer to complete full withdrawal
+      final requiredCashFromDrawer = amount - commission;
+      final actualCashPaidFromDrawer = availableCash; // Drain available cash completely
+      final remainderPayable = requiredCashFromDrawer - actualCashPaidFromDrawer;
+
+      // Cash drawer balance goes to zero (or 0 if negative check)
+      final newCashBalance = 0.0;
+      await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
+          .write(CashDrawerTableCompanion(balance: Value(newCashBalance)));
+
+      // 4. Find or create debtor
+      DebtorsTableData debtor;
+      DebtorsTableData? existing;
+      if (customerPhone != null && customerPhone.trim().isNotEmpty) {
+        existing = await getDebtorByPhone(customerPhone.trim());
+      }
+      existing ??= await getDebtorByName(customerName.trim());
+
+      if (existing != null) {
+        debtor = existing;
+      } else {
+        final debtorId = await into(debtorsTable).insert(
+          DebtorsTableCompanion(
+            name: Value(customerName.trim()),
+            phone: Value((customerPhone != null && customerPhone.trim().isNotEmpty) ? customerPhone.trim() : null),
+          ),
+        );
+        debtor = (await (select(debtorsTable)..where((d) => d.id.equals(debtorId))).getSingle());
+      }
+
+      // 5. Create linked payable for the remaining deficit
+      await into(debtsTable).insert(
+        DebtsTableCompanion(
+          debtorId: Value(debtor.id),
+          operationId: Value(operationId),
+          operationType: const Value('withdrawal'),
+          providerType: Value(providerType),
+          amount: Value(remainderPayable),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          debtType: const Value('payable'),
+          notes: Value('مستحق متبقي من سحب بقيمة ${amount.toStringAsFixed(0)} ج.م'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      return operationId;
+    });
+  }
+
   Future<void> updateOperationWithBalanceUpdate(OperationsTableCompanion operation) {
     return transaction(() async {
       final operationId = operation.id.value;

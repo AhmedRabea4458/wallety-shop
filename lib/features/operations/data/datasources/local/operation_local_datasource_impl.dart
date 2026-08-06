@@ -43,6 +43,32 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
   }
 
   @override
+  Future<int> insertPartialWithdrawal({
+    required OperationModel model,
+    required String customerName,
+    String? customerPhone,
+  }) {
+    return database.addPartialWithdrawalWithPayable(
+      operation: OperationsTableCompanion(
+        walletId: Value(model.walletId),
+        shiftId: Value(model.shiftId),
+        operationType: Value(model.operationType.name),
+        providerType: Value(model.providerType.name),
+        amount: Value(model.amount),
+        commission: Value(model.commission),
+        networkFee: Value(model.networkFee),
+        phoneNumber: Value(model.phoneNumber),
+        notes: Value(model.notes),
+        isDebt: const Value(false),
+        instaPayAccountId: Value(model.instaPayAccountId),
+        createdAt: Value(model.createdAt),
+      ),
+      customerName: customerName,
+      customerPhone: customerPhone,
+    );
+  }
+
+  @override
   Future<void> updateOperation(OperationModel model) {
     return database.updateOperationWithBalanceUpdate(
       OperationsTableCompanion(
