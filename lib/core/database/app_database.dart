@@ -433,6 +433,7 @@ class AppDatabase extends _$AppDatabase {
     required OperationsTableCompanion operation,
     required String customerName,
     String? customerPhone,
+    double? paidNow, // if null → drain all available cash
   }) {
     return transaction(() async {
       final walletId = operation.walletId.value;
@@ -461,11 +462,18 @@ class AppDatabase extends _$AppDatabase {
 
       // Net cash required from drawer to complete full withdrawal
       final requiredCashFromDrawer = amount - commission;
-      final actualCashPaidFromDrawer = availableCash; // Drain available cash completely
-      final remainderPayable = requiredCashFromDrawer - actualCashPaidFromDrawer;
+      // Use caller-supplied paidNow, or drain all available cash
+      final actualCashPaid = paidNow != null
+          ? paidNow.clamp(0.0, requiredCashFromDrawer)
+          : availableCash.clamp(0.0, requiredCashFromDrawer);
+      final remainderPayable = requiredCashFromDrawer - actualCashPaid;
 
-      // Cash drawer balance goes to zero (or 0 if negative check)
-      final newCashBalance = 0.0;
+      if (remainderPayable <= 0) {
+        throw Exception('لا يوجد مستحق متبقٍ — استخدم مسار الدفع الكامل');
+      }
+
+      // Deduct actualCashPaid from drawer
+      final newCashBalance = (availableCash - actualCashPaid).clamp(0.0, double.infinity);
       await (update(cashDrawerTable)..where((c) => c.id.equals(1)))
           .write(CashDrawerTableCompanion(balance: Value(newCashBalance)));
 
@@ -891,10 +899,20 @@ Future<void> payDebt({
       ),
     );
 
+    // Cash drawer direction depends on debt type:
+    // - customerDebt / settlementDebt: customer pays us → drawer INCREASES
+    // - payable: we pay the customer → drawer DECREASES
     final cashDrawer = await (select(cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    final isPayable = debt.debtType == 'payable';
+    final newBalance = isPayable
+        ? cashDrawer.balance - amount
+        : cashDrawer.balance + amount;
+    if (isPayable && newBalance < 0) {
+      throw InsufficientCashDrawerBalanceException();
+    }
     await (update(cashDrawerTable)..where((c) => c.id.equals(1))).write(
       CashDrawerTableCompanion(
-        balance: Value(cashDrawer.balance + amount),
+        balance: Value(newBalance),
       ),
     );
 

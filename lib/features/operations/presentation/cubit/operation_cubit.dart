@@ -65,6 +65,7 @@ class OperationCubit extends Cubit<OperationState> {
     OperationEntity operation, {
     required String customerName,
     String? customerPhone,
+    double? paidNow,
   }) async {
     final hadData = state is OperationLoaded;
     if (!hadData) emit(OperationLoading());
@@ -73,8 +74,9 @@ class OperationCubit extends Cubit<OperationState> {
         operation,
         customerName: customerName,
         customerPhone: customerPhone,
+        paidNow: paidNow,
       );
-      debugPrint('addPartialWithdrawal: inserted op id=$id with linked payable');
+      debugPrint('addPartialWithdrawal: inserted op id=$id with linked payable (paidNow=$paidNow)');
       await _refreshOperations();
       return id;
     } catch (e) {

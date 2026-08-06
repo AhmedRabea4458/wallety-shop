@@ -47,6 +47,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
     required OperationModel model,
     required String customerName,
     String? customerPhone,
+    double? paidNow,
   }) {
     return database.addPartialWithdrawalWithPayable(
       operation: OperationsTableCompanion(
@@ -65,6 +66,7 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
       ),
       customerName: customerName,
       customerPhone: customerPhone,
+      paidNow: paidNow,
     );
   }
 

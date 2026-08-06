@@ -8,6 +8,7 @@ abstract class OperationLocalDataSource {
     required OperationModel model,
     required String customerName,
     String? customerPhone,
+    double? paidNow,
   });
   Future<int> insertFullWithdrawalPayable({
     required OperationModel model,

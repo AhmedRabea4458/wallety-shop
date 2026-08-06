@@ -8,6 +8,7 @@ abstract class OperationRepository {
     OperationEntity operation, {
     required String customerName,
     String? customerPhone,
+    double? paidNow,
   });
   Future<int> addFullWithdrawalPayable(
     OperationEntity operation, {

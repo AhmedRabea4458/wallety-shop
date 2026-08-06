@@ -63,6 +63,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _customerPhoneController = TextEditingController();
+  final TextEditingController _paidNowController = TextEditingController();
 
   bool get _isEditing => widget.operationToEdit != null;
   bool _isDebtLinked = false;
@@ -178,20 +179,33 @@ class _AddOperationPageState extends State<AddOperationPage> {
         await operationCubit.updateOperation(entity);
         operationId = entity.id;
       } else if (_isCreatePayable) {
-        // Deferred cash payout: record operation + create payable, do not touch cash drawer
         final name = _customerNameController.text.trim();
         if (name.isEmpty) {
           setState(() => _isSaving = false);
           _showError('اسم المستحق له مطلوب');
           return;
         }
-        operationId = await operationCubit.addFullWithdrawalPayable(
-          entity,
-          customerName: name,
-          customerPhone: _customerPhoneController.text.trim().isEmpty
-              ? null
-              : _customerPhoneController.text.trim(),
-        );
+        final paidNowText = _paidNowController.text.trim();
+        final paidNowVal = paidNowText.isEmpty ? 0.0 : parseArabicNumerals(paidNowText);
+
+        if (paidNowVal <= 0) {
+          operationId = await operationCubit.addFullWithdrawalPayable(
+            entity,
+            customerName: name,
+            customerPhone: _customerPhoneController.text.trim().isEmpty
+                ? null
+                : _customerPhoneController.text.trim(),
+          );
+        } else {
+          operationId = await operationCubit.addPartialWithdrawal(
+            entity,
+            customerName: name,
+            customerPhone: _customerPhoneController.text.trim().isEmpty
+                ? null
+                : _customerPhoneController.text.trim(),
+            paidNow: paidNowVal,
+          );
+        }
       } else {
         operationId = await operationCubit.addOperation(entity, isDebt: _isDebt);
       }
@@ -235,13 +249,11 @@ class _AddOperationPageState extends State<AddOperationPage> {
         await operationCubit.getOperations();
       }
       if (!mounted) return;
-      if (_isCreatePayable && !_isEditing) {
-        if (!mounted) return;
-        final nameText = _customerNameController.text.trim();
-        if (nameText.isNotEmpty) {
+      if ((_isCreatePayable || _isDebt || _isSettlementDebt) && !_isEditing) {
+        try {
           context.read<DebtCubit>().loadDebtors(silent: true);
           context.read<CashDrawerCubit>().refreshCashDrawer();
-        }
+        } catch (_) {}
       }
       _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
       Navigator.pop(context);
@@ -262,12 +274,15 @@ class _AddOperationPageState extends State<AddOperationPage> {
 
         if (result == null || !mounted) return;
 
+        final double? customPaidNow = result['paidNow'] != null ? double.tryParse(result['paidNow']!) : null;
+
         setState(() => _isSaving = true);
         try {
           await operationCubit.addPartialWithdrawal(
             entity,
             customerName: result['name']!,
             customerPhone: result['phone'],
+            paidNow: customPaidNow,
           );
           if (!mounted) return;
           context.read<DebtCubit>().loadDebtors(silent: true);
@@ -297,6 +312,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
   }) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
+    final paidNowController = TextEditingController(text: availableCash.toStringAsFixed(0));
 
     return showDialog<Map<String, String?>>(
       context: context,
@@ -304,6 +320,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
           final isNameValid = nameController.text.trim().isNotEmpty;
+          final double currentPaidNow = parseArabicNumerals(paidNowController.text.trim());
+          final double currentRemainder = (requestedAmount - currentPaidNow).clamp(0.0, double.infinity);
+          final bool isAmountValid = currentPaidNow >= 0 && currentPaidNow <= availableCash && currentPaidNow < requestedAmount;
+
           return AlertDialog(
             backgroundColor: AppColors.card,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
@@ -323,7 +343,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'رصيد الدرج لا يكفي للسحب بالكامل. يمكنك دفع المتوفر وتسجيل الباقي كمستحق تلقائياً:',
+                    'رصيد الدرج لا يكفي للسحب بالكامل. يمكنك تحديد المبلغ المدفوع حالياً وتسجيل الباقي كمستحق:',
                     style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
                   ),
                   const SizedBox(height: AppSpacing.space4),
@@ -338,13 +358,28 @@ class _AddOperationPageState extends State<AddOperationPage> {
                       children: [
                         _dialogAmountRow('المبلغ المطلوب بالسحب', requestedAmount, AppColors.foreground),
                         const SizedBox(height: AppSpacing.space2),
-                        _dialogAmountRow('المبلغ المتوفر كاش', availableCash, AppColors.primary),
+                        _dialogAmountRow('المصروف حالياً كاش', currentPaidNow, AppColors.primary),
                         const Divider(height: AppSpacing.space3),
-                        _dialogAmountRow('المتبقي كمستحق للعميل', remainderAmount, AppColors.warning, isBold: true),
+                        _dialogAmountRow('المتبقي كمستحق للعميل', currentRemainder, AppColors.warning, isBold: true),
                       ],
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space4),
+                  TextField(
+                    controller: paidNowController,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.right,
+                    onChanged: (_) => setDialogState(() {}),
+                    decoration: InputDecoration(
+                      labelText: 'المبلغ المدفوع الآن نقداً (أقصى حد: ${availableCash.toStringAsFixed(0)})',
+                      hintText: 'أدخل المبلغ المصروف للعميل',
+                      border: const OutlineInputBorder(),
+                      errorText: currentPaidNow > availableCash
+                          ? 'المبلغ يتجاوز رصيد الدرج المتوفر'
+                          : (currentPaidNow >= requestedAmount ? 'المبلغ يجب أن يكون أقل من المبلغ المطلوب' : null),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space3),
                   TextField(
                     controller: nameController,
                     textAlign: TextAlign.right,
@@ -375,11 +410,12 @@ class _AddOperationPageState extends State<AddOperationPage> {
                 child: const Text('إلغاء'),
               ),
               ElevatedButton(
-                onPressed: isNameValid
+                onPressed: (isNameValid && isAmountValid)
                     ? () {
                         Navigator.pop(ctx, {
                           'name': nameController.text.trim(),
                           'phone': phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
+                          'paidNow': currentPaidNow.toString(),
                         });
                       }
                     : null,
@@ -1020,6 +1056,18 @@ class _AddOperationPageState extends State<AddOperationPage> {
                               ),
                               child: Column(
                                 children: [
+                                  TextField(
+                                    controller: _paidNowController,
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.right,
+                                    decoration: const InputDecoration(
+                                      labelText: 'المبلغ المدفوع كاش الآن (اختياري - اتركه 0 للدفع المؤجل بالكامل)',
+                                      hintText: '0',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
+                                  ),
+                                  const SizedBox(height: AppSpacing.space3),
                                   TextField(
                                     controller: _customerNameController,
                                     textAlign: TextAlign.right,

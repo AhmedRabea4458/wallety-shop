@@ -36,12 +36,14 @@ class OperationRepositoryImpl implements OperationRepository {
     OperationEntity operation, {
     required String customerName,
     String? customerPhone,
+    double? paidNow,
   }) {
     final model = OperationModel.fromEntity(operation);
     return localDataSource.insertPartialWithdrawal(
       model: model,
       customerName: customerName,
       customerPhone: customerPhone,
+      paidNow: paidNow,
     );
   }
 
