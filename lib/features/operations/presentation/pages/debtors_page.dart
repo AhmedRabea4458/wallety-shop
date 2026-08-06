@@ -101,6 +101,65 @@ class _DebtorsPageState extends State<DebtorsPage> {
                 );
               },
             ),
+            // Summary Card for Active Tab
+            BlocBuilder<DebtCubit, DebtState>(
+              buildWhen: (previous, current) => current is DebtorsLoaded,
+              builder: (context, state) {
+                if (state is! DebtorsLoaded) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                final isPayable = state.activeLiabilityType == DebtType.payable;
+                final totalBalance = state.debtorBalances.values.fold(0.0, (sum, b) => sum + b);
+                final label = isPayable ? 'إجمالي المستحقات عليّ' : 'إجمالي آجل العملاء';
+                final color = isPayable ? AppColors.warning : AppColors.primary;
+                final count = state.debtors.where((d) => (state.debtorBalances[d.id] ?? 0) > 0).length;
+
+                return SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.screenHorizontal,
+                      vertical: AppSpacing.space2,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppSpacing.space4),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                        border: Border.all(color: color.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground)),
+                              const SizedBox(height: AppSpacing.space1),
+                              Text(
+                                '${NumberFormat('#,##0.##', 'ar').format(totalBalance)} ج.م',
+                                style: AppTextStyles.headline.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.space3, vertical: AppSpacing.space1),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.full),
+                            ),
+                            child: Text(
+                              isPayable ? '$count مستحق' : '$count مدين',
+                              style: AppTextStyles.caption.copyWith(color: color, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
             // Search Bar
             BlocBuilder<DebtCubit, DebtState>(
               buildWhen: (previous, current) => current is DebtorsLoaded,
