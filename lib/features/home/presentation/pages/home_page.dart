@@ -7,8 +7,8 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
-import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_adjustment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
 import 'package:smart_expense/features/operations/domain/utils/wallet_limit_calculator.dart';
@@ -24,9 +24,11 @@ import 'package:smart_expense/features/operations/presentation/cubit/wallet_adju
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
-import 'package:smart_expense/features/operations/presentation/widgets/cash_drawer_card.dart';
+
 import 'package:smart_expense/features/operations/presentation/widgets/operation_list.dart';
-import 'package:smart_expense/features/home/presentation/widgets/hero_balance_card.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/dialogs/edit_cash_drawer_dialog.dart';
+import 'package:smart_expense/features/home/presentation/widgets/dashboard_balances_section.dart';
+import 'package:smart_expense/features/home/presentation/widgets/dashboard_today_activity_section.dart';
 import 'package:smart_expense/features/home/presentation/widgets/home_wallet_card.dart';
 import 'package:smart_expense/features/home/presentation/widgets/quick_action_button.dart';
 import 'package:smart_expense/features/home/presentation/widgets/shift_status_card.dart';
@@ -39,9 +41,6 @@ class HomePage extends StatelessWidget {
     this.onNavigateToOperations,
   });
 
-  static String _formatAmount(double amount) {
-    return NumberFormat('#,##0.##', 'ar').format(amount);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,10 +90,9 @@ class HomePage extends StatelessWidget {
                     }
 
                     List<OperationEntity> operations = [];
-                    double todayCommission = 0;
-                    double todayVodafoneCommission = 0;
-                    double todayInstaPayCommission = 0;
-                    int todayCount = 0;
+                    double todayDeposits = 0;
+                    double todayWithdrawals = 0;
+                    double totalCommissions = 0;
 
                     if (operationState is OperationLoaded) {
                       operations = operationState.allOperations;
@@ -103,21 +101,23 @@ class HomePage extends StatelessWidget {
                         final d = o.createdAt;
                         return d.year == today.year && d.month == today.month && d.day == today.day;
                       });
-                      todayCount = todayOps.length;
-                      todayCommission = todayOps.fold(0.0, (sum, o) => sum + o.commission);
-                      todayVodafoneCommission = todayOps
-                          .where((o) => o.providerType == ProviderType.vodafoneCash)
-                          .fold(0.0, (sum, o) => sum + o.commission);
-                      todayInstaPayCommission = todayOps
-                          .where((o) => o.providerType == ProviderType.instaPay)
-                          .fold(0.0, (sum, o) => sum + o.commission);
+                      todayDeposits = todayOps
+                          .where((o) => o.operationType == OperationType.deposit)
+                          .fold(0.0, (sum, o) => sum + o.amount);
+                      todayWithdrawals = todayOps
+                          .where((o) => o.operationType == OperationType.withdrawal)
+                          .fold(0.0, (sum, o) => sum + o.amount);
+                      totalCommissions = todayOps.fold(
+                        0.0,
+                        (sum, o) => sum + o.commission,
+                      );
                     }
 
                     final adjustments = adjustmentState is WalletAdjustmentLoaded
                         ? adjustmentState.adjustments
                         : <WalletAdjustmentEntity>[];
 
-                    final totalBalance = wallets.fold(0.0, (sum, w) => sum + w.balance);
+                    final totalWalletBalance = wallets.fold(0.0, (sum, w) => sum + w.balance);
 
                     return CustomScrollView(
                       slivers: [
@@ -178,7 +178,7 @@ class HomePage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space6),
                     ),
-                    // Shift Status Card
+                    // 1. Shift Status Card
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -190,120 +190,59 @@ class HomePage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space4),
                     ),
-                    // Outstanding Debt & Payable Cards
+
+                    // 2. Current Balances (Clean separate cards for Cash Drawer, Total Wallets, Receivables, Payables)
                     BlocBuilder<DebtCubit, DebtState>(
                       builder: (context, debtState) {
                         final debtCubit = context.read<DebtCubit>();
-                        final totalOutstanding = debtCubit.totalOutstanding;
-                        final totalPayable = debtCubit.totalOutstandingPayable;
+                        final customerReceivables = debtCubit.totalOutstanding;
+                        final payables = debtCubit.totalOutstandingPayable;
+                        final todayCollections = debtCubit.todayCustomerDebtCollected;
+                        final todaySettlements = debtCubit.todayPayablesSettled;
 
-                        if (totalOutstanding <= 0 && totalPayable <= 0) {
-                          return const SliverToBoxAdapter(child: SizedBox.shrink());
-                        }
+                        return BlocBuilder<CashDrawerCubit, CashDrawerState>(
+                          builder: (context, cashState) {
+                            final cashDrawerBalance = cashState is CashDrawerLoaded
+                                ? cashState.cashDrawer.balance
+                                : 0.0;
 
-                        return SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                            child: Column(
-                              children: [
-                                if (totalOutstanding > 0)
-                                  Container(
-                                    padding: const EdgeInsets.all(AppSpacing.space4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.card,
-                                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
-                                        ),
-                                        const SizedBox(width: AppSpacing.space2),
-                                        Expanded(
-                                          child: Text(
-                                            'إجمالي الآجل: ${_formatAmount(totalOutstanding)} ج.م',
-                                            style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                            return SliverToBoxAdapter(
+                              child: Column(
+                                children: [
+                                  DashboardBalancesSection(
+                                    totalWalletBalance: totalWalletBalance,
+                                    cashDrawerBalance: cashDrawerBalance,
+                                    customerReceivables: customerReceivables,
+                                    payables: payables,
+                                    onEditCashDrawer: () {
+                                      showEditCashDrawerDialog(
+                                        parentContext: context,
+                                        cashDrawerCubit: context.read<CashDrawerCubit>(),
+                                        currentDrawerBalance: cashDrawerBalance,
+                                      );
+                                    },
                                   ),
-                                if (totalOutstanding > 0 && totalPayable > 0)
-                                  const SizedBox(height: AppSpacing.space3),
-                                if (totalPayable > 0)
-                                  Container(
-                                    padding: const EdgeInsets.all(AppSpacing.space4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.card,
-                                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                                      border: Border.all(color: const Color(0xFFF97316).withValues(alpha: 0.4)),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 8,
-                                          height: 8,
-                                          decoration: const BoxDecoration(color: Color(0xFFF97316), shape: BoxShape.circle),
-                                        ),
-                                        const SizedBox(width: AppSpacing.space2),
-                                        Expanded(
-                                          child: Text(
-                                            'إجمالي المستحقات عليّ: ${_formatAmount(totalPayable)} ج.م',
-                                            style: AppTextStyles.body.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                  const SizedBox(height: AppSpacing.space4),
+                                  // 3. Today's Activity Section
+                                  DashboardTodayActivitySection(
+                                    todayDeposits: todayDeposits,
+                                    todayWithdrawals: todayWithdrawals,
+                                    todayCollections: todayCollections,
+                                    todaySettlements: todaySettlements,
+                                    totalCommissions: totalCommissions,
                                   ),
-                              ],
-                            ),
-                          ),
+                                ],
+                              ),
+                            );
+                          },
                         );
                       },
                     ),
                     SliverToBoxAdapter(
-                      child: SizedBox(height: AppSpacing.space4),
-                    ),
-                    // Hero Balance Card
-                    SliverToBoxAdapter(
-                      child: HeroBalanceCard(
-                        totalBalance: totalBalance,
-                        todayCount: todayCount,
-                        todayCommission: todayCommission,
-                        todayVodafoneCommission: todayVodafoneCommission,
-                        todayInstaPayCommission: todayInstaPayCommission,
-                      ),
-                    ),
-                    SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space6),
                     ),
-                    // Cash Drawer Card
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.screenHorizontal,
-                        ),
-                        child: BlocBuilder<CashDrawerCubit, CashDrawerState>(
-                          builder: (context, cashState) {
-                            if (cashState is CashDrawerLoaded) {
-                              return CashDrawerCard(
-                                balance: cashState.cashDrawer.balance,
-                                initialBalance: cashState.cashDrawer.initialBalance,
-                                updatedAt: cashState.cashDrawer.updatedAt,
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: SizedBox(height: AppSpacing.space6),
-                    ),
-                    // Wallet Cards
+
+                    // 4. Wallet Cards
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -364,7 +303,8 @@ class HomePage extends StatelessWidget {
                     SliverToBoxAdapter(
                       child: SizedBox(height: AppSpacing.space6),
                     ),
-                    // Quick Actions
+
+                    // 5. Quick Actions (Deposit, Withdrawal, Customer Debt, Payable, Cash Drawer Adjustment)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -380,6 +320,7 @@ class HomePage extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: AppSpacing.space4),
+                            // Row 1: Deposit & Withdrawal
                             Row(
                               children: [
                                 Expanded(
@@ -403,13 +344,52 @@ class HomePage extends StatelessWidget {
                                     },
                                   ),
                                 ),
+                              ],
+                            ),
+                            const SizedBox(height: AppSpacing.space2),
+                            // Row 2: Customer Debt, Payable, Cash Drawer Adjustment
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: QuickActionButton(
+                                    label: 'آجل عميل',
+                                    icon: Icons.person_add_alt_1_rounded,
+                                    color: const Color(0xFF10B981),
+                                    onTap: () {
+                                      context.read<DebtCubit>().selectLiabilityType(DebtType.customerDebt);
+                                      context.push(AppRoutes.debtors);
+                                    },
+                                  ),
+                                ),
                                 const SizedBox(width: AppSpacing.space2),
                                 Expanded(
                                   child: QuickActionButton(
-                                    label: 'العمليات',
-                                    icon: Icons.receipt_long_rounded,
-                                    color: AppColors.primary,
-                                    onTap: onNavigateToOperations,
+                                    label: 'مستحق علينا',
+                                    icon: Icons.request_quote_rounded,
+                                    color: const Color(0xFFF97316),
+                                    onTap: () {
+                                      context.read<DebtCubit>().selectLiabilityType(DebtType.payable);
+                                      context.push(AppRoutes.debtors);
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.space2),
+                                Expanded(
+                                  child: QuickActionButton(
+                                    label: 'تعديل الدرج',
+                                    icon: Icons.tune_rounded,
+                                    color: const Color(0xFFF59E0B),
+                                    onTap: () {
+                                      final cashCubit = context.read<CashDrawerCubit>();
+                                      final balance = cashCubit.state is CashDrawerLoaded
+                                          ? (cashCubit.state as CashDrawerLoaded).cashDrawer.balance
+                                          : 0.0;
+                                      showEditCashDrawerDialog(
+                                        parentContext: context,
+                                        cashDrawerCubit: cashCubit,
+                                        currentDrawerBalance: balance,
+                                      );
+                                    },
                                   ),
                                 ),
                               ],

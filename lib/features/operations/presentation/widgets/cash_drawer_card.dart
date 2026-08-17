@@ -5,9 +5,8 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
-import 'package:smart_expense/core/utils/arabic_numerals.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
-import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/dialogs/edit_cash_drawer_dialog.dart';
 
 class CashDrawerCard extends StatelessWidget {
   final double balance;
@@ -32,10 +31,7 @@ class CashDrawerCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.card,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: AppColors.border50,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.border50, width: 1),
       ),
       child: Row(
         children: [
@@ -75,7 +71,13 @@ class CashDrawerCard extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () => _showEditBalanceDialog(context),
+            onPressed: () {
+              showEditCashDrawerDialog(
+                parentContext: context,
+                cashDrawerCubit: context.read<CashDrawerCubit>(),
+                currentDrawerBalance: balance,
+              );
+            },
             icon: const Icon(
               Icons.edit_rounded,
               color: AppColors.mutedForeground,
@@ -85,81 +87,6 @@ class CashDrawerCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  void _showEditBalanceDialog(BuildContext context) {
-    final cubitState = context.read<CashDrawerCubit>().state;
-    final currentBalance = cubitState is CashDrawerLoaded
-        ? cubitState.cashDrawer.balance
-        : balance;
-    final controller = TextEditingController(
-      text: currentBalance > 0 ? currentBalance.toStringAsFixed(0) : '',
-    );
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-          ),
-          title: Text(
-            'رصيد الدرج النقدي',
-            style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
-          ),
-          content: TextField(
-            controller: controller,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.right,
-            decoration: InputDecoration(
-              hintText: '0',
-              hintStyle: AppTextStyles.body.copyWith(color: AppColors.mutedForeground),
-              suffixText: 'ج.م',
-              suffixStyle: AppTextStyles.body.copyWith(color: AppColors.mutedForeground),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md),
-                borderSide: BorderSide(color: AppColors.border50),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('إلغاء', style: AppTextStyles.body.copyWith(color: AppColors.mutedForeground)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final text = controller.text.trim();
-                final value = text.isEmpty ? 0.0 : parseArabicNumerals(text);
-                if (value < 0) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    const SnackBar(content: Text('لا يمكن أن يكون الرصيد سالباً')),
-                  );
-                  return;
-                }
-                final cubit = context.read<CashDrawerCubit>();
-                final messenger = ScaffoldMessenger.of(dialogContext);
-                final navigator = Navigator.of(dialogContext);
-                try {
-                  await cubit.updateBalance(value);
-                  navigator.pop();
-                } catch (e) {
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('فشل تحديث رصيد الدرج النقدي')),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.primaryForeground,
-              ),
-              child: const Text('حفظ'),
-            ),
-          ],
-        );
-      },
     );
   }
 }

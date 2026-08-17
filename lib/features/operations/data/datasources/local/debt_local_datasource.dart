@@ -21,6 +21,10 @@ abstract class DebtLocalDataSource {
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);
   Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebtorId});
   
+  // Timeframe queries
+  Future<List<DebtModel>> getDebtsInTimeframe(DateTime start, DateTime? end);
+  Future<List<DebtPaymentModel>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end);
+
   // Partial Payments
   Future<List<DebtPaymentModel>> getPaymentsForDebts(List<int> debtIds);
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'});

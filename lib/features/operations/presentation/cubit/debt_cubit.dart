@@ -20,6 +20,8 @@ class DebtCubit extends Cubit<DebtState> {
   double totalOutstandingCustomerDebt = 0;
   double totalOutstandingPayable = 0;
   double totalOutstandingSettlementDebt = 0;
+  double todayCustomerDebtCollected = 0;
+  double todayPayablesSettled = 0;
   List<DebtEntity> unpaidDebts = [];
   List<DebtorEntity> _allDebtors = [];
   Map<int, double> _customerBalances = {};
@@ -213,17 +215,42 @@ class DebtCubit extends Cubit<DebtState> {
 
       final totalCustomerReceivables = customerTotal + settlementTotal;
 
-      unpaidDebts = unpaid;
-      totalOutstanding = totalCustomerReceivables;
-      totalOutstandingCustomerDebt = customerTotal;
-      totalOutstandingPayable = payableTotal;
-      totalOutstandingSettlementDebt = settlementTotal;
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59, 999);
+
+      final todayPayments = await repository.getDebtPaymentsInTimeframe(todayStart, todayEnd);
+      double todayCollected = 0.0;
+      double todaySettled = 0.0;
+
+      if (todayPayments.isNotEmpty) {
+        final allDebts = await repository.getDebtsInTimeframe(
+          DateTime.fromMillisecondsSinceEpoch(0),
+          null,
+        );
+        final debtTypeById = {for (final d in allDebts) d.id: d.debtType};
+        for (final p in todayPayments) {
+          final type = debtTypeById[p.debtId];
+          if (type == DebtType.payable) {
+            todaySettled += p.amount;
+          } else {
+            // customerDebt and settlementDebt collected
+            todayCollected += p.amount;
+          }
+        }
+      }
+
+      todayCustomerDebtCollected = todayCollected;
+      todayPayablesSettled = todaySettled;
+
       emit(OutstandingDebtLoaded(
         totalOutstanding: totalCustomerReceivables,
         totalCustomerDebt: customerTotal,
         totalPayable: payableTotal,
         totalSettlementDebt: settlementTotal,
         unpaidDebts: unpaid,
+        todayCustomerDebtCollected: todayCollected,
+        todayPayablesSettled: todaySettled,
       ));
     } catch (e) {
       debugPrint('loadOutstandingDebt error: $e');

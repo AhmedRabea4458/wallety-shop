@@ -140,7 +140,7 @@ class OperationList extends StatelessWidget {
                           ),
                         ),
                       ]
-                      : operations.take(3).map((operation) {
+                      : operations.take(5).map((operation) {
                         final typeLabel = _getOperationTypeLabel(
                           operation.operationType,
                         );
@@ -182,6 +182,8 @@ class OperationList extends StatelessWidget {
                                 ? '$typeLabel - $walletName'
                                 : '$typeLabel - $instaPayAccountName';
                         final debt = operationDebts[operation.id];
+                        final isLastItem =
+                            operation == operations.take(5).last;
                         return Column(
                           children: [
                             if (debt != null)
@@ -210,11 +212,11 @@ class OperationList extends StatelessWidget {
                                   child: Text(
                                     debt.isPaid
                                         ? (debt.debtType == DebtType.payable
-                                            ? '🟢 تم السداد'
-                                            : '🟢 تم السداد')
+                                            ? '🟢 تم سداد المستحق'
+                                            : '🟢 تم تحصيل الآجل')
                                         : (debt.debtType == DebtType.payable
-                                            ? '🟠 مستحق عليّ'
-                                            : '🟠 آجل'),
+                                            ? '🟠 مستحق علينا'
+                                            : '🟠 آجل عميل (لنا)'),
                                     style: AppTextStyles.caption.copyWith(
                                       color:
                                           debt.isPaid
@@ -256,8 +258,7 @@ class OperationList extends StatelessWidget {
                                 }
                               },
                             ),
-                            if (operation != operations.last &&
-                                operation != operations.take(3).last)
+                            if (!isLastItem)
                               const Divider(
                                 color: AppColors.border45,
                                 indent: AppSpacing.space5,

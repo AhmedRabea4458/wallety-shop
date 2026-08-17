@@ -73,6 +73,13 @@ class ShiftStatusCard extends StatelessWidget {
     if (state is ActiveShiftLoaded) {
       final shift = state.shift;
       final startedAt = DateFormat('hh:mm a', 'ar').format(shift.startTime);
+      final diff = DateTime.now().difference(shift.startTime);
+      final hours = diff.inHours;
+      final minutes = diff.inMinutes % 60;
+      final durationStr = hours > 0
+          ? '$hours س و $minutes د'
+          : '$minutes دقيقة';
+
       return Container(
         padding: const EdgeInsets.all(AppSpacing.space4),
         decoration: BoxDecoration(
@@ -83,55 +90,113 @@ class ShiftStatusCard extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: AppColors.success, shape: BoxShape.circle),
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: AppColors.success,
+                shape: BoxShape.circle,
+              ),
             ),
-            const SizedBox(width: AppSpacing.space2),
+            const SizedBox(width: AppSpacing.space3),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('الوردية نشطة منذ $startedAt',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.foreground, fontWeight: FontWeight.w600)),
-                  Text('رصيد البداية: ${_formatAmount(shift.openingCashDrawer)} ج.م',
-                      style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground)),
+                  Row(
+                    children: [
+                      Text(
+                        'الوردية نشطة',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.foreground,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: Text(
+                          durationStr,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'بدأت $startedAt • فتح: ${_formatAmount(shift.openingCashDrawer)} ج.م',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
                 ],
               ),
             ),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: Text('إغلاق الوردية', style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-                    content: Text('هل أنت متأكد من إغلاق الوردية الحالية؟'),
+                    title: Text(
+                      'إغلاق الوردية',
+                      style: AppTextStyles.headline.copyWith(
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                    content: const Text('هل أنت متأكد من إغلاق الوردية الحالية؟'),
                     actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: Text(
+                          'إلغاء',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.mutedForeground,
+                          ),
+                        ),
+                      ),
                       ElevatedButton(
                         onPressed: () {
                           final drawCubit = context.read<CashDrawerCubit>();
                           final drawerBalance = drawCubit.state is CashDrawerLoaded
                               ? (drawCubit.state as CashDrawerLoaded).cashDrawer.balance
                               : 0.0;
-                              context.read<ActiveShiftCubit>().closeShift(shift.id, drawerBalance);
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('تم إغلاق الوردية بنجاح')),
-                              );
+                          context.read<ActiveShiftCubit>().closeShift(shift.id, drawerBalance);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('تم إغلاق الوردية بنجاح')),
+                          );
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.destructive),
-                        child: const Text('إغلاق'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.destructive,
+                          foregroundColor: AppColors.destructiveForeground,
+                        ),
+                        child: const Text('تأكيد الإغلاق'),
                       ),
                     ],
                   ),
                 );
               },
+              icon: const Icon(Icons.lock_clock_rounded, size: 16),
+              label: const Text('إغلاق'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.withAlpha(AppColors.destructive, 0.1),
+                backgroundColor: AppColors.destructive.withValues(alpha: 0.1),
                 foregroundColor: AppColors.destructive,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.space3,
+                  vertical: AppSpacing.space2,
+                ),
               ),
-              child: const Text('إغلاق'),
             ),
           ],
         ),

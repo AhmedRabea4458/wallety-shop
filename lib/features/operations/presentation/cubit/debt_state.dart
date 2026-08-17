@@ -40,6 +40,8 @@ class OutstandingDebtLoaded extends DebtState {
   final double totalPayable;
   final double totalSettlementDebt;
   final List<DebtEntity> unpaidDebts;
+  final double todayCustomerDebtCollected;
+  final double todayPayablesSettled;
 
   OutstandingDebtLoaded({
     required this.totalOutstanding,
@@ -47,6 +49,8 @@ class OutstandingDebtLoaded extends DebtState {
     this.totalPayable = 0.0,
     required this.totalSettlementDebt,
     required this.unpaidDebts,
+    this.todayCustomerDebtCollected = 0.0,
+    this.todayPayablesSettled = 0.0,
   });
 }
 

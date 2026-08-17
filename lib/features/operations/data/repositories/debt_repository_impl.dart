@@ -124,6 +124,20 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
+  Future<List<DebtEntity>> getDebtsInTimeframe(DateTime start, DateTime? end) {
+    return localDataSource.getDebtsInTimeframe(start, end).then(
+      (data) => data.map((m) => m.toEntity()).toList(),
+    );
+  }
+
+  @override
+  Future<List<DebtPaymentEntity>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end) {
+    return localDataSource.getDebtPaymentsInTimeframe(start, end).then(
+      (data) => data.map((m) => m.toEntity()).toList(),
+    );
+  }
+
+  @override
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
     return localDataSource.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }

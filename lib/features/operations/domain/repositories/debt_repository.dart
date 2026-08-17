@@ -21,6 +21,10 @@ abstract class DebtRepository {
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);
   Future<void> mergeDebtors({required int sourceDebtorId, required int targetDebtorId});
   
+  // Timeframe queries
+  Future<List<DebtEntity>> getDebtsInTimeframe(DateTime start, DateTime? end);
+  Future<List<DebtPaymentEntity>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end);
+
   // Partial Payments
   Future<List<DebtPaymentEntity>> getPaymentsForDebts(List<int> debtIds);
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'});

@@ -7,6 +7,9 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/cash_drawer_card.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
@@ -28,6 +31,7 @@ class _WalletManagementPageState extends State<WalletManagementPage> {
     super.initState();
     context.read<WalletCubit>().getWallets();
     context.read<WalletAdjustmentCubit>().loadAllAdjustments();
+    context.read<CashDrawerCubit>().getCashDrawer();
   }
 
   void _showAddWalletDialog() {
@@ -110,7 +114,29 @@ class _WalletManagementPageState extends State<WalletManagementPage> {
               ),
             ),
             SliverToBoxAdapter(
-              child: SizedBox(height: AppSpacing.space6),
+              child: SizedBox(height: AppSpacing.space4),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: BlocBuilder<CashDrawerCubit, CashDrawerState>(
+                  builder: (context, cashState) {
+                    final cashDrawer = cashState is CashDrawerLoaded
+                        ? cashState.cashDrawer
+                        : null;
+                    return CashDrawerCard(
+                      balance: cashDrawer?.balance ?? 0.0,
+                      initialBalance: cashDrawer?.initialBalance ?? 0.0,
+                      updatedAt: cashDrawer?.updatedAt,
+                    );
+                  },
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: SizedBox(height: AppSpacing.space4),
             ),
             SliverToBoxAdapter(
               child: Padding(

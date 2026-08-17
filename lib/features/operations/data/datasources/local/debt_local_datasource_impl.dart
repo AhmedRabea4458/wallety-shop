@@ -163,6 +163,20 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   }
 
   @override
+  Future<List<DebtModel>> getDebtsInTimeframe(DateTime start, DateTime? end) {
+    return database.getDebtsInTimeframe(start, end).then(
+      (data) => data.map((e) => DebtModel.fromDrift(e)).toList(),
+    );
+  }
+
+  @override
+  Future<List<DebtPaymentModel>> getDebtPaymentsInTimeframe(DateTime start, DateTime? end) {
+    return database.getDebtPaymentsInTimeframe(start, end).then(
+      (data) => data.map((e) => DebtPaymentModel.fromDrift(e)).toList(),
+    );
+  }
+
+  @override
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
     return database.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
   }
