@@ -66,7 +66,7 @@ class DebtCubit extends Cubit<DebtState> {
         for (final debt in debts) {
           if (debt.debtType == DebtType.payable) {
             debtorsWithPayables.add(debtor.id);
-          } else {
+          } else if (debt.debtType == DebtType.customerDebt || debt.debtType == DebtType.settlementDebt) {
             debtorsWithCustomerDebt.add(debtor.id);
           }
         }
@@ -78,7 +78,7 @@ class DebtCubit extends Cubit<DebtState> {
         if (debt.debtType == DebtType.payable) {
           payableBalances[debt.debtorId] = (payableBalances[debt.debtorId] ?? 0.0) + remaining;
           debtorsWithUnpaidPayable.add(debt.debtorId);
-        } else {
+        } else if (debt.debtType == DebtType.customerDebt || debt.debtType == DebtType.settlementDebt) {
           customerBalances[debt.debtorId] = (customerBalances[debt.debtorId] ?? 0.0) + remaining;
           debtorsWithUnpaidCustomerDebt.add(debt.debtorId);
         }
@@ -159,13 +159,23 @@ class DebtCubit extends Cubit<DebtState> {
     }
   }
 
-  Future<void> loadDebtorDetail(int debtorId) async {
+  Future<void> loadDebtorDetail(
+    int debtorId, {
+    DebtType activeLiabilityType = DebtType.customerDebt,
+  }) async {
     emit(DebtLoading());
     try {
       final debtor = await repository.getAllDebtors().then(
         (all) => all.firstWhere((d) => d.id == debtorId),
       );
-      final debts = await repository.getDebtsByDebtor(debtorId);
+      final allDebts = await repository.getDebtsByDebtor(debtorId);
+      final debts = allDebts.where((d) {
+        if (activeLiabilityType == DebtType.payable) {
+          return d.debtType == DebtType.payable;
+        } else {
+          return d.debtType == DebtType.customerDebt || d.debtType == DebtType.settlementDebt;
+        }
+      }).toList();
       final debtIds = debts.map((d) => d.id).toList();
       final payments = await repository.getPaymentsForDebts(debtIds);
       emit(DebtorDetailLoaded(debtor: debtor, debts: debts, payments: payments));
@@ -291,6 +301,7 @@ class DebtCubit extends Cubit<DebtState> {
     String? notes,
     String paymentMethod = 'cash',
     required int debtorId,
+    DebtType activeLiabilityType = DebtType.customerDebt,
   }) async {
     try {
       await repository.payDebt(
@@ -301,7 +312,7 @@ class DebtCubit extends Cubit<DebtState> {
       );
       cashDrawerCubit.refreshCashDrawer();
       await loadOutstandingDebt();
-      await loadDebtorDetail(debtorId);
+      await loadDebtorDetail(debtorId, activeLiabilityType: activeLiabilityType);
       sl<OperationCubit>().getOperations();
     } catch (e) {
       debugPrint('payDebt error: $e');
@@ -417,7 +428,8 @@ class DebtCubit extends Cubit<DebtState> {
 
       await loadOutstandingDebt();
       if (debt.debtorId == debtor.id) {
-        await loadDebtorDetail(debtor.id);
+        final activeType = debt.debtType == DebtType.payable ? DebtType.payable : DebtType.customerDebt;
+        await loadDebtorDetail(debtor.id, activeLiabilityType: activeType);
       } else {
         await loadDebtors();
       }
@@ -451,11 +463,20 @@ class DebtCubit extends Cubit<DebtState> {
     required int debtorId,
     required double totalAmount,
     String? notes,
+    DebtType activeLiabilityType = DebtType.customerDebt,
   }) async {
     try {
-      // Load all debts + their payments for this debtor
+      // Load all debts + their payments for this debtor filtered by active liability type
       final debts = await repository.getDebtsByDebtor(debtorId);
-      final debtIds = debts.map((d) => d.id).toList();
+      final filteredDebts = debts.where((d) {
+        if (activeLiabilityType == DebtType.payable) {
+          return d.debtType == DebtType.payable;
+        } else {
+          return d.debtType == DebtType.customerDebt || d.debtType == DebtType.settlementDebt;
+        }
+      }).toList();
+
+      final debtIds = filteredDebts.map((d) => d.id).toList();
       final payments = await repository.getPaymentsForDebts(debtIds);
 
       final paymentsByDebt = <int, double>{};
@@ -464,7 +485,7 @@ class DebtCubit extends Cubit<DebtState> {
       }
 
       // Active debts only, sorted oldest-first
-      final activeDebts = debts
+      final activeDebts = filteredDebts
           .where((d) => !d.isPaid)
           .toList()
         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -492,7 +513,7 @@ class DebtCubit extends Cubit<DebtState> {
 
       cashDrawerCubit.refreshCashDrawer();
       await loadOutstandingDebt();
-      await loadDebtorDetail(debtorId);
+      await loadDebtorDetail(debtorId, activeLiabilityType: activeLiabilityType);
       sl<OperationCubit>().getOperations();
     } catch (e) {
       debugPrint('bulkPayDebts error: $e');

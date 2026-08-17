@@ -307,7 +307,13 @@ class _DebtorsPageState extends State<DebtorsPage> {
                           balance: balance,
                           onTap: () async {
                             final debtCubit = context.read<DebtCubit>();
-                            await context.push(AppRoutes.debtorDetail, extra: debtor.id);
+                            await context.push(
+                              AppRoutes.debtorDetail,
+                              extra: {
+                                'debtorId': debtor.id,
+                                'activeLiabilityType': state.activeLiabilityType,
+                              },
+                            );
                             if (mounted) {
                               debtCubit.loadDebtors(silent: true);
                             }

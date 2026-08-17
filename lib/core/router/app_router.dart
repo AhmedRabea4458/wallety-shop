@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_expense/core/di/injection_container.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
 import 'package:smart_expense/features/main_layout/presentation/pages/main_layout_page.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
@@ -131,6 +132,19 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.debtorDetail,
       builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final map = state.extra as Map<String, dynamic>;
+          final debtorId = map['debtorId'] as int;
+          final activeLiabilityType =
+              map['activeLiabilityType'] as DebtType? ?? DebtType.customerDebt;
+          return BlocProvider.value(
+            value: sl<DebtCubit>(),
+            child: DebtorDetailPage(
+              debtorId: debtorId,
+              activeLiabilityType: activeLiabilityType,
+            ),
+          );
+        }
         final debtorId = state.extra as int;
         return BlocProvider.value(
           value: sl<DebtCubit>(),

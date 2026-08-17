@@ -19,8 +19,13 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 
 class DebtorDetailPage extends StatefulWidget {
   final int debtorId;
+  final DebtType activeLiabilityType;
 
-  const DebtorDetailPage({super.key, required this.debtorId});
+  const DebtorDetailPage({
+    super.key,
+    required this.debtorId,
+    this.activeLiabilityType = DebtType.customerDebt,
+  });
 
   @override
   State<DebtorDetailPage> createState() => _DebtorDetailPageState();
@@ -32,7 +37,10 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
   @override
   void initState() {
     super.initState();
-    context.read<DebtCubit>().loadDebtorDetail(widget.debtorId);
+    context.read<DebtCubit>().loadDebtorDetail(
+          widget.debtorId,
+          activeLiabilityType: widget.activeLiabilityType,
+        );
   }
 
   static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
@@ -299,7 +307,10 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                   await debtCubit.markDebtAsPaid(debt.id);
                                   sl<OperationCubit>().getOperations();
                                   if (mounted) {
-                                    debtCubit.loadDebtorDetail(widget.debtorId);
+                                    debtCubit.loadDebtorDetail(
+                                      widget.debtorId,
+                                      activeLiabilityType: widget.activeLiabilityType,
+                                    );
                                   }
                                 }
                               },
@@ -582,6 +593,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                               ? null
                               : notesController.text.trim(),
                       debtorId: debtorId,
+                      activeLiabilityType: widget.activeLiabilityType,
                     );
                     navigator.pop();
                   } catch (e) {
@@ -753,6 +765,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                             debtorId: debtorId,
                             totalAmount: amount,
                             notes: notesText.isEmpty ? null : notesText,
+                            activeLiabilityType: widget.activeLiabilityType,
                           );
                           navigator.pop();
                           if (mounted) {

@@ -36,10 +36,7 @@ import 'package:smart_expense/features/expenses/presentation/widgets/save_transa
 class AddOperationPage extends StatefulWidget {
   final OperationEntity? operationToEdit;
 
-  const AddOperationPage({
-    super.key,
-    this.operationToEdit,
-  });
+  const AddOperationPage({super.key, this.operationToEdit});
 
   @override
   State<AddOperationPage> createState() => _AddOperationPageState();
@@ -62,7 +59,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _customerNameController = TextEditingController();
-  final TextEditingController _customerPhoneController = TextEditingController();
+  final TextEditingController _customerPhoneController =
+      TextEditingController();
   final TextEditingController _paidNowController = TextEditingController();
 
   bool get _isEditing => widget.operationToEdit != null;
@@ -82,11 +80,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
       _instaPayAccountId = op.instaPayAccountId;
       _selectedDate = op.createdAt;
       _amountController.text = op.amount.toStringAsFixed(0);
-      _commissionController.text = op.commission > 0 ? op.commission.toStringAsFixed(0) : '';
-      _networkFeeController.text = op.networkFee > 0 ? op.networkFee.toStringAsFixed(0) : '';
+      _commissionController.text =
+          op.commission > 0 ? op.commission.toStringAsFixed(0) : '';
+      _networkFeeController.text =
+          op.networkFee > 0 ? op.networkFee.toStringAsFixed(0) : '';
       _phoneController.text = op.phoneNumber ?? '';
       _notesController.text = op.notes ?? '';
-      _isDebtLinked = context.read<OperationCubit>().getDebtForOperation(op.id) != null;
+      _isDebtLinked =
+          context.read<OperationCubit>().getDebtForOperation(op.id) != null;
     } else {
       _selectedType = OperationType.deposit;
       _selectedProvider = ProviderType.vodafoneCash;
@@ -107,7 +108,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
       return;
     }
 
-    if (_selectedProvider == ProviderType.vodafoneCash && _selectedWalletId == null) {
+    if (_selectedProvider == ProviderType.vodafoneCash &&
+        _selectedWalletId == null) {
       _showError('يرجى اختيار المحفظة');
       return;
     }
@@ -119,14 +121,16 @@ class _AddOperationPageState extends State<AddOperationPage> {
     }
 
     final commissionText = _commissionController.text.trim();
-    final commission = commissionText.isEmpty ? 0.0 : parseArabicNumerals(commissionText);
+    final commission =
+        commissionText.isEmpty ? 0.0 : parseArabicNumerals(commissionText);
     if (commission < 0) {
       _showError('لا يمكن أن تكون العمولة سالبة');
       return;
     }
 
     final networkFeeText = _networkFeeController.text.trim();
-    final networkFee = networkFeeText.isEmpty ? 0.0 : parseArabicNumerals(networkFeeText);
+    final networkFee =
+        networkFeeText.isEmpty ? 0.0 : parseArabicNumerals(networkFeeText);
     if (networkFee < 0) {
       _showError('لا يمكن أن تكون رسوم الشبكة سالبة');
       return;
@@ -161,11 +165,18 @@ class _AddOperationPageState extends State<AddOperationPage> {
       providerType: _selectedProvider,
       amount: amount,
       commission: commission,
-      networkFee: _selectedProvider == ProviderType.vodafoneCash ? networkFee : 0.0,
+      networkFee:
+          _selectedProvider == ProviderType.vodafoneCash ? networkFee : 0.0,
       shiftId: shiftId,
-      instaPayAccountId: _selectedProvider == ProviderType.instaPay ? _instaPayAccountId : null,
+      instaPayAccountId:
+          _selectedProvider == ProviderType.instaPay
+              ? _instaPayAccountId
+              : null,
       phoneNumber: phoneText,
-      notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+      notes:
+          _notesController.text.trim().isEmpty
+              ? null
+              : _notesController.text.trim(),
       createdAt: _selectedDate,
     );
 
@@ -186,28 +197,34 @@ class _AddOperationPageState extends State<AddOperationPage> {
           return;
         }
         final paidNowText = _paidNowController.text.trim();
-        final paidNowVal = paidNowText.isEmpty ? 0.0 : parseArabicNumerals(paidNowText);
+        final paidNowVal =
+            paidNowText.isEmpty ? 0.0 : parseArabicNumerals(paidNowText);
 
         if (paidNowVal <= 0) {
           operationId = await operationCubit.addFullWithdrawalPayable(
             entity,
             customerName: name,
-            customerPhone: _customerPhoneController.text.trim().isEmpty
-                ? null
-                : _customerPhoneController.text.trim(),
+            customerPhone:
+                _customerPhoneController.text.trim().isEmpty
+                    ? null
+                    : _customerPhoneController.text.trim(),
           );
         } else {
           operationId = await operationCubit.addPartialWithdrawal(
             entity,
             customerName: name,
-            customerPhone: _customerPhoneController.text.trim().isEmpty
-                ? null
-                : _customerPhoneController.text.trim(),
+            customerPhone:
+                _customerPhoneController.text.trim().isEmpty
+                    ? null
+                    : _customerPhoneController.text.trim(),
             paidNow: paidNowVal,
           );
         }
       } else {
-        operationId = await operationCubit.addOperation(entity, isDebt: _isDebt);
+        operationId = await operationCubit.addOperation(
+          entity,
+          isDebt: _isDebt,
+        );
       }
       if (_isDebt && !_isEditing) {
         if (!mounted) return;
@@ -215,13 +232,17 @@ class _AddOperationPageState extends State<AddOperationPage> {
         await debtCubit.createDebtFromOperation(
           operationId: operationId,
           customerName: _customerNameController.text.trim(),
-          customerPhone: _customerPhoneController.text.trim().isEmpty
-              ? null
-              : _customerPhoneController.text.trim(),
+          customerPhone:
+              _customerPhoneController.text.trim().isEmpty
+                  ? null
+                  : _customerPhoneController.text.trim(),
           operationType: _selectedType.name,
           providerType: _selectedProvider.name,
           amount: amount + commission,
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          notes:
+              _notesController.text.trim().isEmpty
+                  ? null
+                  : _notesController.text.trim(),
         );
         await operationCubit.getOperations();
       }
@@ -243,7 +264,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
           operationType: _selectedType.name,
           providerType: _selectedProvider.name,
           amount: amount,
-          notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+          notes:
+              _notesController.text.trim().isEmpty
+                  ? null
+                  : _notesController.text.trim(),
           debtType: DebtType.settlementDebt,
         );
         await operationCubit.getOperations();
@@ -255,14 +279,17 @@ class _AddOperationPageState extends State<AddOperationPage> {
           context.read<CashDrawerCubit>().refreshCashDrawer();
         } catch (_) {}
       }
-      _showSuccess(_isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح');
+      _showSuccess(
+        _isEditing ? 'تم تحديث العملية بنجاح' : 'تم إضافة العملية بنجاح',
+      );
       Navigator.pop(context);
     } on InsufficientCashDrawerBalanceException {
       if (!mounted) return;
       setState(() => _isSaving = false);
       if (_selectedType == OperationType.withdrawal && !_isEditing) {
         final cashState = context.read<CashDrawerCubit>().state;
-        final availableCash = cashState is CashDrawerLoaded ? cashState.cashDrawer.balance : 0.0;
+        final availableCash =
+            cashState is CashDrawerLoaded ? cashState.cashDrawer.balance : 0.0;
         final remainder = (amount - commission) - availableCash;
 
         final result = await _showInsufficientBalanceDialog(
@@ -274,7 +301,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
 
         if (result == null || !mounted) return;
 
-        final double? customPaidNow = result['paidNow'] != null ? double.tryParse(result['paidNow']!) : null;
+        final double? customPaidNow =
+            result['paidNow'] != null
+                ? double.tryParse(result['paidNow']!)
+                : null;
 
         setState(() => _isSaving = true);
         try {
@@ -312,134 +342,181 @@ class _AddOperationPageState extends State<AddOperationPage> {
   }) {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
-    final paidNowController = TextEditingController(text: availableCash.toStringAsFixed(0));
+    final paidNowController = TextEditingController(
+      text: availableCash.toStringAsFixed(0),
+    );
 
     return showDialog<Map<String, String?>>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          final isNameValid = nameController.text.trim().isNotEmpty;
-          final double currentPaidNow = parseArabicNumerals(paidNowController.text.trim());
-          final double currentRemainder = (requestedAmount - currentPaidNow).clamp(0.0, double.infinity);
-          final bool isAmountValid = currentPaidNow >= 0 && currentPaidNow <= availableCash && currentPaidNow < requestedAmount;
+      builder:
+          (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) {
+              final isNameValid = nameController.text.trim().isNotEmpty;
+              final double currentPaidNow = parseArabicNumerals(
+                paidNowController.text.trim(),
+              );
+              final double currentRemainder = (requestedAmount - currentPaidNow)
+                  .clamp(0.0, double.infinity);
+              final bool isAmountValid =
+                  currentPaidNow >= 0 &&
+                  currentPaidNow <= availableCash &&
+                  currentPaidNow < requestedAmount;
 
-          return AlertDialog(
-            backgroundColor: AppColors.card,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-            title: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 24),
-                const SizedBox(width: AppSpacing.space2),
-                Text(
-                  'رصيد النقود غير كافٍ',
-                  style: AppTextStyles.headline.copyWith(color: AppColors.foreground),
+              return AlertDialog(
+                backgroundColor: AppColors.card,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                 ),
-              ],
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'رصيد الدرج لا يكفي للسحب بالكامل. يمكنك تحديد المبلغ المدفوع حالياً وتسجيل الباقي كمستحق:',
-                    style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+                title: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: AppColors.warning,
+                      size: 24,
+                    ),
+                    const SizedBox(width: AppSpacing.space2),
+                    Text(
+                      'رصيد النقود غير كافٍ',
+                      style: AppTextStyles.headline.copyWith(
+                        color: AppColors.foreground,
+                      ),
+                    ),
+                  ],
+                ),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'رصيد الدرج لا يكفي للسحب بالكامل. يمكنك تحديد المبلغ المدفوع حالياً وتسجيل الباقي كمستحق:',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.space4),
+                      Container(
+                        padding: const EdgeInsets.all(AppSpacing.space3),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.border50),
+                        ),
+                        child: Column(
+                          children: [
+                            _dialogAmountRow(
+                              'المبلغ المطلوب بالسحب',
+                              requestedAmount,
+                              AppColors.foreground,
+                            ),
+                            const SizedBox(height: AppSpacing.space2),
+                            _dialogAmountRow(
+                              'المصروف حالياً كاش',
+                              currentPaidNow,
+                              AppColors.primary,
+                            ),
+                            const Divider(height: AppSpacing.space3),
+                            _dialogAmountRow(
+                              'المتبقي كمستحق للعميل',
+                              currentRemainder,
+                              AppColors.warning,
+                              isBold: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.space4),
+                      TextField(
+                        controller: paidNowController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.right,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: InputDecoration(
+                          labelText:
+                              'المبلغ المدفوع الآن نقداً (أقصى حد: ${availableCash.toStringAsFixed(0)})',
+                          hintText: 'أدخل المبلغ المصروف للعميل',
+                          border: const OutlineInputBorder(),
+                          errorText:
+                              currentPaidNow > availableCash
+                                  ? 'المبلغ يتجاوز رصيد الدرج المتوفر'
+                                  : (currentPaidNow >= requestedAmount
+                                      ? 'المبلغ يجب أن يكون أقل من المبلغ المطلوب'
+                                      : null),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.space3),
+                      TextField(
+                        controller: nameController,
+                        textAlign: TextAlign.right,
+                        onChanged: (_) => setDialogState(() {}),
+                        decoration: const InputDecoration(
+                          labelText: 'اسم المستحق له (مطلوب)',
+                          hintText: 'أدخل اسم العميل / الجهة',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.space3),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        textAlign: TextAlign.right,
+                        decoration: const InputDecoration(
+                          labelText: 'رقم الهاتف (اختياري)',
+                          hintText: '01XXXXXXXXX',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.space3),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(color: AppColors.border50),
-                    ),
-                    child: Column(
-                      children: [
-                        _dialogAmountRow('المبلغ المطلوب بالسحب', requestedAmount, AppColors.foreground),
-                        const SizedBox(height: AppSpacing.space2),
-                        _dialogAmountRow('المصروف حالياً كاش', currentPaidNow, AppColors.primary),
-                        const Divider(height: AppSpacing.space3),
-                        _dialogAmountRow('المتبقي كمستحق للعميل', currentRemainder, AppColors.warning, isBold: true),
-                      ],
-                    ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, null),
+                    child: const Text('إلغاء'),
                   ),
-                  const SizedBox(height: AppSpacing.space4),
-                  TextField(
-                    controller: paidNowController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.right,
-                    onChanged: (_) => setDialogState(() {}),
-                    decoration: InputDecoration(
-                      labelText: 'المبلغ المدفوع الآن نقداً (أقصى حد: ${availableCash.toStringAsFixed(0)})',
-                      hintText: 'أدخل المبلغ المصروف للعميل',
-                      border: const OutlineInputBorder(),
-                      errorText: currentPaidNow > availableCash
-                          ? 'المبلغ يتجاوز رصيد الدرج المتوفر'
-                          : (currentPaidNow >= requestedAmount ? 'المبلغ يجب أن يكون أقل من المبلغ المطلوب' : null),
+                  ElevatedButton(
+                    onPressed:
+                        (isNameValid && isAmountValid)
+                            ? () {
+                              Navigator.pop(ctx, {
+                                'name': nameController.text.trim(),
+                                'phone':
+                                    phoneController.text.trim().isEmpty
+                                        ? null
+                                        : phoneController.text.trim(),
+                                'paidNow': currentPaidNow.toString(),
+                              });
+                            }
+                            : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.primaryForeground,
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.space3),
-                  TextField(
-                    controller: nameController,
-                    textAlign: TextAlign.right,
-                    onChanged: (_) => setDialogState(() {}),
-                    decoration: const InputDecoration(
-                      labelText: 'اسم المستحق له (مطلوب)',
-                      hintText: 'أدخل اسم العميل / الجهة',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space3),
-                  TextField(
-                    controller: phoneController,
-                    keyboardType: TextInputType.phone,
-                    textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم الهاتف (اختياري)',
-                      hintText: '01XXXXXXXXX',
-                      border: OutlineInputBorder(),
-                    ),
+                    child: const Text('تأكيد وتسجيل المستحق'),
                   ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, null),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: (isNameValid && isAmountValid)
-                    ? () {
-                        Navigator.pop(ctx, {
-                          'name': nameController.text.trim(),
-                          'phone': phoneController.text.trim().isEmpty ? null : phoneController.text.trim(),
-                          'paidNow': currentPaidNow.toString(),
-                        });
-                      }
-                    : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.primaryForeground,
-                ),
-                child: const Text('تأكيد وتسجيل المستحق'),
-              ),
-            ],
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 
-  Widget _dialogAmountRow(String label, double value, Color color, {bool isBold = false}) {
+  Widget _dialogAmountRow(
+    String label,
+    double value,
+    Color color, {
+    bool isBold = false,
+  }) {
     final format = NumberFormat('#,##0.##', 'ar');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.mutedForeground,
+          ),
         ),
         Text(
           '${format.format(value)} ج.م',
@@ -455,20 +532,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
   void _showError(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.destructive,
-      ),
+      SnackBar(content: Text(message), backgroundColor: AppColors.destructive),
     );
   }
 
   void _showSuccess(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -533,104 +604,133 @@ class _AddOperationPageState extends State<AddOperationPage> {
 
     showDialog(
       context: context,
-      builder: (ctx) => BlocProvider.value(
-        value: instaPayCubit,
-        child: StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
-              builder: (context, state) {
-                final accounts = state is InstaPayAccountLoaded
-                    ? state.accounts
-                    : <InstaPayAccountEntity>[];
-                return AlertDialog(
-                  backgroundColor: AppColors.card,
-                  title: Text('إدارة حسابات InstaPay',
-                      style: AppTextStyles.headline.copyWith(color: AppColors.foreground)),
-                  content: SizedBox(
-                    width: double.maxFinite,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
+      builder:
+          (ctx) => BlocProvider.value(
+            value: instaPayCubit,
+            child: StatefulBuilder(
+              builder: (ctx, setDialogState) {
+                return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+                  builder: (context, state) {
+                    final accounts =
+                        state is InstaPayAccountLoaded
+                            ? state.accounts
+                            : <InstaPayAccountEntity>[];
+                    return AlertDialog(
+                      backgroundColor: AppColors.card,
+                      title: Text(
+                        'إدارة حسابات InstaPay',
+                        style: AppTextStyles.headline.copyWith(
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: nameController,
-                                  textAlign: TextAlign.right,
-                                  decoration: InputDecoration(
-                                    hintText: editingAccount != null ? 'تعديل الاسم' : 'اسم الحساب الجديد',
-                                    border: const OutlineInputBorder(),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: nameController,
+                                      textAlign: TextAlign.right,
+                                      decoration: InputDecoration(
+                                        hintText:
+                                            editingAccount != null
+                                                ? 'تعديل الاسم'
+                                                : 'اسم الحساب الجديد',
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: AppSpacing.space2),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      final name = nameController.text.trim();
+                                      if (name.isEmpty) return;
+                                      final cubit =
+                                          context.read<InstaPayAccountCubit>();
+                                      if (editingAccount != null) {
+                                        await cubit.updateAccount(
+                                          InstaPayAccountEntity(
+                                            id: editingAccount!.id,
+                                            name: name,
+                                            createdAt:
+                                                editingAccount!.createdAt,
+                                          ),
+                                        );
+                                      } else {
+                                        await cubit.addAccount(name);
+                                      }
+                                      nameController.clear();
+                                      setDialogState(
+                                        () => editingAccount = null,
+                                      );
+                                    },
+                                    child: Text(
+                                      editingAccount != null
+                                          ? 'تعديل'
+                                          : 'إضافة',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (accounts.isNotEmpty) ...[
+                                const SizedBox(height: AppSpacing.space4),
+                                const Divider(),
+                                ...accounts.map(
+                                  (a) => ListTile(
+                                    title: Text(a.name),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.edit_rounded,
+                                            size: 18,
+                                          ),
+                                          onPressed: () {
+                                            nameController.text = a.name;
+                                            setDialogState(
+                                              () => editingAccount = a,
+                                            );
+                                          },
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            size: 18,
+                                          ),
+                                          onPressed: () async {
+                                            await context
+                                                .read<InstaPayAccountCubit>()
+                                                .deleteAccount(a.id);
+                                          },
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: AppSpacing.space2),
-                              ElevatedButton(
-                                onPressed: () async {
-                                  final name = nameController.text.trim();
-                                  if (name.isEmpty) return;
-                                  final cubit = context.read<InstaPayAccountCubit>();
-                                  if (editingAccount != null) {
-                                    await cubit.updateAccount(InstaPayAccountEntity(
-                                      id: editingAccount!.id,
-                                      name: name,
-                                      createdAt: editingAccount!.createdAt,
-                                    ));
-                                  } else {
-                                    await cubit.addAccount(name);
-                                  }
-                                  nameController.clear();
-                                  setDialogState(() => editingAccount = null);
-                                },
-                                child: Text(editingAccount != null ? 'تعديل' : 'إضافة'),
-                              ),
+                              ],
                             ],
                           ),
-                          if (accounts.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.space4),
-                            const Divider(),
-                            ...accounts.map((a) => ListTile(
-                                  title: Text(a.name),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit_rounded, size: 18),
-                                        onPressed: () {
-                                          nameController.text = a.name;
-                                          setDialogState(() => editingAccount = a);
-                                        },
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                        onPressed: () async {
-                                          await context.read<InstaPayAccountCubit>().deleteAccount(a.id);
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                )),
-                          ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('إغلاق'),
-                    ),
-                  ],
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('إغلاق'),
+                        ),
+                      ],
+                    );
+                  },
                 );
               },
-            );
-          },
-        ),
-      ),
+            ),
+          ),
     );
   }
-
-
 
   @override
   void dispose() {
@@ -650,119 +750,125 @@ class _AddOperationPageState extends State<AddOperationPage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: CustomScrollView(
-            slivers: [
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                  vertical: AppSpacing.space4,
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed:
+                          _isSaving ? null : () => Navigator.pop(context),
+                      icon: Container(
+                        padding: const EdgeInsets.all(AppSpacing.space2),
+                        decoration: BoxDecoration(
+                          color: AppColors.card,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          color: AppColors.foreground,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.space3),
+                    Expanded(
+                      child: Text(
+                        _isEditing ? 'تعديل عملية' : 'إضافة عملية',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.headline.copyWith(
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+            ),
+            if (_isDebtLinked)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
-                    vertical: AppSpacing.space4,
                   ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: _isSaving ? null : () => Navigator.pop(context),
-                        icon: Container(
-                          padding: const EdgeInsets.all(AppSpacing.space2),
-                          decoration: BoxDecoration(
-                            color: AppColors.card,
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: const Icon(
-                            Icons.close_rounded,
-                            color: AppColors.foreground,
-                            size: 20,
-                          ),
-                        ),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.space4),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color: AppColors.warning.withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: AppSpacing.space3),
-                      Expanded(
-                        child: Text(
-                          _isEditing ? 'تعديل عملية' : 'إضافة عملية',
-                          textAlign: TextAlign.center,
-                          style: AppTextStyles.headline.copyWith(
-                            color: AppColors.foreground,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-              ),
-              if (_isDebtLinked)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenHorizontal,
                     ),
-                    child: Container(
-                      padding: const EdgeInsets.all(AppSpacing.space4),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.lock_outline_rounded, color: AppColors.warning, size: 20),
-                          const SizedBox(width: AppSpacing.space3),
-                          Expanded(
-                              child: Text(
-                                'لا يمكن تعديل أو حذف عملية مرتبطة بدين',
-                              style: AppTextStyles.body.copyWith(color: AppColors.warning),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.warning,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppSpacing.space3),
+                        Expanded(
+                          child: Text(
+                            'لا يمكن تعديل أو حذف عملية مرتبطة بدين',
+                            style: AppTextStyles.body.copyWith(
+                              color: AppColors.warning,
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: OperationTypeSelector(
-                    selectedType: _selectedType,
-                    onChanged: (type) {
-                      if (_isSaving) return;
-                      setState(() {
-                        _selectedType = type;
-                        if (type == OperationType.withdrawal) _isDebt = false;
-                      });
-                    },
-                  ),
+              ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: OperationTypeSelector(
+                  selectedType: _selectedType,
+                  onChanged: (type) {
+                    if (_isSaving) return;
+                    setState(() {
+                      _selectedType = type;
+                      if (type == OperationType.withdrawal) _isDebt = false;
+                    });
+                  },
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space6),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: ProviderSelector(
-                    selectedProvider: _selectedProvider,
-                    onChanged: (provider) {
-                      if (_isSaving) return;
-                      setState(() => _selectedProvider = provider);
-                    },
-                  ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space6)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: ProviderSelector(
+                  selectedProvider: _selectedProvider,
+                  onChanged: (provider) {
+                    if (_isSaving) return;
+                    setState(() => _selectedProvider = provider);
+                  },
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space6),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _selectedProvider == ProviderType.vodafoneCash
-                        ? BlocBuilder<WalletCubit, WalletState>(
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space6)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child:
+                      _selectedProvider == ProviderType.vodafoneCash
+                          ? BlocBuilder<WalletCubit, WalletState>(
                             key: const ValueKey('wallet'),
                             builder: (context, state) {
                               if (state is WalletLoaded) {
@@ -776,10 +882,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                 );
                               }
                               return Container(
-                                padding: const EdgeInsets.all(AppSpacing.space4),
+                                padding: const EdgeInsets.all(
+                                  AppSpacing.space4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.lg,
+                                  ),
                                 ),
                                 child: const Center(
                                   child: CircularProgressIndicator(),
@@ -787,15 +897,22 @@ class _AddOperationPageState extends State<AddOperationPage> {
                               );
                             },
                           )
-                        : BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
+                          : BlocBuilder<
+                            InstaPayAccountCubit,
+                            InstaPayAccountState
+                          >(
                             key: const ValueKey('instapay'),
                             builder: (context, state) {
-                              final accounts = state is InstaPayAccountLoaded
-                                  ? state.accounts
-                                  : <InstaPayAccountEntity>[];
-                              final accountIds = accounts.map((a) => a.id).toSet();
+                              final accounts =
+                                  state is InstaPayAccountLoaded
+                                      ? state.accounts
+                                      : <InstaPayAccountEntity>[];
+                              final accountIds =
+                                  accounts.map((a) => a.id).toSet();
                               final effectiveAccountId =
-                                  accountIds.contains(_instaPayAccountId) ? _instaPayAccountId : null;
+                                  accountIds.contains(_instaPayAccountId)
+                                      ? _instaPayAccountId
+                                      : null;
                               return Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: AppSpacing.space5,
@@ -803,8 +920,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: AppColors.card,
-                                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                                  border: Border.all(color: AppColors.border50, width: 1),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.lg,
+                                  ),
+                                  border: Border.all(
+                                    color: AppColors.border50,
+                                    width: 1,
+                                  ),
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -818,7 +940,9 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                     const SizedBox(height: AppSpacing.space3),
                                     if (accounts.isEmpty)
                                       Padding(
-                                        padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+                                        padding: const EdgeInsets.only(
+                                          bottom: AppSpacing.space2,
+                                        ),
                                         child: Text(
                                           'لا توجد حسابات، أضف حساباً جديداً',
                                           style: AppTextStyles.caption.copyWith(
@@ -839,27 +963,43 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                             ),
                                             hint: Text(
                                               'اختر الحساب',
-                                              style: AppTextStyles.body.copyWith(
-                                                color: AppColors.mutedForeground,
-                                              ),
+                                              style: AppTextStyles.body
+                                                  .copyWith(
+                                                    color:
+                                                        AppColors
+                                                            .mutedForeground,
+                                                  ),
                                             ),
-                                            items: accounts.map((a) {
-                                              return DropdownMenuItem(
-                                                value: a.id,
-                                                child: Text(a.name),
-                                              );
-                                            }).toList(),
-                                            onChanged: _isSaving
-                                                ? null
-                                                : (v) => setState(() => _instaPayAccountId = v),
+                                            items:
+                                                accounts.map((a) {
+                                                  return DropdownMenuItem(
+                                                    value: a.id,
+                                                    child: Text(a.name),
+                                                  );
+                                                }).toList(),
+                                            onChanged:
+                                                _isSaving
+                                                    ? null
+                                                    : (v) => setState(
+                                                      () =>
+                                                          _instaPayAccountId =
+                                                              v,
+                                                    ),
                                           ),
                                         ),
                                         IconButton(
-                                          icon: const Icon(Icons.add_circle_outline_rounded, size: 22),
+                                          icon: const Icon(
+                                            Icons.add_circle_outline_rounded,
+                                            size: 22,
+                                          ),
                                           color: AppColors.primary,
-                                          onPressed: _isSaving
-                                              ? null
-                                              : () => _showManageInstaPayAccountsDialog(context),
+                                          onPressed:
+                                              _isSaving
+                                                  ? null
+                                                  : () =>
+                                                      _showManageInstaPayAccountsDialog(
+                                                        context,
+                                                      ),
                                         ),
                                       ],
                                     ),
@@ -868,264 +1008,292 @@ class _AddOperationPageState extends State<AddOperationPage> {
                               );
                             },
                           ),
-                  ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space6),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: AmountCard(
-                    controller: _amountController,
-                    isExpense: _selectedType == OperationType.deposit,
-                  ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space6)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: AmountCard(
+                  controller: _amountController,
+                  isExpense: _selectedType == OperationType.deposit,
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space6),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: OperationInputCard(
-                    label: 'العمولة',
-                    controller: _commissionController,
-                    keyboardType: TextInputType.number,
-                    enabled: !_isSaving,
-                    suffixText: 'ج.م',
-                  ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space6)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: OperationInputCard(
+                  label: 'العمولة',
+                  controller: _commissionController,
+                  keyboardType: TextInputType.number,
+                  enabled: !_isSaving,
+                  suffixText: 'ج.م',
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space4),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 200),
-                    child: _selectedProvider == ProviderType.vodafoneCash
-                        ? OperationInputCard(
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child:
+                      _selectedProvider == ProviderType.vodafoneCash &&
+                              _selectedType == OperationType.deposit
+                          ? OperationInputCard(
                             label: 'رسوم الشبكة (Vodafone Cash)',
                             controller: _networkFeeController,
                             keyboardType: TextInputType.number,
                             enabled: !_isSaving,
                             suffixText: 'ج.م',
                           )
-                        : const SizedBox.shrink(),
-                  ),
+                          : const SizedBox.shrink(),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space4),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: OperationInputCard(
+                  label: 'رقم الهاتف',
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  textAlign: TextAlign.right,
+                  enabled: !_isSaving,
+                  hintText: '01XXXXXXXXX',
+                ),
               ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: DescriptionField(
+                  controller: _notesController,
+                  hintText: 'ملاحظات إضافية',
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: DateSelector(
+                  dateLabel: DateFormatter.formatFullDateTime(_selectedDate),
+                  onTap: _isSaving ? null : _pickDate,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
+            if (!_isEditing && _selectedType == OperationType.deposit)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                   ),
-                  child: OperationInputCard(
-                    label: 'رقم الهاتف',
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    textAlign: TextAlign.right,
-                    enabled: !_isSaving,
-                    hintText: '01XXXXXXXXX',
+                  child: DebtSection(
+                    isDebt: _isDebt,
+                    isSaving: _isSaving,
+                    onDebtChanged: (v) => setState(() => _isDebt = v),
+                    customerNameController: _customerNameController,
+                    customerPhoneController: _customerPhoneController,
                   ),
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space4),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: DescriptionField(
-                    controller: _notesController,
-                    hintText: 'ملاحظات إضافية',
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space4),
-              ),
+            if (!_isEditing &&
+                _selectedType == OperationType.withdrawal &&
+                _selectedProvider == ProviderType.instaPay)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.screenHorizontal,
                   ),
-                  child: DateSelector(
-                    dateLabel: DateFormatter.formatFullDateTime(_selectedDate),
-                    onTap: _isSaving ? null : _pickDate,
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space4),
-              ),
-              if (!_isEditing && _selectedType == OperationType.deposit)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                    child: DebtSection(
-                      isDebt: _isDebt,
-                      isSaving: _isSaving,
-                      onDebtChanged: (v) => setState(() => _isDebt = v),
-                      customerNameController: _customerNameController,
-                      customerPhoneController: _customerPhoneController,
-                    ),
-                  ),
-                ),
-              if (!_isEditing && _selectedType == OperationType.withdrawal && _selectedProvider == ProviderType.instaPay)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                    child: CheckboxListTile(
-                      value: _isSettlementDebt,
-                      onChanged: _isSaving ? null : (v) => setState(() => _isSettlementDebt = v ?? false),
-                      title: Text('إنشاء دين تسوية', style: AppTextStyles.body.copyWith(color: AppColors.foreground)),
-                      subtitle: Text('تتبع المبلغ المستحق على حساب InstaPay',
-                          style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground)),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                      activeColor: AppColors.primary,
-                    ),
-                  ),
-                ),
-              if (!_isEditing && _selectedType == OperationType.withdrawal)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.screenHorizontal),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: _isCreatePayable ? AppColors.warning.withValues(alpha: 0.08) : AppColors.card,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(
-                          color: _isCreatePayable ? AppColors.warning.withValues(alpha: 0.4) : AppColors.border50,
-                        ),
+                  child: CheckboxListTile(
+                    value: _isSettlementDebt,
+                    onChanged:
+                        _isSaving
+                            ? null
+                            : (v) =>
+                                setState(() => _isSettlementDebt = v ?? false),
+                    title: Text(
+                      'إنشاء دين تسوية',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.foreground,
                       ),
-                      child: Column(
-                        children: [
-                          CheckboxListTile(
-                            value: _isCreatePayable,
-                            onChanged: _isSaving
-                                ? null
-                                : (v) => setState(() {
-                                      _isCreatePayable = v ?? false;
-                                      if (!_isCreatePayable) {
-                                        _customerNameController.clear();
-                                        _customerPhoneController.clear();
-                                      }
-                                    }),
-                            title: Text(
-                              'تسجيل كمستحق مؤجل',
-                              style: AppTextStyles.body.copyWith(
-                                color: _isCreatePayable ? AppColors.warning : AppColors.foreground,
-                                fontWeight: _isCreatePayable ? FontWeight.w600 : FontWeight.normal,
-                              ),
+                    ),
+                    subtitle: Text(
+                      'تتبع المبلغ المستحق على حساب InstaPay',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                      ),
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: AppColors.primary,
+                  ),
+                ),
+              ),
+            if (!_isEditing && _selectedType == OperationType.withdrawal)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.screenHorizontal,
+                  ),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color:
+                          _isCreatePayable
+                              ? AppColors.warning.withValues(alpha: 0.08)
+                              : AppColors.card,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                      border: Border.all(
+                        color:
+                            _isCreatePayable
+                                ? AppColors.warning.withValues(alpha: 0.4)
+                                : AppColors.border50,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        CheckboxListTile(
+                          value: _isCreatePayable,
+                          onChanged:
+                              _isSaving
+                                  ? null
+                                  : (v) => setState(() {
+                                    _isCreatePayable = v ?? false;
+                                    if (!_isCreatePayable) {
+                                      _customerNameController.clear();
+                                      _customerPhoneController.clear();
+                                    }
+                                  }),
+                          title: Text(
+                            'تسجيل كمستحق مؤجل',
+                            style: AppTextStyles.body.copyWith(
+                              color:
+                                  _isCreatePayable
+                                      ? AppColors.warning
+                                      : AppColors.foreground,
+                              fontWeight:
+                                  _isCreatePayable
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
                             ),
-                            subtitle: Text(
-                              'سيتم تسجيل المبلغ كمستحق دون خصمه من الدرج',
-                              style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.space4,
-                              vertical: AppSpacing.space1,
-                            ),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            activeColor: AppColors.warning,
                           ),
-                          if (_isCreatePayable) ...[
-                            const Divider(height: 1),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                AppSpacing.space4,
-                                AppSpacing.space3,
-                                AppSpacing.space4,
-                                AppSpacing.space4,
-                              ),
-                              child: Column(
-                                children: [
-                                  TextField(
-                                    controller: _paidNowController,
-                                    keyboardType: TextInputType.number,
-                                    textAlign: TextAlign.right,
-                                    decoration: const InputDecoration(
-                                      labelText: 'المبلغ المدفوع كاش الآن (اختياري - اتركه 0 للدفع المؤجل بالكامل)',
-                                      hintText: '0',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
-                                  ),
-                                  const SizedBox(height: AppSpacing.space3),
-                                  TextField(
-                                    controller: _customerNameController,
-                                    textAlign: TextAlign.right,
-                                    decoration: InputDecoration(
-                                      labelText: 'اسم المستحق له (مطلوب)',
-                                      hintText: 'أدخل اسم العميل / الجهة',
-                                      border: const OutlineInputBorder(),
-                                      labelStyle: AppTextStyles.caption.copyWith(
-                                        color: AppColors.warning,
-                                      ),
-                                    ),
-                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
-                                  ),
-                                  const SizedBox(height: AppSpacing.space3),
-                                  TextField(
-                                    controller: _customerPhoneController,
-                                    keyboardType: TextInputType.phone,
-                                    textAlign: TextAlign.right,
-                                    decoration: const InputDecoration(
-                                      labelText: 'رقم الهاتف (اختياري)',
-                                      hintText: '01XXXXXXXXX',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    style: AppTextStyles.body.copyWith(color: AppColors.foreground),
-                                  ),
-                                ],
-                              ),
+                          subtitle: Text(
+                            'سيتم تسجيل المبلغ كمستحق دون خصمه من الدرج',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
                             ),
-                          ],
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.space4,
+                            vertical: AppSpacing.space1,
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          activeColor: AppColors.warning,
+                        ),
+                        if (_isCreatePayable) ...[
+                          const Divider(height: 1),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              AppSpacing.space4,
+                              AppSpacing.space3,
+                              AppSpacing.space4,
+                              AppSpacing.space4,
+                            ),
+                            child: Column(
+                              children: [
+                                TextField(
+                                  controller: _paidNowController,
+                                  keyboardType: TextInputType.number,
+                                  textAlign: TextAlign.right,
+                                  decoration: const InputDecoration(
+                                    labelText:
+                                        'المبلغ المدفوع كاش الآن (اختياري - اتركه 0 للدفع المؤجل بالكامل)',
+                                    hintText: '0',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  style: AppTextStyles.body.copyWith(
+                                    color: AppColors.foreground,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.space3),
+                                TextField(
+                                  controller: _customerNameController,
+                                  textAlign: TextAlign.right,
+                                  decoration: InputDecoration(
+                                    labelText: 'اسم المستحق له (مطلوب)',
+                                    hintText: 'أدخل اسم العميل / الجهة',
+                                    border: const OutlineInputBorder(),
+                                    labelStyle: AppTextStyles.caption.copyWith(
+                                      color: AppColors.warning,
+                                    ),
+                                  ),
+                                  style: AppTextStyles.body.copyWith(
+                                    color: AppColors.foreground,
+                                  ),
+                                ),
+                                const SizedBox(height: AppSpacing.space3),
+                                TextField(
+                                  controller: _customerPhoneController,
+                                  keyboardType: TextInputType.phone,
+                                  textAlign: TextAlign.right,
+                                  decoration: const InputDecoration(
+                                    labelText: 'رقم الهاتف (اختياري)',
+                                    hintText: '01XXXXXXXXX',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  style: AppTextStyles.body.copyWith(
+                                    color: AppColors.foreground,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space8),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.screenHorizontal,
-                  ),
-                  child: BlocBuilder<OperationCubit, OperationState>(
-                    builder: (context, state) {
-                      return SaveTransactionButton(
-                        label: _isEditing ? 'تحديث العملية' : 'حفظ العملية',
-                        onPressed: (_isSaving || _isDebtLinked) ? null : _saveOperation,
-                        isLoading: _isSaving,
-                      );
-                    },
-                  ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space8)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.screenHorizontal,
+                ),
+                child: BlocBuilder<OperationCubit, OperationState>(
+                  builder: (context, state) {
+                    return SaveTransactionButton(
+                      label: _isEditing ? 'تحديث العملية' : 'حفظ العملية',
+                      onPressed:
+                          (_isSaving || _isDebtLinked) ? null : _saveOperation,
+                      isLoading: _isSaving,
+                    );
+                  },
                 ),
               ),
-              SliverToBoxAdapter(
-                child: SizedBox(height: AppSpacing.space8),
-              ),
-            ],
-          ),
+            ),
+            SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space8)),
+          ],
+        ),
       ),
     );
   }

@@ -25,7 +25,7 @@ class WalletLimitCalculator {
       if (operation.walletId != wallet.id) continue;
       if (operation.providerType != ProviderType.vodafoneCash) continue;
       if (operation.operationType != OperationType.deposit &&
-          operation.operationType != OperationType.withdrawal) {
+          operation.operationType == OperationType.withdrawal) {
         continue;
       }
 
