@@ -322,6 +322,23 @@ class DebtCubit extends Cubit<DebtState> {
     }
   }
 
+  /// Cancels a debt that was created by mistake.
+  /// Safe only when: no payments exist AND debt is not linked to an operation.
+  /// For cash loans, the drawer balance is restored automatically in the DB layer.
+  /// Throws [Exception] with an Arabic message if cancellation is blocked.
+  Future<void> cancelDebt({
+    required int debtId,
+    required int debtorId,
+    DebtType activeLiabilityType = DebtType.customerDebt,
+  }) async {
+    await repository.cancelDebt(debtId);
+    // Refresh cash drawer in case it was a cash loan
+    cashDrawerCubit.refreshCashDrawer();
+    await loadOutstandingDebt();
+    await loadDebtorDetail(debtorId, activeLiabilityType: activeLiabilityType);
+    sl<OperationCubit>().getOperations();
+  }
+
   Future<void> payDebt({
     required int debtId,
     required double amount,

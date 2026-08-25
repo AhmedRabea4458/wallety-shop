@@ -123,6 +123,11 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   }
 
   @override
+  Future<void> cancelDebt(int debtId) {
+    return database.cancelDebt(debtId);
+  }
+
+  @override
   Future<void> updateDebtor(DebtorModel debtor) {
     return database.updateDebtorRecord(
       debtor.id,

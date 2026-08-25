@@ -97,6 +97,11 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
+  Future<void> cancelDebt(int debtId) {
+    return localDataSource.cancelDebt(debtId);
+  }
+
+  @override
   Future<void> updateDebtor(DebtorEntity debtor) {
     return localDataSource.updateDebtor(DebtorModel.fromEntity(debtor));
   }

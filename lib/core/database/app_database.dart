@@ -1148,6 +1148,48 @@ class AppDatabase extends _$AppDatabase {
     });
   }
 
+  Future<void> cancelDebt(int debtId) async {
+    await transaction(() async {
+      final debt =
+          await (select(debtsTable)
+            ..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      if (debt == null) {
+        throw Exception('سجل الدين غير موجود');
+      }
+
+      // Check if payments exist
+      final payments =
+          await (select(debtPaymentsTable)
+            ..where((p) => p.debtId.equals(debtId))).get();
+      if (payments.isNotEmpty) {
+        throw Exception('لا يمكن إلغاء هذه الذمة لوجود دفعات مسجلة عليها. يرجى مراجعة سجل الدفعات أولاً.');
+      }
+
+      // If debt is linked to an operation, prevent debt cancellation
+      // (The operation itself should be deleted/handled via operation management)
+      if (debt.operationId != null) {
+        if (debt.debtType == 'payable') {
+          throw Exception('لا يمكن إلغاء هذا المستحق لأنه مرتبط بعملية مسجلة. يرجى حذف العملية من سجل العمليات.');
+        } else {
+          throw Exception('لا يمكن إلغاء هذا الدين لأنه مرتبط بعملية مسجلة. يرجى حذف العملية من سجل العمليات.');
+        }
+      }
+
+      // If it was a manual cash loan from drawer, canceling it refunds the money back to the drawer
+      if (debt.isCashLoan) {
+        final cashDrawer =
+            await (select(cashDrawerTable)
+              ..where((c) => c.id.equals(1))).getSingle();
+        await (update(cashDrawerTable)..where(
+          (c) => c.id.equals(1),
+        )).write(CashDrawerTableCompanion(balance: Value(cashDrawer.balance + debt.amount)));
+      }
+
+      // Delete the debt record
+      await (delete(debtsTable)..where((d) => d.id.equals(debtId))).go();
+    });
+  }
+
   Future<int> insertDebtor(DebtorsTableCompanion debtor) {
     return into(debtorsTable).insert(debtor);
   }

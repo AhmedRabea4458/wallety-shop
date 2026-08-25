@@ -16,6 +16,7 @@ abstract class DebtRepository {
   Future<List<DebtEntity>> getUnpaidDebts();
   Future<double> getTotalOutstandingDebt();
   Future<void> markDebtAsPaid(int debtId, {String paymentMethod = 'cash'});
+  Future<void> cancelDebt(int debtId);
   Future<void> updateDebtor(DebtorEntity debtor);
   Future<void> updateDebt(DebtEntity debt);
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);

@@ -618,5 +618,162 @@ void main() {
       }
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Sprint 6.4 – Debt Cancellation tests
+  // ---------------------------------------------------------------------------
+  group('Sprint 6.4 – cancelDebt', () {
+    late AppDatabase db;
+
+    setUp(() async {
+      db = AppDatabase();
+      // Seed cash drawer
+      await db.into(db.cashDrawerTable).insert(
+        CashDrawerTableCompanion.insert(id: const Value(1), balance: const Value(500.0)),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
+
+    tearDown(() => db.close());
+
+    Future<int> _insertDebtor() async {
+      return db.into(db.debtorsTable).insert(
+        DebtorsTableCompanion.insert(name: 'مدين إلغاء', createdAt: Value(DateTime.now())),
+      );
+    }
+
+    test('Safe cancellation – manual customer debt is deleted; drawer unchanged', () async {
+      final debtorId = await _insertDebtor();
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(200.0),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      await db.cancelDebt(debtId);
+
+      final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      expect(remaining, isNull); // Debt deleted
+
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 500.0); // Drawer untouched
+    });
+
+    test('Safe cancellation – manual payable is deleted; drawer unchanged', () async {
+      final debtorId = await _insertDebtor();
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(150.0),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          debtType: const Value('payable'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      await db.cancelDebt(debtId);
+
+      final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      expect(remaining, isNull); // Debt deleted
+
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 500.0); // Drawer untouched
+    });
+
+    test('Cash loan cancellation refunds drawer', () async {
+      final debtorId = await _insertDebtor();
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(100.0),
+          isPaid: const Value(false),
+          isCashLoan: const Value(true),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      await db.cancelDebt(debtId);
+
+      final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      expect(remaining, isNull); // Debt deleted
+
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 600.0); // 500 + 100 refunded
+    });
+
+    test('Blocked – cancellation fails when payments exist', () async {
+      final debtorId = await _insertDebtor();
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(300.0),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // Record a partial payment
+      await db.payDebt(debtId: debtId, amount: 100.0, paymentMethod: 'cash');
+
+      expect(() => db.cancelDebt(debtId), throwsA(isA<Exception>()));
+
+      // Debt still exists
+      final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      expect(remaining, isNotNull);
+    });
+
+    test('Blocked – cancellation fails when debt is linked to an operation', () async {
+      final debtorId = await _insertDebtor();
+
+      // Create a wallet so we can insert an operation
+      final walletId = await db.into(db.walletsTable).insert(
+        WalletsTableCompanion.insert(
+          name: 'محفظة',
+          balance: const Value(1000.0),
+          providerType: 'vodafoneCash',
+        ),
+      );
+
+      // Insert a dummy operation
+      final opId = await db.into(db.operationsTable).insert(
+        OperationsTableCompanion.insert(
+          type: 'deposit',
+          amount: const Value(200.0),
+          providerType: 'vodafoneCash',
+          walletId: Value(walletId),
+          commission: const Value(0.0),
+          networkFee: const Value(0.0),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(200.0),
+          isPaid: const Value(false),
+          isCashLoan: const Value(false),
+          operationId: Value(opId),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      expect(() => db.cancelDebt(debtId), throwsA(isA<Exception>()));
+
+      // Debt still exists
+      final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
+      expect(remaining, isNotNull);
+    });
+  });
 }
 

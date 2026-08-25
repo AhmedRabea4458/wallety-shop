@@ -16,6 +16,7 @@ abstract class DebtLocalDataSource {
   Future<List<DebtModel>> getUnpaidDebts();
   Future<double> getTotalOutstandingDebt();
   Future<void> settleDebt(int debtId, {String paymentMethod = 'cash'});
+  Future<void> cancelDebt(int debtId);
   Future<void> updateDebtor(DebtorModel debtor);
   Future<void> updateDebt(DebtModel debt);
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);

@@ -380,6 +380,11 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                     debt,
                                     state.debtor,
                                   ),
+                              onCancel: () => _showCancelDebtDialog(
+                                context,
+                                debt,
+                                state.debtor.id,
+                              ),
                             );
                           }, childCount: activeDebts.length),
                         ),
@@ -457,6 +462,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                       debt,
                                       state.debtor,
                                     ),
+                                onCancel: () {},
                               );
                             }, childCount: paidDebts.length),
                           ),
@@ -1153,6 +1159,106 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
           ),
     );
   }
+
+  /// Shows a confirmation dialog before cancelling a debt.
+  /// The actual safety checks (payments / linked operation) are enforced in
+  /// [AppDatabase.cancelDebt] – we just show any exception as a SnackBar.
+  Future<void> _showCancelDebtDialog(
+    BuildContext context,
+    DebtEntity debt,
+    int debtorId,
+  ) async {
+    final isPayable = debt.debtType == DebtType.payable;
+    final label = isPayable ? 'المستحق' : 'الذمة';
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final debtCubit = context.read<DebtCubit>();
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: Text(
+          'إلغاء $label',
+          style: AppTextStyles.headline.copyWith(
+            color: AppColors.destructive,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'هل تريد إلغاء هذا $label بمبلغ ${_f(debt.amount)} ج.م؟',
+              style: AppTextStyles.body.copyWith(color: AppColors.foreground),
+            ),
+            const SizedBox(height: AppSpacing.space3),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.space3),
+              decoration: BoxDecoration(
+                color: AppColors.destructive.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(
+                  color: AppColors.destructive.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                'تنبيه: الإلغاء يُستخدم فقط للذمم التي أُضيفت بالخطأ.\n'
+                'لن يتم تسجيل أي دفعة ولن يتأثر رصيد الخزينة أو المحافظ.\n'
+                '${debt.isCashLoan ? "سيتم استعادة مبلغ القرض النقدي إلى الدرج." : ""}'
+                '\nلا يمكن الإلغاء إذا كانت هناك دفعات مسجلة أو إذا كانت الذمة مرتبطة بعملية.',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.destructive,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('تراجع'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.destructive,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('إلغاء الذمة'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      await debtCubit.cancelDebt(
+        debtId: debt.id,
+        debtorId: debtorId,
+        activeLiabilityType: widget.activeLiabilityType,
+      );
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('تم إلغاء $label بنجاح'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.destructive,
+          ),
+        );
+      }
+    }
+  }
 }
 
 class _DebtTile extends StatelessWidget {
@@ -1164,6 +1270,7 @@ class _DebtTile extends StatelessWidget {
   final VoidCallback onSettle;
   final VoidCallback onPay;
   final VoidCallback onEdit;
+  final VoidCallback onCancel;
 
   const _DebtTile({
     required this.debt,
@@ -1174,6 +1281,7 @@ class _DebtTile extends StatelessWidget {
     required this.onSettle,
     required this.onPay,
     required this.onEdit,
+    required this.onCancel,
   });
 
   static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
@@ -1427,6 +1535,13 @@ class _DebtTile extends StatelessWidget {
                   Icons.edit_rounded,
                   size: 18,
                 ),
+              ),
+              TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.destructive,
+                ),
+                child: const Text('إلغاء الذمة'),
               ),
               TextButton(
                 onPressed: onSettle,
