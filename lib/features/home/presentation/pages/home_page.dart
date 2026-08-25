@@ -69,6 +69,10 @@ class HomePage extends StatelessWidget {
                             ),
                           );
                         }
+                        if (shiftState is ActiveShiftLoaded) {
+                          // Load shift-scoped debt activity whenever shift state is updated
+                          context.read<DebtCubit>().loadShiftDebtActivity(shiftState.shift.startTime);
+                        }
                       },
                       builder: (context, shiftState) {
                     final now = DateTime.now();
@@ -95,24 +99,28 @@ class HomePage extends StatelessWidget {
                     double todayDeposits = 0;
                     double todayWithdrawals = 0;
                     double totalCommissions = 0;
+                    bool hasActiveShift = false;
 
                     if (operationState is OperationLoaded) {
                       operations = operationState.allOperations;
-                      final today = DateTime(now.year, now.month, now.day);
-                      final todayOps = operations.where((o) {
-                        final d = o.createdAt;
-                        return d.year == today.year && d.month == today.month && d.day == today.day;
-                      });
-                      todayDeposits = todayOps
-                          .where((o) => o.operationType == OperationType.deposit)
-                          .fold(0.0, (sum, o) => sum + o.amount);
-                      todayWithdrawals = todayOps
-                          .where((o) => o.operationType == OperationType.withdrawal)
-                          .fold(0.0, (sum, o) => sum + o.amount);
-                      totalCommissions = todayOps.fold(
-                        0.0,
-                        (sum, o) => sum + o.commission,
-                      );
+
+                      if (shiftState is ActiveShiftLoaded) {
+                        // Shift-scoped: filter operations by shiftId
+                        hasActiveShift = true;
+                        final shiftId = shiftState.shift.id;
+                        final shiftOps = operations.where((o) => o.shiftId == shiftId);
+                        todayDeposits = shiftOps
+                            .where((o) => o.operationType == OperationType.deposit)
+                            .fold(0.0, (sum, o) => sum + o.amount);
+                        todayWithdrawals = shiftOps
+                            .where((o) => o.operationType == OperationType.withdrawal)
+                            .fold(0.0, (sum, o) => sum + o.amount);
+                        totalCommissions = shiftOps.fold(
+                          0.0,
+                          (sum, o) => sum + o.commission,
+                        );
+                      }
+                      // If no active shift: keep zeros, hasActiveShift = false
                     }
 
                     final adjustments = adjustmentState is WalletAdjustmentLoaded
@@ -199,8 +207,13 @@ class HomePage extends StatelessWidget {
                         final debtCubit = context.read<DebtCubit>();
                         final customerReceivables = debtCubit.totalOutstanding;
                         final payables = debtCubit.totalOutstandingPayable;
-                        final todayCollections = debtCubit.todayCustomerDebtCollected;
-                        final todaySettlements = debtCubit.todayPayablesSettled;
+                        // Use shift-scoped collections when a shift is active
+                        final todayCollections = hasActiveShift
+                            ? debtCubit.shiftCustomerDebtCollected
+                            : 0.0;
+                        final todaySettlements = hasActiveShift
+                            ? debtCubit.shiftPayablesSettled
+                            : 0.0;
 
                         return BlocBuilder<CashDrawerCubit, CashDrawerState>(
                           builder: (context, cashState) {
@@ -225,13 +238,14 @@ class HomePage extends StatelessWidget {
                                     },
                                   ),
                                   const SizedBox(height: AppSpacing.space4),
-                                  // 3. Today's Activity Section
+                                  // 3. Shift Activity Section
                                   DashboardTodayActivitySection(
                                     todayDeposits: todayDeposits,
                                     todayWithdrawals: todayWithdrawals,
                                     todayCollections: todayCollections,
                                     todaySettlements: todaySettlements,
                                     totalCommissions: totalCommissions,
+                                    hasActiveShift: hasActiveShift,
                                   ),
                                 ],
                               ),

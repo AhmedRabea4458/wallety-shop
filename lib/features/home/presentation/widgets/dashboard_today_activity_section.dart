@@ -9,14 +9,16 @@ String _formatAmount(double amount) {
   return NumberFormat('#,##0.##', 'ar').format(amount);
 }
 
-/// Dashboard Today's Activity Section
-/// Displays Deposits, Withdrawals, Debt Collections, Payable Settlements, and Total Commissions.
+/// Dashboard Shift Activity Section
+/// Displays Deposits, Withdrawals, Debt Collections, Payable Settlements, and Total Commissions
+/// for the current open shift. Shows an empty state when no shift is open.
 class DashboardTodayActivitySection extends StatelessWidget {
   final double todayDeposits;
   final double todayWithdrawals;
   final double todayCollections;
   final double todaySettlements;
   final double totalCommissions;
+  final bool hasActiveShift;
 
   const DashboardTodayActivitySection({
     super.key,
@@ -25,6 +27,7 @@ class DashboardTodayActivitySection extends StatelessWidget {
     required this.todayCollections,
     required this.todaySettlements,
     required this.totalCommissions,
+    this.hasActiveShift = true,
   });
 
   @override
@@ -40,117 +43,161 @@ class DashboardTodayActivitySection extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(color: AppColors.border50, width: 1),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.space2),
-                    Text(
-                      'نشاط اليوم',
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        color: AppColors.foreground,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                // Total Commissions pill tag
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.space3,
-                    vertical: AppSpacing.space1,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Row(
+        child: !hasActiveShift
+            ? _buildNoShiftState()
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Icon(
-                        Icons.monetization_on_outlined,
-                        size: 14,
-                        color: AppColors.primary,
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.space2),
+                          Text(
+                            'نشاط الوردية',
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: AppColors.foreground,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'العمولات: ${_formatAmount(totalCommissions)} ج.م',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w700,
+                      // Total Commissions pill tag
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.space3,
+                          vertical: AppSpacing.space1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.monetization_on_outlined,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'العمولات: ${_formatAmount(totalCommissions)} ج.م',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space4),
+                  const SizedBox(height: AppSpacing.space4),
 
-            // Operations Row: Deposits & Withdrawals
-            Row(
-              children: [
-                Expanded(
-                  child: _ActivityItem(
-                    label: 'إيداعات اليوم',
-                    amount: todayDeposits,
-                    icon: Icons.north_east_rounded,
-                    color: AppColors.destructive,
+                  // Operations Row: Deposits & Withdrawals
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActivityItem(
+                          label: 'إيداعات الوردية',
+                          amount: todayDeposits,
+                          icon: Icons.north_east_rounded,
+                          color: AppColors.destructive,
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: AppColors.border50),
+                      const SizedBox(width: AppSpacing.space3),
+                      Expanded(
+                        child: _ActivityItem(
+                          label: 'سحوبات الوردية',
+                          amount: todayWithdrawals,
+                          icon: Icons.south_west_rounded,
+                          color: AppColors.success,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Container(width: 1, height: 36, color: AppColors.border50),
-                const SizedBox(width: AppSpacing.space3),
-                Expanded(
-                  child: _ActivityItem(
-                    label: 'سحوبات اليوم',
-                    amount: todayWithdrawals,
-                    icon: Icons.south_west_rounded,
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.space3),
-            Divider(color: AppColors.border50, height: 1, thickness: 1),
-            const SizedBox(height: AppSpacing.space3),
+                  const SizedBox(height: AppSpacing.space3),
+                  Divider(color: AppColors.border50, height: 1, thickness: 1),
+                  const SizedBox(height: AppSpacing.space3),
 
-            // Debts Row: Debt Collections & Payable Settlements
-            Row(
-              children: [
-                Expanded(
-                  child: _ActivityItem(
-                    label: 'تحصيل آجل اليوم',
-                    amount: todayCollections,
-                    icon: Icons.price_check_rounded,
-                    color: const Color(0xFF0284C7),
+                  // Debts Row: Debt Collections & Payable Settlements
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActivityItem(
+                          label: 'تحصيل آجل الوردية',
+                          amount: todayCollections,
+                          icon: Icons.price_check_rounded,
+                          color: const Color(0xFF0284C7),
+                        ),
+                      ),
+                      Container(width: 1, height: 36, color: AppColors.border50),
+                      const SizedBox(width: AppSpacing.space3),
+                      Expanded(
+                        child: _ActivityItem(
+                          label: 'سداد مستحقات الوردية',
+                          amount: todaySettlements,
+                          icon: Icons.handshake_outlined,
+                          color: const Color(0xFF8B5CF6),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Container(width: 1, height: 36, color: AppColors.border50),
-                const SizedBox(width: AppSpacing.space3),
-                Expanded(
-                  child: _ActivityItem(
-                    label: 'سداد مستحقات اليوم',
-                    amount: todaySettlements,
-                    icon: Icons.handshake_outlined,
-                    color: const Color(0xFF8B5CF6),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+                ],
+              ),
       ),
+    );
+  }
+
+  Widget _buildNoShiftState() {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: const Icon(
+            Icons.schedule_rounded,
+            color: AppColors.warning,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.space3),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'لا توجد وردية نشطة',
+                style: AppTextStyles.body.copyWith(
+                  color: AppColors.foreground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'افتح وردية لعرض نشاط الوردية',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.mutedForeground,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

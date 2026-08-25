@@ -22,6 +22,8 @@ class DebtCubit extends Cubit<DebtState> {
   double totalOutstandingSettlementDebt = 0;
   double todayCustomerDebtCollected = 0;
   double todayPayablesSettled = 0;
+  double shiftCustomerDebtCollected = 0;
+  double shiftPayablesSettled = 0;
   List<DebtEntity> unpaidDebts = [];
   List<DebtorEntity> _allDebtors = [];
   Map<int, double> _customerBalances = {};
@@ -243,6 +245,13 @@ class DebtCubit extends Cubit<DebtState> {
       todayCustomerDebtCollected = todayCollected;
       todayPayablesSettled = todaySettled;
 
+      // Assign instance fields so dashboard reads correct values reactively
+      totalOutstanding = totalCustomerReceivables;
+      totalOutstandingCustomerDebt = customerTotal;
+      totalOutstandingPayable = payableTotal;
+      totalOutstandingSettlementDebt = settlementTotal;
+      unpaidDebts = unpaid;
+
       emit(OutstandingDebtLoaded(
         totalOutstanding: totalCustomerReceivables,
         totalCustomerDebt: customerTotal,
@@ -254,6 +263,53 @@ class DebtCubit extends Cubit<DebtState> {
       ));
     } catch (e) {
       debugPrint('loadOutstandingDebt error: $e');
+    }
+  }
+
+  /// Loads debt payment activity scoped to the current shift window.
+  /// Call this after [loadOutstandingDebt] when the active shift start time is known.
+  Future<void> loadShiftDebtActivity(DateTime shiftStart) async {
+    try {
+      final shiftPayments = await repository.getDebtPaymentsInTimeframe(
+        shiftStart,
+        null, // up to now
+      );
+      double collected = 0.0;
+      double settled = 0.0;
+
+      if (shiftPayments.isNotEmpty) {
+        final allDebts = await repository.getDebtsInTimeframe(
+          DateTime.fromMillisecondsSinceEpoch(0),
+          null,
+        );
+        final debtTypeById = {for (final d in allDebts) d.id: d.debtType};
+        for (final p in shiftPayments) {
+          final type = debtTypeById[p.debtId];
+          if (type == DebtType.payable) {
+            settled += p.amount;
+          } else {
+            collected += p.amount;
+          }
+        }
+      }
+
+      shiftCustomerDebtCollected = collected;
+      shiftPayablesSettled = settled;
+      // Re-emit to notify BlocBuilders that values updated
+      final s = state;
+      if (s is OutstandingDebtLoaded) {
+        emit(OutstandingDebtLoaded(
+          totalOutstanding: s.totalOutstanding,
+          totalCustomerDebt: s.totalCustomerDebt,
+          totalPayable: s.totalPayable,
+          totalSettlementDebt: s.totalSettlementDebt,
+          unpaidDebts: s.unpaidDebts,
+          todayCustomerDebtCollected: s.todayCustomerDebtCollected,
+          todayPayablesSettled: s.todayPayablesSettled,
+        ));
+      }
+    } catch (e) {
+      debugPrint('loadShiftDebtActivity error: $e');
     }
   }
 
