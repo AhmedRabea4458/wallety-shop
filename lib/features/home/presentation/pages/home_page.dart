@@ -85,8 +85,10 @@ class HomePage extends StatelessWidget {
                     }
 
                     List<WalletEntity> wallets = [];
+                    List<WalletEntity> activeWallets = [];
                     if (walletState is WalletLoaded) {
                       wallets = walletState.wallets;
+                      activeWallets = walletState.activeWallets;
                     }
 
                     List<OperationEntity> operations = [];
@@ -117,7 +119,7 @@ class HomePage extends StatelessWidget {
                         ? adjustmentState.adjustments
                         : <WalletAdjustmentEntity>[];
 
-                    final totalWalletBalance = wallets.fold(0.0, (sum, w) => sum + w.balance);
+                    final totalWalletBalance = activeWallets.fold(0.0, (sum, w) => sum + w.balance);
 
                     return CustomScrollView(
                       slivers: [
@@ -277,10 +279,10 @@ class HomePage extends StatelessWidget {
                               height: 152,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: wallets.length,
+                                itemCount: activeWallets.length,
                                 separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.space2),
                                 itemBuilder: (context, index) {
-                                  final wallet = wallets[index];
+                                  final wallet = activeWallets[index];
                                   final usage = WalletLimitCalculator.calculate(
                                     wallet: wallet,
                                     operations: operations,

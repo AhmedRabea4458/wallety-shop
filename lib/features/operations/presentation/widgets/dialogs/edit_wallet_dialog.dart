@@ -167,6 +167,7 @@ void showEditWalletDialog({
                           dailyLimit: dailyLimit,
                           weeklyLimit: wallet.weeklyLimit,
                           monthlyLimit: monthlyLimit,
+                          isArchived: wallet.isArchived,
                           createdAt: wallet.createdAt,
                         );
 

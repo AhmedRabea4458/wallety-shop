@@ -368,11 +368,42 @@ class AppDatabase extends _$AppDatabase {
     await (delete(walletsTable)..where((w) => w.id.equals(id))).go();
   }
 
+  Future<void> archiveWallet(int id) async {
+    await (update(walletsTable)..where((w) => w.id.equals(id))).write(
+      const WalletsTableCompanion(
+        isArchived: Value(true),
+      ),
+    );
+  }
+
+  Future<void> unarchiveWallet(int id) async {
+    await (update(walletsTable)..where((w) => w.id.equals(id))).write(
+      const WalletsTableCompanion(
+        isArchived: Value(false),
+      ),
+    );
+  }
+
   Future<bool> walletHasOperations(int walletId) async {
-    final count =
-        await (select(operationsTable)
-          ..where((o) => o.walletId.equals(walletId))).get();
-    return count.isNotEmpty;
+    final ops = await (select(operationsTable)
+          ..where((o) => o.walletId.equals(walletId))
+          ..limit(1))
+        .get();
+    if (ops.isNotEmpty) return true;
+
+    final adjustments = await (select(walletAdjustmentsTable)
+          ..where((a) => a.walletId.equals(walletId))
+          ..limit(1))
+        .get();
+    if (adjustments.isNotEmpty) return true;
+
+    final payments = await (select(debtPaymentsTable)
+          ..where((p) => p.walletId.equals(walletId))
+          ..limit(1))
+        .get();
+    if (payments.isNotEmpty) return true;
+
+    return false;
   }
 
   Future<List<OperationsTableData>> getOperationsByShiftId(int shiftId) {

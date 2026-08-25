@@ -10,6 +10,9 @@ class WalletLoaded extends WalletState {
   final List<WalletEntity> wallets;
 
   WalletLoaded({required this.wallets});
+
+  List<WalletEntity> get activeWallets => wallets.where((w) => !w.isArchived).toList();
+  List<WalletEntity> get archivedWallets => wallets.where((w) => w.isArchived).toList();
 }
 
 class WalletError extends WalletState {

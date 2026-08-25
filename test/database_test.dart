@@ -747,9 +747,9 @@ void main() {
       final opId = await db.into(db.operationsTable).insert(
         OperationsTableCompanion.insert(
           type: 'deposit',
-          amount: const Value(200.0),
+          amount: 200.0,
           providerType: 'vodafoneCash',
-          walletId: Value(walletId),
+          walletId: walletId,
           commission: const Value(0.0),
           networkFee: const Value(0.0),
           createdAt: Value(DateTime.now()),
@@ -773,6 +773,64 @@ void main() {
       // Debt still exists
       final remaining = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingleOrNull();
       expect(remaining, isNotNull);
+    });
+
+    test('Wallet Archiving, Restoring and Safe Deletion', () async {
+      // 1. Create a wallet with no operations
+      final walletAId = await db.into(db.walletsTable).insert(
+        WalletsTableCompanion.insert(
+          name: 'محفظة مؤقتة',
+          balance: const Value(0.0),
+          providerType: 'vodafoneCash',
+        ),
+      );
+
+      // Has no operations -> can delete directly
+      expect(await db.walletHasOperations(walletAId), isFalse);
+      await db.deleteWallet(walletAId);
+      final deleted = await db.getWalletById(walletAId);
+      expect(deleted, isNull);
+
+      // 2. Create a wallet with operations
+      final walletBId = await db.into(db.walletsTable).insert(
+        WalletsTableCompanion.insert(
+          name: 'محفظة رئيسية',
+          balance: const Value(500.0),
+          providerType: 'vodafoneCash',
+        ),
+      );
+
+      await db.into(db.operationsTable).insert(
+        OperationsTableCompanion.insert(
+          type: 'deposit',
+          amount: 100.0,
+          providerType: 'vodafoneCash',
+          walletId: walletBId,
+          commission: const Value(0.0),
+          networkFee: const Value(0.0),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // Verify walletHasOperations detects historical reference
+      expect(await db.walletHasOperations(walletBId), isTrue);
+
+      // Archive wallet
+      await db.archiveWallet(walletBId);
+      final archivedWallet = await db.getWalletById(walletBId);
+      expect(archivedWallet, isNotNull);
+      expect(archivedWallet!.isArchived, isTrue);
+
+      // Historical operations remain intact with the wallet
+      final walletOps = await db.getWalletOperations(walletBId);
+      expect(walletOps.length, 1);
+      expect(walletOps.first.walletId, walletBId);
+
+      // Unarchive (restore) wallet
+      await db.unarchiveWallet(walletBId);
+      final restoredWallet = await db.getWalletById(walletBId);
+      expect(restoredWallet, isNotNull);
+      expect(restoredWallet!.isArchived, isFalse);
     });
   });
 }

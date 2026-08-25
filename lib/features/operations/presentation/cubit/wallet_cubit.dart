@@ -63,6 +63,30 @@ class WalletCubit extends Cubit<WalletState> {
     }
   }
 
+  Future<void> archiveWallet(int id) async {
+    try {
+      await repository.archiveWallet(id);
+      debugPrint('archiveWallet: archived id=$id');
+      await refreshWallets();
+    } catch (e) {
+      debugPrint('archiveWallet error: $e');
+      emit(WalletError('فشل أرشفة المحفظة'));
+      rethrow;
+    }
+  }
+
+  Future<void> unarchiveWallet(int id) async {
+    try {
+      await repository.unarchiveWallet(id);
+      debugPrint('unarchiveWallet: restored id=$id');
+      await refreshWallets();
+    } catch (e) {
+      debugPrint('unarchiveWallet error: $e');
+      emit(WalletError('فشل استعادة المحفظة'));
+      rethrow;
+    }
+  }
+
   Future<void> deleteWallet(int id) async {
     try {
       final hasOps = await repository.walletHasOperations(id);

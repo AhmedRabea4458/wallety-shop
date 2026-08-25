@@ -9,6 +9,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_detail_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_history_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
@@ -81,6 +82,7 @@ final appRouter = GoRouter(
           providers: [
             BlocProvider.value(value: sl<WalletCubit>()),
             BlocProvider.value(value: sl<WalletAdjustmentCubit>()),
+            BlocProvider.value(value: sl<CashDrawerCubit>()),
           ],
           child: const WalletManagementPage(),
         );

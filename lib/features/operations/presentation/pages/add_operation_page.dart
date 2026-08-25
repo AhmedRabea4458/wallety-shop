@@ -872,8 +872,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
                             key: const ValueKey('wallet'),
                             builder: (context, state) {
                               if (state is WalletLoaded) {
+                                final availableWallets = state.wallets.where((w) {
+                                  if (!w.isArchived) return true;
+                                  // If editing an existing operation, allow the currently selected archived wallet to stay selected
+                                  return _isEditing && w.id == widget.operationToEdit?.walletId;
+                                }).toList();
                                 return WalletSelector(
-                                  wallets: state.wallets,
+                                  wallets: availableWallets,
                                   selectedWalletId: _selectedWalletId,
                                   onChanged: (id) {
                                     if (_isSaving) return;

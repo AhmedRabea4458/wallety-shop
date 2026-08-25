@@ -65,6 +65,16 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   }
 
   @override
+  Future<void> archiveWallet(int id) {
+    return database.archiveWallet(id);
+  }
+
+  @override
+  Future<void> unarchiveWallet(int id) {
+    return database.unarchiveWallet(id);
+  }
+
+  @override
   Future<bool> walletHasOperations(int walletId) {
     return database.walletHasOperations(walletId);
   }

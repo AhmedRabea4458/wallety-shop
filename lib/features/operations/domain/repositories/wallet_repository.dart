@@ -7,5 +7,7 @@ abstract class WalletRepository {
   Future<void> updateWallet(WalletEntity wallet);
   Future<void> updateWalletBalance(int id, double newBalance);
   Future<void> deleteWallet(int id);
+  Future<void> archiveWallet(int id);
+  Future<void> unarchiveWallet(int id);
   Future<bool> walletHasOperations(int walletId);
 }
