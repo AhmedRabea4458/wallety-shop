@@ -9,6 +9,8 @@ class ErrorMapper {
     if (error is InsufficientBalanceException) return error.message;
     if (error is InsufficientCashDrawerBalanceException) return error.message;
     if (error is OperationLinkedToDebtException) return error.message;
+    if (error is OperationHasPaidDebtException) return error.message;
+    if (error is OperationLinkedToPayableException) return error.message;
     if (error is ActiveShiftExistsException) return error.message;
     if (error is MultipleActiveShiftsException) return error.toString();
 

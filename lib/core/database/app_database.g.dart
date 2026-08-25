@@ -499,6 +499,21 @@ class $WalletsTableTable extends WalletsTable
     requiredDuringInsert: false,
     defaultValue: const Constant(200000.0),
   );
+  static const VerificationMeta _isArchivedMeta = const VerificationMeta(
+    'isArchived',
+  );
+  @override
+  late final GeneratedColumn<bool> isArchived = GeneratedColumn<bool>(
+    'is_archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -521,6 +536,7 @@ class $WalletsTableTable extends WalletsTable
     dailyLimit,
     weeklyLimit,
     monthlyLimit,
+    isArchived,
     createdAt,
   ];
   @override
@@ -591,6 +607,12 @@ class $WalletsTableTable extends WalletsTable
         ),
       );
     }
+    if (data.containsKey('is_archived')) {
+      context.handle(
+        _isArchivedMeta,
+        isArchived.isAcceptableOrUnknown(data['is_archived']!, _isArchivedMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -645,6 +667,11 @@ class $WalletsTableTable extends WalletsTable
             DriftSqlType.double,
             data['${effectivePrefix}monthly_limit'],
           )!,
+      isArchived:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_archived'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -669,6 +696,7 @@ class WalletsTableData extends DataClass
   final double dailyLimit;
   final double weeklyLimit;
   final double monthlyLimit;
+  final bool isArchived;
   final DateTime createdAt;
   const WalletsTableData({
     required this.id,
@@ -679,6 +707,7 @@ class WalletsTableData extends DataClass
     required this.dailyLimit,
     required this.weeklyLimit,
     required this.monthlyLimit,
+    required this.isArchived,
     required this.createdAt,
   });
   @override
@@ -694,6 +723,7 @@ class WalletsTableData extends DataClass
     map['daily_limit'] = Variable<double>(dailyLimit);
     map['weekly_limit'] = Variable<double>(weeklyLimit);
     map['monthly_limit'] = Variable<double>(monthlyLimit);
+    map['is_archived'] = Variable<bool>(isArchived);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -711,6 +741,7 @@ class WalletsTableData extends DataClass
       dailyLimit: Value(dailyLimit),
       weeklyLimit: Value(weeklyLimit),
       monthlyLimit: Value(monthlyLimit),
+      isArchived: Value(isArchived),
       createdAt: Value(createdAt),
     );
   }
@@ -729,6 +760,7 @@ class WalletsTableData extends DataClass
       dailyLimit: serializer.fromJson<double>(json['dailyLimit']),
       weeklyLimit: serializer.fromJson<double>(json['weeklyLimit']),
       monthlyLimit: serializer.fromJson<double>(json['monthlyLimit']),
+      isArchived: serializer.fromJson<bool>(json['isArchived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -744,6 +776,7 @@ class WalletsTableData extends DataClass
       'dailyLimit': serializer.toJson<double>(dailyLimit),
       'weeklyLimit': serializer.toJson<double>(weeklyLimit),
       'monthlyLimit': serializer.toJson<double>(monthlyLimit),
+      'isArchived': serializer.toJson<bool>(isArchived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -757,6 +790,7 @@ class WalletsTableData extends DataClass
     double? dailyLimit,
     double? weeklyLimit,
     double? monthlyLimit,
+    bool? isArchived,
     DateTime? createdAt,
   }) => WalletsTableData(
     id: id ?? this.id,
@@ -767,6 +801,7 @@ class WalletsTableData extends DataClass
     dailyLimit: dailyLimit ?? this.dailyLimit,
     weeklyLimit: weeklyLimit ?? this.weeklyLimit,
     monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+    isArchived: isArchived ?? this.isArchived,
     createdAt: createdAt ?? this.createdAt,
   );
   WalletsTableData copyWithCompanion(WalletsTableCompanion data) {
@@ -785,6 +820,8 @@ class WalletsTableData extends DataClass
           data.monthlyLimit.present
               ? data.monthlyLimit.value
               : this.monthlyLimit,
+      isArchived:
+          data.isArchived.present ? data.isArchived.value : this.isArchived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -800,6 +837,7 @@ class WalletsTableData extends DataClass
           ..write('dailyLimit: $dailyLimit, ')
           ..write('weeklyLimit: $weeklyLimit, ')
           ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -815,6 +853,7 @@ class WalletsTableData extends DataClass
     dailyLimit,
     weeklyLimit,
     monthlyLimit,
+    isArchived,
     createdAt,
   );
   @override
@@ -829,6 +868,7 @@ class WalletsTableData extends DataClass
           other.dailyLimit == this.dailyLimit &&
           other.weeklyLimit == this.weeklyLimit &&
           other.monthlyLimit == this.monthlyLimit &&
+          other.isArchived == this.isArchived &&
           other.createdAt == this.createdAt);
 }
 
@@ -841,6 +881,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
   final Value<double> dailyLimit;
   final Value<double> weeklyLimit;
   final Value<double> monthlyLimit;
+  final Value<bool> isArchived;
   final Value<DateTime> createdAt;
   const WalletsTableCompanion({
     this.id = const Value.absent(),
@@ -851,6 +892,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
     this.dailyLimit = const Value.absent(),
     this.weeklyLimit = const Value.absent(),
     this.monthlyLimit = const Value.absent(),
+    this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   WalletsTableCompanion.insert({
@@ -862,6 +904,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
     this.dailyLimit = const Value.absent(),
     this.weeklyLimit = const Value.absent(),
     this.monthlyLimit = const Value.absent(),
+    this.isArchived = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<WalletsTableData> custom({
@@ -873,6 +916,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
     Expression<double>? dailyLimit,
     Expression<double>? weeklyLimit,
     Expression<double>? monthlyLimit,
+    Expression<bool>? isArchived,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -884,6 +928,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
       if (dailyLimit != null) 'daily_limit': dailyLimit,
       if (weeklyLimit != null) 'weekly_limit': weeklyLimit,
       if (monthlyLimit != null) 'monthly_limit': monthlyLimit,
+      if (isArchived != null) 'is_archived': isArchived,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -897,6 +942,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
     Value<double>? dailyLimit,
     Value<double>? weeklyLimit,
     Value<double>? monthlyLimit,
+    Value<bool>? isArchived,
     Value<DateTime>? createdAt,
   }) {
     return WalletsTableCompanion(
@@ -908,6 +954,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
       dailyLimit: dailyLimit ?? this.dailyLimit,
       weeklyLimit: weeklyLimit ?? this.weeklyLimit,
       monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+      isArchived: isArchived ?? this.isArchived,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -939,6 +986,9 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
     if (monthlyLimit.present) {
       map['monthly_limit'] = Variable<double>(monthlyLimit.value);
     }
+    if (isArchived.present) {
+      map['is_archived'] = Variable<bool>(isArchived.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -956,6 +1006,7 @@ class WalletsTableCompanion extends UpdateCompanion<WalletsTableData> {
           ..write('dailyLimit: $dailyLimit, ')
           ..write('weeklyLimit: $weeklyLimit, ')
           ..write('monthlyLimit: $monthlyLimit, ')
+          ..write('isArchived: $isArchived, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -4299,6 +4350,20 @@ class $DebtPaymentsTableTable extends DebtPaymentsTable
       'REFERENCES debts_table (id)',
     ),
   );
+  static const VerificationMeta _walletIdMeta = const VerificationMeta(
+    'walletId',
+  );
+  @override
+  late final GeneratedColumn<int> walletId = GeneratedColumn<int>(
+    'wallet_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES wallets_table (id)',
+    ),
+  );
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<double> amount = GeneratedColumn<double>(
@@ -4345,6 +4410,7 @@ class $DebtPaymentsTableTable extends DebtPaymentsTable
   List<GeneratedColumn> get $columns => [
     id,
     debtId,
+    walletId,
     amount,
     notes,
     paymentMethod,
@@ -4372,6 +4438,12 @@ class $DebtPaymentsTableTable extends DebtPaymentsTable
       );
     } else if (isInserting) {
       context.missing(_debtIdMeta);
+    }
+    if (data.containsKey('wallet_id')) {
+      context.handle(
+        _walletIdMeta,
+        walletId.isAcceptableOrUnknown(data['wallet_id']!, _walletIdMeta),
+      );
     }
     if (data.containsKey('amount')) {
       context.handle(
@@ -4421,6 +4493,10 @@ class $DebtPaymentsTableTable extends DebtPaymentsTable
             DriftSqlType.int,
             data['${effectivePrefix}debt_id'],
           )!,
+      walletId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}wallet_id'],
+      ),
       amount:
           attachedDatabase.typeMapping.read(
             DriftSqlType.double,
@@ -4453,6 +4529,7 @@ class DebtPaymentsTableData extends DataClass
     implements Insertable<DebtPaymentsTableData> {
   final int id;
   final int debtId;
+  final int? walletId;
   final double amount;
   final String? notes;
   final String paymentMethod;
@@ -4460,6 +4537,7 @@ class DebtPaymentsTableData extends DataClass
   const DebtPaymentsTableData({
     required this.id,
     required this.debtId,
+    this.walletId,
     required this.amount,
     this.notes,
     required this.paymentMethod,
@@ -4470,6 +4548,9 @@ class DebtPaymentsTableData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['debt_id'] = Variable<int>(debtId);
+    if (!nullToAbsent || walletId != null) {
+      map['wallet_id'] = Variable<int>(walletId);
+    }
     map['amount'] = Variable<double>(amount);
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
@@ -4483,6 +4564,10 @@ class DebtPaymentsTableData extends DataClass
     return DebtPaymentsTableCompanion(
       id: Value(id),
       debtId: Value(debtId),
+      walletId:
+          walletId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(walletId),
       amount: Value(amount),
       notes:
           notes == null && nullToAbsent ? const Value.absent() : Value(notes),
@@ -4499,6 +4584,7 @@ class DebtPaymentsTableData extends DataClass
     return DebtPaymentsTableData(
       id: serializer.fromJson<int>(json['id']),
       debtId: serializer.fromJson<int>(json['debtId']),
+      walletId: serializer.fromJson<int?>(json['walletId']),
       amount: serializer.fromJson<double>(json['amount']),
       notes: serializer.fromJson<String?>(json['notes']),
       paymentMethod: serializer.fromJson<String>(json['paymentMethod']),
@@ -4511,6 +4597,7 @@ class DebtPaymentsTableData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'debtId': serializer.toJson<int>(debtId),
+      'walletId': serializer.toJson<int?>(walletId),
       'amount': serializer.toJson<double>(amount),
       'notes': serializer.toJson<String?>(notes),
       'paymentMethod': serializer.toJson<String>(paymentMethod),
@@ -4521,6 +4608,7 @@ class DebtPaymentsTableData extends DataClass
   DebtPaymentsTableData copyWith({
     int? id,
     int? debtId,
+    Value<int?> walletId = const Value.absent(),
     double? amount,
     Value<String?> notes = const Value.absent(),
     String? paymentMethod,
@@ -4528,6 +4616,7 @@ class DebtPaymentsTableData extends DataClass
   }) => DebtPaymentsTableData(
     id: id ?? this.id,
     debtId: debtId ?? this.debtId,
+    walletId: walletId.present ? walletId.value : this.walletId,
     amount: amount ?? this.amount,
     notes: notes.present ? notes.value : this.notes,
     paymentMethod: paymentMethod ?? this.paymentMethod,
@@ -4537,6 +4626,7 @@ class DebtPaymentsTableData extends DataClass
     return DebtPaymentsTableData(
       id: data.id.present ? data.id.value : this.id,
       debtId: data.debtId.present ? data.debtId.value : this.debtId,
+      walletId: data.walletId.present ? data.walletId.value : this.walletId,
       amount: data.amount.present ? data.amount.value : this.amount,
       notes: data.notes.present ? data.notes.value : this.notes,
       paymentMethod:
@@ -4552,6 +4642,7 @@ class DebtPaymentsTableData extends DataClass
     return (StringBuffer('DebtPaymentsTableData(')
           ..write('id: $id, ')
           ..write('debtId: $debtId, ')
+          ..write('walletId: $walletId, ')
           ..write('amount: $amount, ')
           ..write('notes: $notes, ')
           ..write('paymentMethod: $paymentMethod, ')
@@ -4561,14 +4652,22 @@ class DebtPaymentsTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, debtId, amount, notes, paymentMethod, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    debtId,
+    walletId,
+    amount,
+    notes,
+    paymentMethod,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is DebtPaymentsTableData &&
           other.id == this.id &&
           other.debtId == this.debtId &&
+          other.walletId == this.walletId &&
           other.amount == this.amount &&
           other.notes == this.notes &&
           other.paymentMethod == this.paymentMethod &&
@@ -4579,6 +4678,7 @@ class DebtPaymentsTableCompanion
     extends UpdateCompanion<DebtPaymentsTableData> {
   final Value<int> id;
   final Value<int> debtId;
+  final Value<int?> walletId;
   final Value<double> amount;
   final Value<String?> notes;
   final Value<String> paymentMethod;
@@ -4586,6 +4686,7 @@ class DebtPaymentsTableCompanion
   const DebtPaymentsTableCompanion({
     this.id = const Value.absent(),
     this.debtId = const Value.absent(),
+    this.walletId = const Value.absent(),
     this.amount = const Value.absent(),
     this.notes = const Value.absent(),
     this.paymentMethod = const Value.absent(),
@@ -4594,6 +4695,7 @@ class DebtPaymentsTableCompanion
   DebtPaymentsTableCompanion.insert({
     this.id = const Value.absent(),
     required int debtId,
+    this.walletId = const Value.absent(),
     required double amount,
     this.notes = const Value.absent(),
     this.paymentMethod = const Value.absent(),
@@ -4603,6 +4705,7 @@ class DebtPaymentsTableCompanion
   static Insertable<DebtPaymentsTableData> custom({
     Expression<int>? id,
     Expression<int>? debtId,
+    Expression<int>? walletId,
     Expression<double>? amount,
     Expression<String>? notes,
     Expression<String>? paymentMethod,
@@ -4611,6 +4714,7 @@ class DebtPaymentsTableCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (debtId != null) 'debt_id': debtId,
+      if (walletId != null) 'wallet_id': walletId,
       if (amount != null) 'amount': amount,
       if (notes != null) 'notes': notes,
       if (paymentMethod != null) 'payment_method': paymentMethod,
@@ -4621,6 +4725,7 @@ class DebtPaymentsTableCompanion
   DebtPaymentsTableCompanion copyWith({
     Value<int>? id,
     Value<int>? debtId,
+    Value<int?>? walletId,
     Value<double>? amount,
     Value<String?>? notes,
     Value<String>? paymentMethod,
@@ -4629,6 +4734,7 @@ class DebtPaymentsTableCompanion
     return DebtPaymentsTableCompanion(
       id: id ?? this.id,
       debtId: debtId ?? this.debtId,
+      walletId: walletId ?? this.walletId,
       amount: amount ?? this.amount,
       notes: notes ?? this.notes,
       paymentMethod: paymentMethod ?? this.paymentMethod,
@@ -4644,6 +4750,9 @@ class DebtPaymentsTableCompanion
     }
     if (debtId.present) {
       map['debt_id'] = Variable<int>(debtId.value);
+    }
+    if (walletId.present) {
+      map['wallet_id'] = Variable<int>(walletId.value);
     }
     if (amount.present) {
       map['amount'] = Variable<double>(amount.value);
@@ -4665,6 +4774,7 @@ class DebtPaymentsTableCompanion
     return (StringBuffer('DebtPaymentsTableCompanion(')
           ..write('id: $id, ')
           ..write('debtId: $debtId, ')
+          ..write('walletId: $walletId, ')
           ..write('amount: $amount, ')
           ..write('notes: $notes, ')
           ..write('paymentMethod: $paymentMethod, ')
@@ -4962,6 +5072,7 @@ typedef $$WalletsTableTableCreateCompanionBuilder =
       Value<double> dailyLimit,
       Value<double> weeklyLimit,
       Value<double> monthlyLimit,
+      Value<bool> isArchived,
       Value<DateTime> createdAt,
     });
 typedef $$WalletsTableTableUpdateCompanionBuilder =
@@ -4974,6 +5085,7 @@ typedef $$WalletsTableTableUpdateCompanionBuilder =
       Value<double> dailyLimit,
       Value<double> weeklyLimit,
       Value<double> monthlyLimit,
+      Value<bool> isArchived,
       Value<DateTime> createdAt,
     });
 
@@ -5032,6 +5144,33 @@ final class $$WalletsTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $DebtPaymentsTableTable,
+    List<DebtPaymentsTableData>
+  >
+  _debtPaymentsTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.debtPaymentsTable,
+        aliasName: $_aliasNameGenerator(
+          db.walletsTable.id,
+          db.debtPaymentsTable.walletId,
+        ),
+      );
+
+  $$DebtPaymentsTableTableProcessedTableManager get debtPaymentsTableRefs {
+    final manager = $$DebtPaymentsTableTableTableManager(
+      $_db,
+      $_db.debtPaymentsTable,
+    ).filter((f) => f.walletId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _debtPaymentsTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$WalletsTableTableFilterComposer
@@ -5080,6 +5219,11 @@ class $$WalletsTableTableFilterComposer
 
   ColumnFilters<double> get monthlyLimit => $composableBuilder(
     column: $table.monthlyLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5138,6 +5282,31 @@ class $$WalletsTableTableFilterComposer
         );
     return f(composer);
   }
+
+  Expression<bool> debtPaymentsTableRefs(
+    Expression<bool> Function($$DebtPaymentsTableTableFilterComposer f) f,
+  ) {
+    final $$DebtPaymentsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.debtPaymentsTable,
+      getReferencedColumn: (t) => t.walletId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$DebtPaymentsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.debtPaymentsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$WalletsTableTableOrderingComposer
@@ -5189,6 +5358,11 @@ class $$WalletsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -5233,6 +5407,11 @@ class $$WalletsTableTableAnnotationComposer
 
   GeneratedColumn<double> get monthlyLimit => $composableBuilder(
     column: $table.monthlyLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isArchived => $composableBuilder(
+    column: $table.isArchived,
     builder: (column) => column,
   );
 
@@ -5289,6 +5468,32 @@ class $$WalletsTableTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> debtPaymentsTableRefs<T extends Object>(
+    Expression<T> Function($$DebtPaymentsTableTableAnnotationComposer a) f,
+  ) {
+    final $$DebtPaymentsTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.debtPaymentsTable,
+          getReferencedColumn: (t) => t.walletId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$DebtPaymentsTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.debtPaymentsTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$WalletsTableTableTableManager
@@ -5307,6 +5512,7 @@ class $$WalletsTableTableTableManager
           PrefetchHooks Function({
             bool operationsTableRefs,
             bool walletAdjustmentsTableRefs,
+            bool debtPaymentsTableRefs,
           })
         > {
   $$WalletsTableTableTableManager(_$AppDatabase db, $WalletsTableTable table)
@@ -5331,6 +5537,7 @@ class $$WalletsTableTableTableManager
                 Value<double> dailyLimit = const Value.absent(),
                 Value<double> weeklyLimit = const Value.absent(),
                 Value<double> monthlyLimit = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => WalletsTableCompanion(
                 id: id,
@@ -5341,6 +5548,7 @@ class $$WalletsTableTableTableManager
                 dailyLimit: dailyLimit,
                 weeklyLimit: weeklyLimit,
                 monthlyLimit: monthlyLimit,
+                isArchived: isArchived,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -5353,6 +5561,7 @@ class $$WalletsTableTableTableManager
                 Value<double> dailyLimit = const Value.absent(),
                 Value<double> weeklyLimit = const Value.absent(),
                 Value<double> monthlyLimit = const Value.absent(),
+                Value<bool> isArchived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => WalletsTableCompanion.insert(
                 id: id,
@@ -5363,6 +5572,7 @@ class $$WalletsTableTableTableManager
                 dailyLimit: dailyLimit,
                 weeklyLimit: weeklyLimit,
                 monthlyLimit: monthlyLimit,
+                isArchived: isArchived,
                 createdAt: createdAt,
               ),
           withReferenceMapper:
@@ -5378,12 +5588,14 @@ class $$WalletsTableTableTableManager
           prefetchHooksCallback: ({
             operationsTableRefs = false,
             walletAdjustmentsTableRefs = false,
+            debtPaymentsTableRefs = false,
           }) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [
                 if (operationsTableRefs) db.operationsTable,
                 if (walletAdjustmentsTableRefs) db.walletAdjustmentsTable,
+                if (debtPaymentsTableRefs) db.debtPaymentsTable,
               ],
               addJoins: null,
               getPrefetchedDataCallback: (items) async {
@@ -5432,6 +5644,28 @@ class $$WalletsTableTableTableManager
                           ),
                       typedResults: items,
                     ),
+                  if (debtPaymentsTableRefs)
+                    await $_getPrefetchedData<
+                      WalletsTableData,
+                      $WalletsTableTable,
+                      DebtPaymentsTableData
+                    >(
+                      currentTable: table,
+                      referencedTable: $$WalletsTableTableReferences
+                          ._debtPaymentsTableRefsTable(db),
+                      managerFromTypedResult:
+                          (p0) =>
+                              $$WalletsTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).debtPaymentsTableRefs,
+                      referencedItemsForCurrentItem:
+                          (item, referencedItems) => referencedItems.where(
+                            (e) => e.walletId == item.id,
+                          ),
+                      typedResults: items,
+                    ),
                 ];
               },
             );
@@ -5455,6 +5689,7 @@ typedef $$WalletsTableTableProcessedTableManager =
       PrefetchHooks Function({
         bool operationsTableRefs,
         bool walletAdjustmentsTableRefs,
+        bool debtPaymentsTableRefs,
       })
     >;
 typedef $$OperationsTableTableCreateCompanionBuilder =
@@ -7998,6 +8233,7 @@ typedef $$DebtPaymentsTableTableCreateCompanionBuilder =
     DebtPaymentsTableCompanion Function({
       Value<int> id,
       required int debtId,
+      Value<int?> walletId,
       required double amount,
       Value<String?> notes,
       Value<String> paymentMethod,
@@ -8007,6 +8243,7 @@ typedef $$DebtPaymentsTableTableUpdateCompanionBuilder =
     DebtPaymentsTableCompanion Function({
       Value<int> id,
       Value<int> debtId,
+      Value<int?> walletId,
       Value<double> amount,
       Value<String?> notes,
       Value<String> paymentMethod,
@@ -8039,6 +8276,25 @@ final class $$DebtPaymentsTableTableReferences
       $_db.debtsTable,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_debtIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $WalletsTableTable _walletIdTable(_$AppDatabase db) =>
+      db.walletsTable.createAlias(
+        $_aliasNameGenerator(db.debtPaymentsTable.walletId, db.walletsTable.id),
+      );
+
+  $$WalletsTableTableProcessedTableManager? get walletId {
+    final $_column = $_itemColumn<int>('wallet_id');
+    if ($_column == null) return null;
+    final manager = $$WalletsTableTableTableManager(
+      $_db,
+      $_db.walletsTable,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_walletIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -8094,6 +8350,29 @@ class $$DebtPaymentsTableTableFilterComposer
           }) => $$DebtsTableTableFilterComposer(
             $db: $db,
             $table: $db.debtsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$WalletsTableTableFilterComposer get walletId {
+    final $$WalletsTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletId,
+      referencedTable: $db.walletsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WalletsTableTableFilterComposer(
+            $db: $db,
+            $table: $db.walletsTable,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8160,6 +8439,29 @@ class $$DebtPaymentsTableTableOrderingComposer
     );
     return composer;
   }
+
+  $$WalletsTableTableOrderingComposer get walletId {
+    final $$WalletsTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletId,
+      referencedTable: $db.walletsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WalletsTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.walletsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$DebtPaymentsTableTableAnnotationComposer
@@ -8210,6 +8512,29 @@ class $$DebtPaymentsTableTableAnnotationComposer
     );
     return composer;
   }
+
+  $$WalletsTableTableAnnotationComposer get walletId {
+    final $$WalletsTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.walletId,
+      referencedTable: $db.walletsTable,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WalletsTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.walletsTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$DebtPaymentsTableTableTableManager
@@ -8225,7 +8550,7 @@ class $$DebtPaymentsTableTableTableManager
           $$DebtPaymentsTableTableUpdateCompanionBuilder,
           (DebtPaymentsTableData, $$DebtPaymentsTableTableReferences),
           DebtPaymentsTableData,
-          PrefetchHooks Function({bool debtId})
+          PrefetchHooks Function({bool debtId, bool walletId})
         > {
   $$DebtPaymentsTableTableTableManager(
     _$AppDatabase db,
@@ -8253,6 +8578,7 @@ class $$DebtPaymentsTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> debtId = const Value.absent(),
+                Value<int?> walletId = const Value.absent(),
                 Value<double> amount = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
@@ -8260,6 +8586,7 @@ class $$DebtPaymentsTableTableTableManager
               }) => DebtPaymentsTableCompanion(
                 id: id,
                 debtId: debtId,
+                walletId: walletId,
                 amount: amount,
                 notes: notes,
                 paymentMethod: paymentMethod,
@@ -8269,6 +8596,7 @@ class $$DebtPaymentsTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required int debtId,
+                Value<int?> walletId = const Value.absent(),
                 required double amount,
                 Value<String?> notes = const Value.absent(),
                 Value<String> paymentMethod = const Value.absent(),
@@ -8276,6 +8604,7 @@ class $$DebtPaymentsTableTableTableManager
               }) => DebtPaymentsTableCompanion.insert(
                 id: id,
                 debtId: debtId,
+                walletId: walletId,
                 amount: amount,
                 notes: notes,
                 paymentMethod: paymentMethod,
@@ -8291,7 +8620,7 @@ class $$DebtPaymentsTableTableTableManager
                         ),
                       )
                       .toList(),
-          prefetchHooksCallback: ({debtId = false}) {
+          prefetchHooksCallback: ({debtId = false, walletId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -8324,6 +8653,20 @@ class $$DebtPaymentsTableTableTableManager
                           )
                           as T;
                 }
+                if (walletId) {
+                  state =
+                      state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.walletId,
+                            referencedTable: $$DebtPaymentsTableTableReferences
+                                ._walletIdTable(db),
+                            referencedColumn:
+                                $$DebtPaymentsTableTableReferences
+                                    ._walletIdTable(db)
+                                    .id,
+                          )
+                          as T;
+                }
 
                 return state;
               },
@@ -8348,7 +8691,7 @@ typedef $$DebtPaymentsTableTableProcessedTableManager =
       $$DebtPaymentsTableTableUpdateCompanionBuilder,
       (DebtPaymentsTableData, $$DebtPaymentsTableTableReferences),
       DebtPaymentsTableData,
-      PrefetchHooks Function({bool debtId})
+      PrefetchHooks Function({bool debtId, bool walletId})
     >;
 
 class $AppDatabaseManager {

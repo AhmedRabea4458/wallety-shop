@@ -20,6 +20,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/dialogs/delete_operation_dialog.dart';
 import 'package:smart_expense/shared/widgets/filter_chip_widget.dart';
 import 'package:smart_expense/shared/widgets/search_bar.dart' as app_search;
 import 'package:smart_expense/shared/widgets/transaction_row.dart';
@@ -486,39 +487,19 @@ class _OperationsList extends StatelessWidget {
                             ),
                           ),
                           confirmDismiss: (direction) async {
-                            if (debt != null) {
-                              scaffoldMessenger.showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'لا يمكن تعديل أو حذف عملية مرتبطة بدين',
-                                  ),
-                                  backgroundColor: AppColors.destructive,
-                                ),
-                              );
-                              return false;
+                            final walletState = context.read<WalletCubit>().state;
+                            String? walletName;
+                            if (walletState is WalletLoaded) {
+                              final match = walletState.wallets.where((w) => w.id == operation.walletId);
+                              if (match.isNotEmpty) {
+                                walletName = match.first.name;
+                              }
                             }
-                            try {
-                              await operationCubit.deleteOperation(
-                                operation.id,
-                              );
-                              return true;
-                            } catch (e) {
-                              scaffoldMessenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(ErrorMapper.map(e)),
-                                  backgroundColor: AppColors.destructive,
-                                ),
-                              );
-                              return false;
-                            }
-                          },
-                          onDismissed: (_) {
-                            scaffoldMessenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('تم حذف العملية'),
-                                backgroundColor: AppColors.destructive,
-                                duration: Duration(seconds: 2),
-                              ),
+                            return await showDeleteOperationDialog(
+                              parentContext: context,
+                              operationCubit: operationCubit,
+                              operation: operation,
+                              walletName: walletName,
                             );
                           },
                           child: Container(

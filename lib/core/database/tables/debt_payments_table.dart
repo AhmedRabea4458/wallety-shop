@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart';
 import 'package:smart_expense/core/database/tables/debts_table.dart';
+import 'package:smart_expense/core/database/tables/wallets_table.dart';
 
 class DebtPaymentsTable extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get debtId => integer().references(DebtsTable, #id)();
+  IntColumn get walletId => integer().nullable().references(WalletsTable, #id)();
   RealColumn get amount => real()();
   TextColumn get notes => text().nullable()();
   TextColumn get paymentMethod => text().withDefault(const Constant('cash'))();

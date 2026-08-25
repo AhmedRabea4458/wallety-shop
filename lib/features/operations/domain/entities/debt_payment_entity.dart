@@ -1,6 +1,7 @@
 class DebtPaymentEntity {
   final int id;
   final int debtId;
+  final int? walletId;
   final double amount;
   final String? notes;
   final String paymentMethod;
@@ -9,6 +10,7 @@ class DebtPaymentEntity {
   const DebtPaymentEntity({
     required this.id,
     required this.debtId,
+    this.walletId,
     required this.amount,
     this.notes,
     this.paymentMethod = 'cash',

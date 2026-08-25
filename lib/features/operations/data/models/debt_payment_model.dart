@@ -5,6 +5,7 @@ import 'package:smart_expense/features/operations/domain/entities/debt_payment_e
 class DebtPaymentModel {
   final int id;
   final int debtId;
+  final int? walletId;
   final double amount;
   final String? notes;
   final String paymentMethod;
@@ -13,6 +14,7 @@ class DebtPaymentModel {
   DebtPaymentModel({
     required this.id,
     required this.debtId,
+    this.walletId,
     required this.amount,
     this.notes,
     required this.paymentMethod,
@@ -23,6 +25,7 @@ class DebtPaymentModel {
     return DebtPaymentEntity(
       id: id,
       debtId: debtId,
+      walletId: walletId,
       amount: amount,
       notes: notes,
       paymentMethod: paymentMethod,
@@ -34,6 +37,7 @@ class DebtPaymentModel {
     return DebtPaymentModel(
       id: entity.id,
       debtId: entity.debtId,
+      walletId: entity.walletId,
       amount: entity.amount,
       notes: entity.notes,
       paymentMethod: entity.paymentMethod,
@@ -45,6 +49,7 @@ class DebtPaymentModel {
     return DebtPaymentModel(
       id: data.id,
       debtId: data.debtId,
+      walletId: data.walletId,
       amount: data.amount,
       notes: data.notes,
       paymentMethod: data.paymentMethod,

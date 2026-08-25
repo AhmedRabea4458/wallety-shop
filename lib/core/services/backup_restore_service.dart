@@ -90,6 +90,7 @@ class BackupRestoreService {
             dailyLimit: Value((w['dailyLimit'] as num?)?.toDouble() ?? 0.0),
             weeklyLimit: Value((w['weeklyLimit'] as num?)?.toDouble() ?? 0.0),
             monthlyLimit: Value((w['monthlyLimit'] as num?)?.toDouble() ?? 0.0),
+            isArchived: Value((w['isArchived'] as bool?) ?? false),
             createdAt: Value(DateTime.parse(w['createdAt'] as String)),
           ),
         );
@@ -197,6 +198,7 @@ class BackupRestoreService {
           DebtPaymentsTableCompanion(
             id: Value(p['id'] as int),
             debtId: Value(p['debtId'] as int),
+            walletId: Value(p['walletId'] as int?),
             amount: Value((p['amount'] as num).toDouble()),
             notes: Value(p['notes'] as String?),
             paymentMethod: Value((p['paymentMethod'] as String?) ?? 'cash'),
@@ -229,6 +231,7 @@ class BackupRestoreService {
         'dailyLimit': w.dailyLimit,
         'weeklyLimit': w.weeklyLimit,
         'monthlyLimit': w.monthlyLimit,
+        'isArchived': w.isArchived,
         'createdAt': w.createdAt.toIso8601String(),
       };
 
@@ -304,6 +307,7 @@ class BackupRestoreService {
   static Map<String, dynamic> _debtPaymentToJson(DebtPaymentsTableData p) => {
         'id': p.id,
         'debtId': p.debtId,
+        'walletId': p.walletId,
         'amount': p.amount,
         'notes': p.notes,
         'paymentMethod': p.paymentMethod,

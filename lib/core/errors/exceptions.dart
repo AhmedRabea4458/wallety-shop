@@ -39,8 +39,28 @@ class OperationLinkedToDebtException implements Exception {
   final int operationId;
   final String message;
 
-  OperationLinkedToDebtException(this.operationId, [this.message = 'لا يمكن تعديل أو حذف عملية مرتبطة بدين']);
+  OperationLinkedToDebtException(this.operationId, [this.message = 'لا يمكن حذف عملية مرتبطة بدين عميل']);
 
   @override
   String toString() => '$message (العملية رقم: $operationId)';
+}
+
+class OperationHasPaidDebtException implements Exception {
+  final int operationId;
+  final String message;
+
+  OperationHasPaidDebtException(this.operationId, [this.message = 'لا يمكن حذف هذه العملية لوجود دفعات مسجلة على الدين المرتبط بها. يرجى إلغاء الدفعات أولاً.']);
+
+  @override
+  String toString() => message;
+}
+
+class OperationLinkedToPayableException implements Exception {
+  final int operationId;
+  final String message;
+
+  OperationLinkedToPayableException(this.operationId, [this.message = 'لا يمكن حذف عملية مرتبطة بمستحق تم سداده جزئياً أو كلياً.']);
+
+  @override
+  String toString() => message;
 }

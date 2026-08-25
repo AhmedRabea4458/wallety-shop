@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +136,10 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from <= 20) {
         await m.addColumn(debtsTable, debtsTable.notes);
+      }
+      if (from <= 21) {
+        await m.addColumn(walletsTable, walletsTable.isArchived);
+        await m.addColumn(debtPaymentsTable, debtPaymentsTable.walletId);
       }
     },
   );
@@ -824,17 +828,58 @@ class AppDatabase extends _$AppDatabase {
             ..where((o) => o.id.equals(id))).getSingle();
       final walletId = operation.walletId;
       final providerType = operation.providerType;
+      final opType = operation.operationType;
+      final amount = operation.amount;
+      final commission = operation.commission;
+      final networkFee = operation.networkFee;
+      final isDebt = operation.isDebt;
 
-      // Reverse wallet effect (Vodafone Cash only)
+      // 1. Check if operation has a linked record in debtsTable (customer debt or payable)
+      final linkedDebt =
+          await (select(debtsTable)
+            ..where((d) => d.operationId.equals(id))).getSingleOrNull();
+
+      double initialCashPaidFromDrawer = 0.0;
+
+      if (linkedDebt != null) {
+        // Check if there are any payments made against this linked debt
+        final payments =
+            await (select(debtPaymentsTable)
+              ..where((p) => p.debtId.equals(linkedDebt.id))).get();
+
+        if (payments.isNotEmpty) {
+          if (linkedDebt.debtType == 'payable') {
+            throw OperationLinkedToPayableException(id);
+          } else {
+            throw OperationHasPaidDebtException(id);
+          }
+        }
+
+        // For payables created via partial/full withdrawal:
+        // calculate how much cash was actually taken from cash drawer at creation time.
+        if (linkedDebt.debtType == 'payable' && opType == 'withdrawal') {
+          // requiredCash was (amount - commission)
+          // remainderPayable was linkedDebt.amount
+          // actualCashPaid was (amount - commission - linkedDebt.amount)
+          initialCashPaidFromDrawer = (amount - commission - linkedDebt.amount).clamp(0.0, double.infinity);
+        }
+
+        // Delete the unpaid linked debt row safely
+        await (delete(debtsTable)..where((d) => d.id.equals(linkedDebt.id))).go();
+      }
+
+      // 2. Reverse wallet effect (Vodafone Cash only)
       if (providerType == 'vodafoneCash') {
         final wallet =
             await (select(walletsTable)
               ..where((w) => w.id.equals(walletId))).getSingle();
         double balance = wallet.balance;
-        if (operation.operationType == 'deposit') {
-          balance += operation.amount + operation.networkFee;
-        } else if (operation.operationType == 'withdrawal') {
-          balance -= operation.amount;
+        if (opType == 'deposit') {
+          // In deposit: wallet was reduced by (amount + networkFee)
+          balance += amount + networkFee;
+        } else if (opType == 'withdrawal') {
+          // In withdrawal: wallet was increased by amount
+          balance -= amount;
           if (balance < 0) {
             throw InsufficientBalanceException();
           }
@@ -844,32 +889,49 @@ class AppDatabase extends _$AppDatabase {
         )).write(WalletsTableCompanion(balance: Value(balance)));
       }
 
+      // 3. Delete the operation row
       await (delete(operationsTable)..where((o) => o.id.equals(id))).go();
 
-      // Reverse cash drawer effect
+      // 4. Reverse cash drawer effect
       final cashDrawer =
           await (select(cashDrawerTable)
             ..where((c) => c.id.equals(1))).getSingle();
       double cashBalance = cashDrawer.balance;
+
       if (providerType == 'vodafoneCash') {
-        if (operation.operationType == 'deposit') {
-          cashBalance -= operation.amount + operation.commission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
+        if (opType == 'deposit') {
+          if (!isDebt) {
+            // Normal cash deposit received (amount + commission) in drawer
+            cashBalance -= amount + commission;
+            if (cashBalance < 0) {
+              throw InsufficientCashDrawerBalanceException();
+            }
+          } else {
+            // Debt deposit did NOT add amount to drawer, only commission was added if any
+            // (Wait: in addOperationWithBalanceUpdate, when isDebt is true, drawer was NOT incremented by amount+commission)
+            // Drawer balance was unchanged when isDebt == true. So no cash subtraction needed!
           }
-        } else if (operation.operationType == 'withdrawal') {
-          cashBalance += operation.amount - operation.commission;
+        } else if (opType == 'withdrawal') {
+          if (linkedDebt != null && linkedDebt.debtType == 'payable') {
+            // Payable withdrawal: only refund back what was actually given out of the drawer initially
+            cashBalance += initialCashPaidFromDrawer;
+          } else {
+            // Standard withdrawal: (amount - commission) was given out from drawer
+            cashBalance += amount - commission;
+          }
         }
       } else if (providerType == 'instaPay') {
-        if (operation.operationType == 'deposit') {
-          cashBalance -= operation.commission;
+        if (opType == 'deposit') {
+          // InstaPay deposit added commission to drawer
+          cashBalance -= commission;
           if (cashBalance < 0) {
             throw InsufficientCashDrawerBalanceException();
           }
-        } else if (operation.operationType == 'withdrawal') {
-          cashBalance += operation.amount - operation.commission;
+        } else if (opType == 'withdrawal') {
+          cashBalance += amount - commission;
         }
       }
+
       await (update(cashDrawerTable)..where(
         (c) => c.id.equals(1),
       )).write(CashDrawerTableCompanion(balance: Value(cashBalance)));

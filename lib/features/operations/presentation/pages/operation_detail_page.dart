@@ -18,6 +18,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_c
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
+import 'package:smart_expense/features/operations/presentation/widgets/dialogs/delete_operation_dialog.dart';
 
 class OperationDetailPage extends StatelessWidget {
   final OperationEntity operation;
@@ -95,7 +96,39 @@ class OperationDetailPage extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 48),
+                    IconButton(
+                      onPressed: () async {
+                        final walletState = context.read<WalletCubit>().state;
+                        String? walletName;
+                        if (walletState is WalletLoaded) {
+                          final match = walletState.wallets.where((w) => w.id == operation.walletId);
+                          if (match.isNotEmpty) {
+                            walletName = match.first.name;
+                          }
+                        }
+                        final deleted = await showDeleteOperationDialog(
+                          parentContext: context,
+                          operationCubit: context.read<OperationCubit>(),
+                          operation: operation,
+                          walletName: walletName,
+                        );
+                        if (deleted && context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      icon: Container(
+                        padding: const EdgeInsets.all(AppSpacing.space2),
+                        decoration: BoxDecoration(
+                          color: AppColors.destructive.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: AppColors.destructive,
+                          size: 20,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -352,4 +352,104 @@ void main() {
     expect(paymentsBefore.first.amount, 1500.0);
     expect(paymentsBefore.first.notes, 'Partial settlement');
   });
+
+  test('Safe operation deletion - Standard cash withdrawal and deposit reversal', () async {
+    final db = AppDatabase();
+
+    // 1. Setup wallet and initial drawer
+    final walletId = await db.into(db.walletsTable).insert(
+      WalletsTableCompanion(
+        name: const Value('Test Wallet'),
+        balance: const Value(5000.0),
+      ),
+    );
+
+    await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+      CashDrawerTableCompanion(
+        id: const Value(1),
+        balance: const Value(10000.0),
+      ),
+    );
+
+    // 2. Perform a normal withdrawal: amount=1000, commission=20
+    // Wallet should become: 5000 + 1000 = 6000
+    // Drawer should become: 10000 - (1000 - 20) = 9020
+    final opId = await db.addOperationWithBalanceUpdate(
+      OperationsTableCompanion(
+        walletId: Value(walletId),
+        operationType: const Value('withdrawal'),
+        providerType: const Value('vodafoneCash'),
+        amount: const Value(1000.0),
+        commission: const Value(20.0),
+        networkFee: const Value(0.0),
+        isDebt: const Value(false),
+      ),
+    );
+
+    var wallet = await (db.select(db.walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+    var drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    expect(wallet.balance, 6000.0);
+    expect(drawer.balance, 9020.0);
+
+    // 3. Delete the operation
+    await db.deleteOperationWithBalanceUpdate(opId);
+
+    // 4. Assert balances perfectly restored
+    wallet = await (db.select(db.walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+    drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    expect(wallet.balance, 5000.0);
+    expect(drawer.balance, 10000.0);
+  });
+
+  test('Safe operation deletion - Deferred payable and debt operation handling', () async {
+    final db = AppDatabase();
+
+    final walletId = await db.into(db.walletsTable).insert(
+      WalletsTableCompanion(
+        name: const Value('Payable Wallet'),
+        balance: const Value(2000.0),
+      ),
+    );
+
+    await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+      CashDrawerTableCompanion(
+        id: const Value(1),
+        balance: const Value(1000.0),
+      ),
+    );
+
+    // Create a full payable withdrawal of 500 (commission 10 -> payable 490, cash drawer unchanged at 1000)
+    final opId = await db.addFullWithdrawalPayable(
+      operation: OperationsTableCompanion(
+        walletId: Value(walletId),
+        operationType: const Value('withdrawal'),
+        providerType: const Value('vodafoneCash'),
+        amount: const Value(500.0),
+        commission: const Value(10.0),
+        networkFee: const Value(0.0),
+        isDebt: const Value(false),
+      ),
+      customerName: 'Deferred Customer',
+    );
+
+    var wallet = await (db.select(db.walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+    var drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    expect(wallet.balance, 2500.0);
+    expect(drawer.balance, 1000.0);
+
+    final linkedDebt = await (db.select(db.debtsTable)..where((d) => d.operationId.equals(opId))).getSingle();
+    expect(linkedDebt.amount, 490.0);
+    expect(linkedDebt.debtType, 'payable');
+
+    // 1. Test deletion succeeds when no payments have been made on the payable
+    await db.deleteOperationWithBalanceUpdate(opId);
+
+    wallet = await (db.select(db.walletsTable)..where((w) => w.id.equals(walletId))).getSingle();
+    drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+    expect(wallet.balance, 2000.0);
+    expect(drawer.balance, 1000.0); // Never subtracted cash initially, so never refunds extra cash!
+
+    final debtAfterOpDelete = await (db.select(db.debtsTable)..where((d) => d.operationId.equals(opId))).getSingleOrNull();
+    expect(debtAfterOpDelete, isNull);
+  });
 }

@@ -9,6 +9,7 @@ class WalletEntity {
   final double dailyLimit;
   final double weeklyLimit;
   final double monthlyLimit;
+  final bool isArchived;
   final DateTime createdAt;
 
   WalletEntity({
@@ -20,6 +21,7 @@ class WalletEntity {
     this.dailyLimit = 60000.0,
     this.weeklyLimit = 200000.0,
     this.monthlyLimit = 200000.0,
+    this.isArchived = false,
     required this.createdAt,
   });
 }

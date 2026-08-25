@@ -9,5 +9,6 @@ class WalletsTable extends Table {
   RealColumn get dailyLimit => real().withDefault(const Constant(60000.0))();
   RealColumn get weeklyLimit => real().withDefault(const Constant(200000.0))();
   RealColumn get monthlyLimit => real().withDefault(const Constant(200000.0))();
+  BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }

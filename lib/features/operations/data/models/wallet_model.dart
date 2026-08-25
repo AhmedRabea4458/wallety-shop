@@ -11,6 +11,7 @@ class WalletModel {
   final double dailyLimit;
   final double weeklyLimit;
   final double monthlyLimit;
+  final bool isArchived;
   final DateTime createdAt;
 
   WalletModel({
@@ -22,6 +23,7 @@ class WalletModel {
     this.dailyLimit = 60000.0,
     this.weeklyLimit = 200000.0,
     this.monthlyLimit = 200000.0,
+    this.isArchived = false,
     required this.createdAt,
   });
 
@@ -35,6 +37,7 @@ class WalletModel {
       dailyLimit: dailyLimit,
       weeklyLimit: weeklyLimit,
       monthlyLimit: monthlyLimit,
+      isArchived: isArchived,
       createdAt: createdAt,
     );
   }
@@ -49,6 +52,7 @@ class WalletModel {
       dailyLimit: entity.dailyLimit,
       weeklyLimit: entity.weeklyLimit,
       monthlyLimit: entity.monthlyLimit,
+      isArchived: entity.isArchived,
       createdAt: entity.createdAt,
     );
   }
@@ -63,6 +67,7 @@ class WalletModel {
       dailyLimit: data.dailyLimit,
       weeklyLimit: data.weeklyLimit,
       monthlyLimit: data.monthlyLimit,
+      isArchived: data.isArchived,
       createdAt: data.createdAt,
     );
   }
