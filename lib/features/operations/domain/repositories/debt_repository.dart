@@ -15,7 +15,7 @@ abstract class DebtRepository {
   Future<List<DebtEntity>> getDebtsByDebtor(int debtorId);
   Future<List<DebtEntity>> getUnpaidDebts();
   Future<double> getTotalOutstandingDebt();
-  Future<void> markDebtAsPaid(int debtId);
+  Future<void> markDebtAsPaid(int debtId, {String paymentMethod = 'cash'});
   Future<void> updateDebtor(DebtorEntity debtor);
   Future<void> updateDebt(DebtEntity debt);
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);
@@ -30,5 +30,5 @@ abstract class DebtRepository {
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'});
 
   // Bulk Payment
-  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes});
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes, String paymentMethod = 'cash'});
 }

@@ -92,8 +92,8 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
-  Future<void> markDebtAsPaid(int debtId) {
-    return localDataSource.settleDebt(debtId);
+  Future<void> markDebtAsPaid(int debtId, {String paymentMethod = 'cash'}) {
+    return localDataSource.settleDebt(debtId, paymentMethod: paymentMethod);
   }
 
   @override
@@ -143,7 +143,7 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
-  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes}) {
-    return localDataSource.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes);
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes, String paymentMethod = 'cash'}) {
+    return localDataSource.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes, paymentMethod: paymentMethod);
   }
 }

@@ -118,8 +118,8 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   }
 
   @override
-  Future<void> settleDebt(int debtId) {
-    return database.settleDebt(debtId);
+  Future<void> settleDebt(int debtId, {String paymentMethod = 'cash'}) {
+    return database.settleDebt(debtId, paymentMethod: paymentMethod);
   }
 
   @override
@@ -182,7 +182,7 @@ class DebtLocalDataSourceImpl implements DebtLocalDataSource {
   }
 
   @override
-  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes}) {
-    return database.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes);
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes, String paymentMethod = 'cash'}) {
+    return database.bulkPayDebts(debtIds: debtIds, totalAmount: totalAmount, notes: notes, paymentMethod: paymentMethod);
   }
 }

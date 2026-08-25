@@ -452,4 +452,171 @@ void main() {
     final debtAfterOpDelete = await (db.select(db.debtsTable)..where((d) => d.operationId.equals(opId))).getSingleOrNull();
     expect(debtAfterOpDelete, isNull);
   });
+
+  group('Sprint 6.3 - Debt Settlement Method (Cash vs Other)', () {
+    test('Customer debt collection: Cash increases Cash Drawer, Other does NOT change Cash Drawer', () async {
+      final db = AppDatabase();
+
+      await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+        CashDrawerTableCompanion(
+          id: const Value(1),
+          balance: const Value(1000.0),
+        ),
+      );
+
+      final debtorId = await db.insertDebtor(
+        const DebtorsTableCompanion(name: Value('Customer A')),
+      );
+
+      // Create customer debt of 500
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(500.0),
+          isPaid: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // Pay 200 via Cash -> Drawer increases by 200 (1000 -> 1200)
+      await db.payDebt(
+        debtId: debtId,
+        amount: 200.0,
+        paymentMethod: 'cash',
+        notes: 'Cash payment',
+      );
+
+      var drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 1200.0);
+
+      // Pay remaining 300 via Other -> Drawer remains 1200, debt is fully paid
+      await db.payDebt(
+        debtId: debtId,
+        amount: 300.0,
+        paymentMethod: 'other',
+        notes: 'External transfer',
+      );
+
+      drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 1200.0);
+
+      final debt = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingle();
+      expect(debt.isPaid, isTrue);
+
+      final payments = await db.getPaymentsForDebts([debtId]);
+      expect(payments.length, 2);
+      expect(payments[0].paymentMethod, 'cash');
+      expect(payments[0].amount, 200.0);
+      expect(payments[1].paymentMethod, 'other');
+      expect(payments[1].amount, 300.0);
+    });
+
+    test('Payable settlement: Cash decreases Cash Drawer, Other does NOT change Cash Drawer', () async {
+      final db = AppDatabase();
+
+      await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+        CashDrawerTableCompanion(
+          id: const Value(1),
+          balance: const Value(2000.0),
+        ),
+      );
+
+      final debtorId = await db.insertDebtor(
+        const DebtorsTableCompanion(name: Value('Supplier B')),
+      );
+
+      // Create payable of 600
+      final debtId = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(600.0),
+          isPaid: const Value(false),
+          debtType: const Value('payable'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      // Settle 250 via Cash -> Drawer decreases by 250 (2000 -> 1750)
+      await db.payDebt(
+        debtId: debtId,
+        amount: 250.0,
+        paymentMethod: 'cash',
+        notes: 'Cash payout',
+      );
+
+      var drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 1750.0);
+
+      // Settle full remaining via settleDebt with Other -> Drawer remains 1750, payable is paid
+      await db.settleDebt(debtId, paymentMethod: 'other');
+
+      drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 1750.0);
+
+      final debt = await (db.select(db.debtsTable)..where((d) => d.id.equals(debtId))).getSingle();
+      expect(debt.isPaid, isTrue);
+
+      final payments = await db.getPaymentsForDebts([debtId]);
+      expect(payments.length, 2);
+      expect(payments[0].paymentMethod, 'cash');
+      expect(payments[0].amount, 250.0);
+      expect(payments[1].paymentMethod, 'other');
+      expect(payments[1].amount, 350.0);
+    });
+
+    test('Bulk pay debts supports settlement method without changing drawer when Other is used', () async {
+      final db = AppDatabase();
+
+      await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+        CashDrawerTableCompanion(
+          id: const Value(1),
+          balance: const Value(1000.0),
+        ),
+      );
+
+      final debtorId = await db.insertDebtor(
+        const DebtorsTableCompanion(name: Value('Bulk Customer')),
+      );
+
+      final debt1 = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(100.0),
+          isPaid: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now().subtract(const Duration(hours: 2))),
+        ),
+      );
+      final debt2 = await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          amount: const Value(200.0),
+          isPaid: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now().subtract(const Duration(hours: 1))),
+        ),
+      );
+
+      await db.bulkPayDebts(
+        debtIds: [debt1, debt2],
+        totalAmount: 300.0,
+        paymentMethod: 'other',
+      );
+
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(drawer.balance, 1000.0); // Drawer untouched
+
+      final d1 = await (db.select(db.debtsTable)..where((d) => d.id.equals(debt1))).getSingle();
+      final d2 = await (db.select(db.debtsTable)..where((d) => d.id.equals(debt2))).getSingle();
+      expect(d1.isPaid, isTrue);
+      expect(d2.isPaid, isTrue);
+
+      final payments = await db.getPaymentsForDebts([debt1, debt2]);
+      for (final p in payments) {
+        expect(p.paymentMethod, 'other');
+      }
+    });
+  });
 }
+

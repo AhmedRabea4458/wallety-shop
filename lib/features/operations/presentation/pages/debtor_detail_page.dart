@@ -275,36 +275,96 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                               onSettle: () async {
                                 final debtCubit =
                                     this.context.read<DebtCubit>();
+                                String selectedMethod = 'cash';
+                                final isPayable = debt.debtType == DebtType.payable;
                                 final confirm = await showDialog<bool>(
                                   context: this.context,
                                   builder:
-                                      (ctx) => AlertDialog(
-                                        title: Text(
-                                          'تسوية الدين',
-                                          style: AppTextStyles.headline
-                                              .copyWith(
-                                                color: AppColors.foreground,
+                                      (ctx) => StatefulBuilder(
+                                        builder: (ctx, setDlgState) => AlertDialog(
+                                          backgroundColor: AppColors.card,
+                                          title: Text(
+                                            isPayable ? 'تسوية المستحق' : 'تسوية الدين',
+                                            style: AppTextStyles.headline
+                                                .copyWith(
+                                                  color: AppColors.foreground,
+                                                ),
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'هل أنت متأكد من تسوية هذا ${isPayable ? "المستحق" : "الدين"} بالكامل (${_f(remainingBalance)} ج.م)؟',
+                                                style: AppTextStyles.body.copyWith(
+                                                  color: AppColors.foreground,
+                                                ),
                                               ),
-                                        ),
-                                        content: Text(
-                                          'هل أنت متأكد من تسوية هذا الدين؟',
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed:
-                                                () => Navigator.pop(ctx, false),
-                                            child: const Text('إلغاء'),
+                                              const SizedBox(height: AppSpacing.space3),
+                                              Text(
+                                                'طريقة التسوية:',
+                                                style: AppTextStyles.caption.copyWith(
+                                                  color: AppColors.mutedForeground,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              const SizedBox(height: AppSpacing.space2),
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: ChoiceChip(
+                                                      label: const Center(child: Text('نقدي')),
+                                                      selected: selectedMethod == 'cash',
+                                                      onSelected: (val) {
+                                                        if (val) setDlgState(() => selectedMethod = 'cash');
+                                                      },
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: AppSpacing.space2),
+                                                  Expanded(
+                                                    child: ChoiceChip(
+                                                      label: const Center(child: Text('أخرى')),
+                                                      selected: selectedMethod == 'other',
+                                                      onSelected: (val) {
+                                                        if (val) setDlgState(() => selectedMethod = 'other');
+                                                      },
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: AppSpacing.space2),
+                                              Text(
+                                                selectedMethod == 'cash'
+                                                    ? (isPayable
+                                                        ? 'سيتم خصم المبلغ من الخزينة النقدية'
+                                                        : 'سيتم إضافة المبلغ إلى الخزينة النقدية')
+                                                    : 'تنبيه: اختيار (أخرى) يسجل التسوية دون أي تأثير على رصيد الخزينة أو المحافظ',
+                                                style: AppTextStyles.caption.copyWith(
+                                                  color: selectedMethod == 'cash'
+                                                      ? AppColors.mutedForeground
+                                                      : AppColors.warning,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          ElevatedButton(
-                                            onPressed:
-                                                () => Navigator.pop(ctx, true),
-                                            child: const Text('تسوية'),
-                                          ),
-                                        ],
+                                          actions: [
+                                            TextButton(
+                                              onPressed:
+                                                  () => Navigator.pop(ctx, false),
+                                              child: const Text('إلغاء'),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed:
+                                                  () => Navigator.pop(ctx, true),
+                                              child: const Text('تسوية'),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                 );
                                 if (confirm == true && mounted) {
-                                  await debtCubit.markDebtAsPaid(debt.id);
+                                  await debtCubit.markDebtAsPaid(debt.id, paymentMethod: selectedMethod);
                                   sl<OperationCubit>().getOperations();
                                   if (mounted) {
                                     debtCubit.loadDebtorDetail(
@@ -349,14 +409,14 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                                     Text(
                                       'الديون المدفوعة (${paidDebts.length})',
                                       style: AppTextStyles.body.copyWith(
-                                        color: AppColors.mutedForeground,
+                                        color: AppColors.foreground,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     Icon(
                                       _isPaidExpanded
-                                          ? Icons.keyboard_arrow_up_rounded
-                                          : Icons.keyboard_arrow_down_rounded,
+                                          ? Icons.keyboard_arrow_up
+                                          : Icons.keyboard_arrow_down,
                                       color: AppColors.mutedForeground,
                                     ),
                                   ],
@@ -499,117 +559,170 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
     final notesController = TextEditingController();
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final debtCubit = context.read<DebtCubit>();
+    String selectedMethod = 'cash';
+    final isPayable = debt.debtType == DebtType.payable;
 
     showDialog(
       context: context,
       builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppColors.card,
-            title: Text(
-              'سداد جزء من الدين',
-              style: AppTextStyles.headline.copyWith(
-                color: AppColors.foreground,
+          (ctx) => StatefulBuilder(
+            builder: (ctx, setDialogState) => AlertDialog(
+              backgroundColor: AppColors.card,
+              title: Text(
+                isPayable ? 'سداد جزء من المستحق' : 'سداد جزء من الدين',
+                style: AppTextStyles.headline.copyWith(
+                  color: AppColors.foreground,
+                ),
               ),
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'المبلغ المتبقي المستحق: ${_f(remainingBalance)} ج.م',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.mutedForeground,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space3),
-                  TextField(
-                    controller: amountController,
-                    keyboardType: TextInputType.number,
-                    textAlign: TextAlign.right,
-                    decoration: const InputDecoration(
-                      hintText: 'قيمة الدفعة',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.space2),
-                  TextField(
-                    controller: notesController,
-                    textAlign: TextAlign.right,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      hintText: 'ملاحظات (اختياري)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('إلغاء'),
-              ),
-              ElevatedButton(
-                onPressed: () async {
-                  final amountText = amountController.text.trim();
-                  if (amountText.isEmpty) {
-                    scaffoldMessenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('الرجاء إدخال قيمة الدفعة'),
-                        backgroundColor: AppColors.destructive,
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'المبلغ المتبقي المستحق: ${_f(remainingBalance)} ج.م',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.mutedForeground,
                       ),
-                    );
-                    return;
-                  }
-                  final amount = parseArabicNumerals(amountText);
-                  if (amount <= 0) {
-                    scaffoldMessenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('يجب أن تكون قيمة الدفعة أكبر من الصفر'),
-                        backgroundColor: AppColors.destructive,
+                    ),
+                    const SizedBox(height: AppSpacing.space3),
+                    TextField(
+                      controller: amountController,
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'قيمة الدفعة',
+                        suffixText: 'ج.م',
+                        border: OutlineInputBorder(),
                       ),
-                    );
-                    return;
-                  }
-                  if (amount > remainingBalance) {
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'المبلغ لا يمكن أن يتجاوز المتبقي (${_f(remainingBalance)} ج.م)',
+                    ),
+                    const SizedBox(height: AppSpacing.space3),
+                    Text(
+                      'طريقة السداد:',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('نقدي')),
+                            selected: selectedMethod == 'cash',
+                            onSelected: (val) {
+                              if (val) setDialogState(() => selectedMethod = 'cash');
+                            },
+                          ),
                         ),
-                        backgroundColor: AppColors.destructive,
+                        const SizedBox(width: AppSpacing.space2),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(child: Text('أخرى')),
+                            selected: selectedMethod == 'other',
+                            onSelected: (val) {
+                              if (val) setDialogState(() => selectedMethod = 'other');
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.space2),
+                    Text(
+                      selectedMethod == 'cash'
+                          ? (isPayable
+                              ? 'سيتم خصم المبلغ من الخزينة النقدية'
+                              : 'سيتم إضافة المبلغ إلى الخزينة النقدية')
+                          : 'تنبيه: اختيار (أخرى) يسجل الدفعة دون أي تأثير على رصيد الخزينة أو المحافظ',
+                      style: AppTextStyles.caption.copyWith(
+                        color: selectedMethod == 'cash'
+                            ? AppColors.mutedForeground
+                            : AppColors.warning,
+                        fontSize: 11,
                       ),
-                    );
-                    return;
-                  }
+                    ),
+                    const SizedBox(height: AppSpacing.space3),
+                    TextField(
+                      controller: notesController,
+                      textAlign: TextAlign.right,
+                      maxLines: 2,
+                      decoration: const InputDecoration(
+                        hintText: 'ملاحظات (اختياري)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('إلغاء'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final amountText = amountController.text.trim();
+                    if (amountText.isEmpty) {
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('الرجاء إدخال قيمة الدفعة'),
+                          backgroundColor: AppColors.destructive,
+                        ),
+                      );
+                      return;
+                    }
+                    final amount = parseArabicNumerals(amountText);
+                    if (amount <= 0) {
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('يجب أن تكون قيمة الدفعة أكبر من الصفر'),
+                          backgroundColor: AppColors.destructive,
+                        ),
+                      );
+                      return;
+                    }
+                    if (amount > remainingBalance) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'المبلغ لا يمكن أن يتجاوز المتبقي (${_f(remainingBalance)} ج.م)',
+                          ),
+                          backgroundColor: AppColors.destructive,
+                        ),
+                      );
+                      return;
+                    }
 
-                  final navigator = Navigator.of(ctx);
-                  try {
-                    await debtCubit.payDebt(
-                      debtId: debt.id,
-                      amount: amount,
-                      notes:
-                          notesController.text.trim().isEmpty
-                              ? null
-                              : notesController.text.trim(),
-                      debtorId: debtorId,
-                      activeLiabilityType: widget.activeLiabilityType,
-                    );
-                    navigator.pop();
-                  } catch (e) {
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          e.toString().replaceAll('Exception: ', ''),
+                    final navigator = Navigator.of(ctx);
+                    try {
+                      await debtCubit.payDebt(
+                        debtId: debt.id,
+                        amount: amount,
+                        notes:
+                            notesController.text.trim().isEmpty
+                                ? null
+                                : notesController.text.trim(),
+                        paymentMethod: selectedMethod,
+                        debtorId: debtorId,
+                        activeLiabilityType: widget.activeLiabilityType,
+                      );
+                      navigator.pop();
+                    } catch (e) {
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            e.toString().replaceAll('Exception: ', ''),
+                          ),
+                          backgroundColor: AppColors.destructive,
                         ),
-                        backgroundColor: AppColors.destructive,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('سداد'),
-              ),
-            ],
+                      );
+                    }
+                  },
+                  child: const Text('سداد'),
+                ),
+              ],
+            ),
           ),
     );
   }
@@ -626,6 +739,8 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     final debtCubit = context.read<DebtCubit>();
     bool isSaving = false;
+    String selectedMethod = 'cash';
+    final isPayable = widget.activeLiabilityType == DebtType.payable;
 
     // Build preview: active debts sorted oldest-first
     final paymentsByDebt = <int, double>{};
@@ -677,7 +792,57 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                       border: OutlineInputBorder(),
                     ),
                   ),
+                  const SizedBox(height: AppSpacing.space3),
+                  Text(
+                    'طريقة السداد:',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.mutedForeground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: AppSpacing.space2),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('نقدي')),
+                          selected: selectedMethod == 'cash',
+                          onSelected: isSaving
+                              ? null
+                              : (val) {
+                                  if (val) setDialogState(() => selectedMethod = 'cash');
+                                },
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.space2),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('أخرى')),
+                          selected: selectedMethod == 'other',
+                          onSelected: isSaving
+                              ? null
+                              : (val) {
+                                  if (val) setDialogState(() => selectedMethod = 'other');
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                  Text(
+                    selectedMethod == 'cash'
+                        ? (isPayable
+                            ? 'سيتم خصم المبلغ من الخزينة النقدية'
+                            : 'سيتم إضافة المبلغ إلى الخزينة النقدية')
+                        : 'تنبيه: اختيار (أخرى) يسجل الدفعة دون أي تأثير على رصيد الخزينة أو المحافظ',
+                    style: AppTextStyles.caption.copyWith(
+                      color: selectedMethod == 'cash'
+                          ? AppColors.mutedForeground
+                          : AppColors.warning,
+                      fontSize: 11,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.space3),
                   TextField(
                     controller: notesController,
                     textAlign: TextAlign.right,
@@ -765,6 +930,7 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                             debtorId: debtorId,
                             totalAmount: amount,
                             notes: notesText.isEmpty ? null : notesText,
+                            paymentMethod: selectedMethod,
                             activeLiabilityType: widget.activeLiabilityType,
                           );
                           navigator.pop();
@@ -1339,7 +1505,7 @@ class _PaymentTile extends StatelessWidget {
                 ],
                 const SizedBox(height: AppSpacing.space1),
                 Text(
-                  'طريقة الدفع: ${payment.paymentMethod == 'cash' ? 'نقدي' : payment.paymentMethod}',
+                  'طريقة الدفع: ${payment.paymentMethod == 'cash' ? 'نقدي' : (payment.paymentMethod == 'other' ? 'أخرى' : payment.paymentMethod)}',
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.mutedForeground,
                     fontSize: 10,

@@ -1051,7 +1051,7 @@ class AppDatabase extends _$AppDatabase {
     return debt != null;
   }
 
-  Future<void> settleDebt(int debtId) async {
+  Future<void> settleDebt(int debtId, {String paymentMethod = 'cash'}) async {
     await transaction(() async {
       final debt =
           await (select(debtsTable)
@@ -1069,7 +1069,7 @@ class AppDatabase extends _$AppDatabase {
         debtId: debtId,
         amount: remaining,
         notes: 'تسوية كاملة',
-        paymentMethod: 'cash',
+        paymentMethod: paymentMethod,
       );
     });
   }
@@ -1117,21 +1117,24 @@ class AppDatabase extends _$AppDatabase {
         ),
       );
 
-      // Cash drawer direction depends on debt type:
-      // - customerDebt / settlementDebt: customer pays us → drawer INCREASES
-      // - payable: we pay the customer → drawer DECREASES
-      final cashDrawer =
-          await (select(cashDrawerTable)
-            ..where((c) => c.id.equals(1))).getSingle();
-      final isPayable = debt.debtType == 'payable';
-      final newBalance =
-          isPayable ? cashDrawer.balance - amount : cashDrawer.balance + amount;
-      if (isPayable && newBalance < 0) {
-        throw InsufficientCashDrawerBalanceException();
+      // Only affect cash drawer if paymentMethod is 'cash'
+      if (paymentMethod == 'cash') {
+        // Cash drawer direction depends on debt type:
+        // - customerDebt / settlementDebt: customer pays us → drawer INCREASES
+        // - payable: we pay the customer → drawer DECREASES
+        final cashDrawer =
+            await (select(cashDrawerTable)
+              ..where((c) => c.id.equals(1))).getSingle();
+        final isPayable = debt.debtType == 'payable';
+        final newBalance =
+            isPayable ? cashDrawer.balance - amount : cashDrawer.balance + amount;
+        if (isPayable && newBalance < 0) {
+          throw InsufficientCashDrawerBalanceException();
+        }
+        await (update(cashDrawerTable)..where(
+          (c) => c.id.equals(1),
+        )).write(CashDrawerTableCompanion(balance: Value(newBalance)));
       }
-      await (update(cashDrawerTable)..where(
-        (c) => c.id.equals(1),
-      )).write(CashDrawerTableCompanion(balance: Value(newBalance)));
 
       final isFullyPaid = (totalPaidSoFar + amount) == debt.amount;
       if (isFullyPaid) {
@@ -1275,6 +1278,7 @@ class AppDatabase extends _$AppDatabase {
     required List<int> debtIds,
     required double totalAmount,
     String? notes,
+    String paymentMethod = 'cash',
   }) {
     return transaction(() async {
       double remaining = totalAmount;
@@ -1303,7 +1307,7 @@ class AppDatabase extends _$AppDatabase {
           debtId: id,
           amount: payAmount,
           notes: noteText,
-          paymentMethod: 'cash',
+          paymentMethod: paymentMethod,
         );
         remaining -= payAmount;
       }

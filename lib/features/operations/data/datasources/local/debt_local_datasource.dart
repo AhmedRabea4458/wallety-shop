@@ -15,7 +15,7 @@ abstract class DebtLocalDataSource {
   Future<List<DebtModel>> getDebtsByDebtor(int debtorId);
   Future<List<DebtModel>> getUnpaidDebts();
   Future<double> getTotalOutstandingDebt();
-  Future<void> settleDebt(int debtId);
+  Future<void> settleDebt(int debtId, {String paymentMethod = 'cash'});
   Future<void> updateDebtor(DebtorModel debtor);
   Future<void> updateDebt(DebtModel debt);
   Future<void> updateCashLoanDebtAmount(int debtId, double newAmount);
@@ -30,5 +30,5 @@ abstract class DebtLocalDataSource {
   Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'});
 
   // Bulk Payment
-  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes});
+  Future<void> bulkPayDebts({required List<int> debtIds, required double totalAmount, String? notes, String paymentMethod = 'cash'});
 }

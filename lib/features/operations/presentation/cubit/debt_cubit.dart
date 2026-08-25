@@ -310,9 +310,9 @@ class DebtCubit extends Cubit<DebtState> {
     }
   }
 
-  Future<void> markDebtAsPaid(int debtId) async {
+  Future<void> markDebtAsPaid(int debtId, {String paymentMethod = 'cash'}) async {
     try {
-      await repository.markDebtAsPaid(debtId);
+      await repository.markDebtAsPaid(debtId, paymentMethod: paymentMethod);
       cashDrawerCubit.refreshCashDrawer();
       await loadOutstandingDebt();
       sl<OperationCubit>().getOperations();
@@ -490,6 +490,7 @@ class DebtCubit extends Cubit<DebtState> {
     required int debtorId,
     required double totalAmount,
     String? notes,
+    String paymentMethod = 'cash',
     DebtType activeLiabilityType = DebtType.customerDebt,
   }) async {
     try {
@@ -536,6 +537,7 @@ class DebtCubit extends Cubit<DebtState> {
         debtIds: activeDebts.map((d) => d.id).toList(),
         totalAmount: totalAmount,
         notes: notes,
+        paymentMethod: paymentMethod,
       );
 
       cashDrawerCubit.refreshCashDrawer();
