@@ -50,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 22;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -140,6 +140,13 @@ class AppDatabase extends _$AppDatabase {
       if (from <= 21) {
         await m.addColumn(walletsTable, walletsTable.isArchived);
         await m.addColumn(debtPaymentsTable, debtPaymentsTable.walletId);
+      }
+      if (from <= 22) {
+        try {
+          await m.addColumn(instaPayAccountsTable, instaPayAccountsTable.balance);
+        } catch (_) {
+          // Column may already exist.
+        }
       }
     },
   );

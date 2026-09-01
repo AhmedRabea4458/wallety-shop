@@ -4,11 +4,13 @@ import 'package:smart_expense/features/operations/domain/entities/instapay_accou
 class InstaPayAccountModel {
   final int id;
   final String name;
+  final double balance;
   final DateTime createdAt;
 
   InstaPayAccountModel({
     required this.id,
     required this.name,
+    this.balance = 0.0,
     required this.createdAt,
   });
 
@@ -16,6 +18,7 @@ class InstaPayAccountModel {
     return InstaPayAccountEntity(
       id: id,
       name: name,
+      balance: balance,
       createdAt: createdAt,
     );
   }
@@ -24,6 +27,7 @@ class InstaPayAccountModel {
     return InstaPayAccountModel(
       id: data.id,
       name: data.name,
+      balance: data.balance,
       createdAt: data.createdAt,
     );
   }

@@ -17,7 +17,12 @@ class InstaPayAccountRepositoryImpl implements InstaPayAccountRepository {
 
   @override
   Future<int> insert(String name) async {
-    final model = InstaPayAccountModel(id: 0, name: name, createdAt: DateTime.now());
+    final model = InstaPayAccountModel(
+      id: 0,
+      name: name,
+      balance: 0.0,
+      createdAt: DateTime.now(),
+    );
     return localDataSource.insert(model);
   }
 
@@ -26,6 +31,7 @@ class InstaPayAccountRepositoryImpl implements InstaPayAccountRepository {
     final model = InstaPayAccountModel(
       id: account.id,
       name: account.name,
+      balance: account.balance,
       createdAt: account.createdAt,
     );
     return localDataSource.update(model);
@@ -34,5 +40,10 @@ class InstaPayAccountRepositoryImpl implements InstaPayAccountRepository {
   @override
   Future<void> delete(int id) {
     return localDataSource.delete(id);
+  }
+
+  @override
+  Future<void> updateBalance(int id, double newBalance) {
+    return localDataSource.updateBalance(id, newBalance);
   }
 }

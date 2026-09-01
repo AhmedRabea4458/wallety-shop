@@ -18,7 +18,10 @@ class InstaPayAccountLocalDataSourceImpl implements InstaPayAccountLocalDataSour
   @override
   Future<int> insert(InstaPayAccountModel account) {
     return database.into(database.instaPayAccountsTable).insert(
-      InstaPayAccountsTableCompanion(name: Value(account.name)),
+      InstaPayAccountsTableCompanion(
+        name: Value(account.name),
+        balance: Value(account.balance),
+      ),
     );
   }
 
@@ -26,7 +29,10 @@ class InstaPayAccountLocalDataSourceImpl implements InstaPayAccountLocalDataSour
   Future<void> update(InstaPayAccountModel account) {
     return (database.update(database.instaPayAccountsTable)
           ..where((t) => t.id.equals(account.id)))
-        .write(InstaPayAccountsTableCompanion(name: Value(account.name)));
+        .write(InstaPayAccountsTableCompanion(
+          name: Value(account.name),
+          balance: Value(account.balance),
+        ));
   }
 
   @override
@@ -34,5 +40,12 @@ class InstaPayAccountLocalDataSourceImpl implements InstaPayAccountLocalDataSour
     return (database.delete(database.instaPayAccountsTable)
           ..where((t) => t.id.equals(id)))
         .go();
+  }
+
+  @override
+  Future<void> updateBalance(int id, double newBalance) {
+    return (database.update(database.instaPayAccountsTable)
+          ..where((t) => t.id.equals(id)))
+        .write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
   }
 }

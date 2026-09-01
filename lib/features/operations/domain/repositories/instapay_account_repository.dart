@@ -5,4 +5,5 @@ abstract class InstaPayAccountRepository {
   Future<int> insert(String name);
   Future<void> update(InstaPayAccountEntity account);
   Future<void> delete(int id);
+  Future<void> updateBalance(int id, double newBalance);
 }
