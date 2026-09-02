@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:smart_expense/core/database/app_database.dart';
+import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/data/datasources/local/shift_local_datasource_impl.dart';
 import 'package:smart_expense/features/operations/data/repositories/shift_repository_impl.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
@@ -739,16 +740,15 @@ void main() {
         WalletsTableCompanion.insert(
           name: 'محفظة',
           balance: const Value(1000.0),
-          providerType: 'vodafoneCash',
         ),
       );
 
       // Insert a dummy operation
       final opId = await db.into(db.operationsTable).insert(
         OperationsTableCompanion.insert(
-          type: 'deposit',
+          operationType: const Value('deposit'),
           amount: 200.0,
-          providerType: 'vodafoneCash',
+          providerType: const Value('vodafoneCash'),
           walletId: walletId,
           commission: const Value(0.0),
           networkFee: const Value(0.0),
@@ -781,7 +781,6 @@ void main() {
         WalletsTableCompanion.insert(
           name: 'محفظة مؤقتة',
           balance: const Value(0.0),
-          providerType: 'vodafoneCash',
         ),
       );
 
@@ -796,15 +795,14 @@ void main() {
         WalletsTableCompanion.insert(
           name: 'محفظة رئيسية',
           balance: const Value(500.0),
-          providerType: 'vodafoneCash',
         ),
       );
 
       await db.into(db.operationsTable).insert(
         OperationsTableCompanion.insert(
-          type: 'deposit',
+          operationType: const Value('deposit'),
           amount: 100.0,
-          providerType: 'vodafoneCash',
+          providerType: const Value('vodafoneCash'),
           walletId: walletBId,
           commission: const Value(0.0),
           networkFee: const Value(0.0),
@@ -831,6 +829,283 @@ void main() {
       final restoredWallet = await db.getWalletById(walletBId);
       expect(restoredWallet, isNotNull);
       expect(restoredWallet!.isArchived, isFalse);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Stage 2 — InstaPay Operation Integration Tests
+  // ---------------------------------------------------------------------------
+  group('Stage 2 — InstaPay Operation Integration', () {
+    late AppDatabase db;
+    late int instaPayAccId;
+
+    setUp(() async {
+      db = AppDatabase();
+      // Setup Cash Drawer with 10,000
+      await db.into(db.cashDrawerTable).insertOnConflictUpdate(
+        CashDrawerTableCompanion(
+          id: const Value(1),
+          balance: const Value(10000.0),
+          initialBalance: const Value(10000.0),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
+      // Setup an InstaPay Account with 5,000 balance
+      instaPayAccId = await db.into(db.instaPayAccountsTable).insert(
+        InstaPayAccountsTableCompanion.insert(
+          name: 'البنك الأهلي',
+          balance: const Value(5000.0),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+    });
+
+    tearDown(() => db.close());
+
+    test('1. InstaPay Deposit - نقدي (Cash): account balance decreases, drawer increases by amount+commission', () async {
+      final opId = await db.addOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('deposit'),
+          providerType: const Value('instaPay'),
+          amount: const Value(1000.0),
+          commission: const Value(20.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      expect(opId, isPositive);
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+
+      // Account: 5000 - 1000 = 4000
+      expect(account.balance, 4000.0);
+      // Drawer: 10000 + (1000 + 20) = 11020
+      expect(drawer.balance, 11020.0);
+    });
+
+    test('2. InstaPay Deposit - آجل (Customer Debt): account balance decreases, drawer unchanged, debt created', () async {
+      final opId = await db.addOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('deposit'),
+          providerType: const Value('instaPay'),
+          amount: const Value(800.0),
+          commission: const Value(15.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(true),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      final debtorId = await db.insertDebtor(const DebtorsTableCompanion(name: Value('عميل آجل')));
+      await db.insertDebt(
+        DebtsTableCompanion(
+          debtorId: Value(debtorId),
+          operationId: Value(opId),
+          operationType: const Value('deposit'),
+          providerType: const Value('instaPay'),
+          amount: const Value(815.0), // amount + commission
+          isPaid: const Value(false),
+          debtType: const Value('customerDebt'),
+          createdAt: Value(DateTime.now()),
+        ),
+      );
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      final debts = await db.getDebtsByDebtor(debtorId);
+
+      // Account: 5000 - 800 = 4200
+      expect(account.balance, 4200.0);
+      // Drawer: unchanged at 10000
+      expect(drawer.balance, 10000.0);
+      // Debt: 815
+      expect(debts.length, 1);
+      expect(debts.first.amount, 815.0);
+      expect(debts.first.debtType, 'customerDebt');
+    });
+
+    test('3. InstaPay Deposit - Insufficient balance throws InsufficientInstaPayBalanceException', () async {
+      expect(
+        () => db.addOperationWithBalanceUpdate(
+          OperationsTableCompanion(
+            walletId: const Value(0),
+            operationType: const Value('deposit'),
+            providerType: const Value('instaPay'),
+            amount: const Value(6000.0), // Exceeds 5000 balance
+            commission: const Value(30.0),
+            networkFee: const Value(0.0),
+            isDebt: const Value(false),
+            instaPayAccountId: Value(instaPayAccId),
+          ),
+        ),
+        throwsA(isA<InsufficientInstaPayBalanceException>()),
+      );
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+
+      expect(account.balance, 5000.0);
+      expect(drawer.balance, 10000.0);
+    });
+
+    test('4. InstaPay Withdrawal - نقدي (Cash): account balance increases, drawer decreases by amount-commission', () async {
+      final opId = await db.addOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('withdrawal'),
+          providerType: const Value('instaPay'),
+          amount: const Value(2000.0),
+          commission: const Value(25.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      expect(opId, isPositive);
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+
+      // Account: 5000 + 2000 = 7000
+      expect(account.balance, 7000.0);
+      // Drawer: 10000 - (2000 - 25) = 8025
+      expect(drawer.balance, 8025.0);
+    });
+
+    test('5. InstaPay Withdrawal - مستحق Full: account balance increases, drawer unchanged, payable created', () async {
+      final opId = await db.addFullWithdrawalPayable(
+        operation: OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('withdrawal'),
+          providerType: const Value('instaPay'),
+          amount: const Value(1500.0),
+          commission: const Value(20.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+        customerName: 'مستحق InstaPay كامل',
+      );
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      final payable = await db.getDebtByOperationId(opId);
+
+      // Account: 5000 + 1500 = 6500
+      expect(account.balance, 6500.0);
+      // Drawer: unchanged at 10000
+      expect(drawer.balance, 10000.0);
+      // Payable: 1500 - 20 = 1480
+      expect(payable, isNotNull);
+      expect(payable!.amount, 1480.0);
+      expect(payable.debtType, 'payable');
+    });
+
+    test('6. InstaPay Withdrawal - مستحق Partial: account balance increases, drawer decreased by paidNow, payable created for remainder', () async {
+      final opId = await db.addPartialWithdrawalWithPayable(
+        operation: OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('withdrawal'),
+          providerType: const Value('instaPay'),
+          amount: const Value(2000.0),
+          commission: const Value(30.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+        customerName: 'مستحق InstaPay جزئي',
+        paidNow: 500.0,
+      );
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      final payable = await db.getDebtByOperationId(opId);
+
+      // Account: 5000 + 2000 = 7000
+      expect(account.balance, 7000.0);
+      // Drawer: 10000 - 500 = 9500
+      expect(drawer.balance, 9500.0);
+      // Payable: (2000 - 30) - 500 = 1470
+      expect(payable, isNotNull);
+      expect(payable!.amount, 1470.0);
+      expect(payable.debtType, 'payable');
+    });
+
+    test('7. InstaPay Operation Edit - reverses old effects and applies new values atomically', () async {
+      // Create initial cash deposit: 1000 amount, 20 commission
+      final opId = await db.addOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('deposit'),
+          providerType: const Value('instaPay'),
+          amount: const Value(1000.0),
+          commission: const Value(20.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      // Now edit operation: change to cash deposit 500 with 10 commission
+      await db.updateOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          id: Value(opId),
+          walletId: const Value(0),
+          operationType: const Value('deposit'),
+          providerType: const Value('instaPay'),
+          amount: const Value(500.0),
+          commission: const Value(10.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      final account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      final drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+
+      // Account: 5000 - 500 = 4500
+      expect(account.balance, 4500.0);
+      // Drawer: 10000 + (500 + 10) = 10510
+      expect(drawer.balance, 10510.0);
+    });
+
+    test('8. InstaPay Operation Delete - reverses account balance, drawer and debts safely', () async {
+      final opId = await db.addOperationWithBalanceUpdate(
+        OperationsTableCompanion(
+          walletId: const Value(0),
+          operationType: const Value('withdrawal'),
+          providerType: const Value('instaPay'),
+          amount: const Value(1200.0),
+          commission: const Value(20.0),
+          networkFee: const Value(0.0),
+          isDebt: const Value(false),
+          instaPayAccountId: Value(instaPayAccId),
+        ),
+      );
+
+      var account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      var drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(account.balance, 6200.0);
+      expect(drawer.balance, 8820.0);
+
+      // Delete operation
+      await db.deleteOperationWithBalanceUpdate(opId);
+
+      account = await (db.select(db.instaPayAccountsTable)..where((a) => a.id.equals(instaPayAccId))).getSingle();
+      drawer = await (db.select(db.cashDrawerTable)..where((c) => c.id.equals(1))).getSingle();
+      expect(account.balance, 5000.0);
+      expect(drawer.balance, 10000.0);
+
+      final op = await (db.select(db.operationsTable)..where((o) => o.id.equals(opId))).getSingleOrNull();
+      expect(op, isNull);
     });
   });
 }

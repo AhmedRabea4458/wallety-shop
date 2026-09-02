@@ -4087,6 +4087,18 @@ class $InstaPayAccountsTableTable extends InstaPayAccountsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _balanceMeta = const VerificationMeta(
+    'balance',
+  );
+  @override
+  late final GeneratedColumn<double> balance = GeneratedColumn<double>(
+    'balance',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -4100,7 +4112,7 @@ class $InstaPayAccountsTableTable extends InstaPayAccountsTable
     defaultValue: currentDateAndTime,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, createdAt];
+  List<GeneratedColumn> get $columns => [id, name, balance, createdAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -4123,6 +4135,12 @@ class $InstaPayAccountsTableTable extends InstaPayAccountsTable
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('balance')) {
+      context.handle(
+        _balanceMeta,
+        balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -4152,6 +4170,11 @@ class $InstaPayAccountsTableTable extends InstaPayAccountsTable
             DriftSqlType.string,
             data['${effectivePrefix}name'],
           )!,
+      balance:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.double,
+            data['${effectivePrefix}balance'],
+          )!,
       createdAt:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -4170,10 +4193,12 @@ class InstaPayAccountsTableData extends DataClass
     implements Insertable<InstaPayAccountsTableData> {
   final int id;
   final String name;
+  final double balance;
   final DateTime createdAt;
   const InstaPayAccountsTableData({
     required this.id,
     required this.name,
+    required this.balance,
     required this.createdAt,
   });
   @override
@@ -4181,6 +4206,7 @@ class InstaPayAccountsTableData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
+    map['balance'] = Variable<double>(balance);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -4189,6 +4215,7 @@ class InstaPayAccountsTableData extends DataClass
     return InstaPayAccountsTableCompanion(
       id: Value(id),
       name: Value(name),
+      balance: Value(balance),
       createdAt: Value(createdAt),
     );
   }
@@ -4201,6 +4228,7 @@ class InstaPayAccountsTableData extends DataClass
     return InstaPayAccountsTableData(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      balance: serializer.fromJson<double>(json['balance']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -4210,6 +4238,7 @@ class InstaPayAccountsTableData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
+      'balance': serializer.toJson<double>(balance),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -4217,10 +4246,12 @@ class InstaPayAccountsTableData extends DataClass
   InstaPayAccountsTableData copyWith({
     int? id,
     String? name,
+    double? balance,
     DateTime? createdAt,
   }) => InstaPayAccountsTableData(
     id: id ?? this.id,
     name: name ?? this.name,
+    balance: balance ?? this.balance,
     createdAt: createdAt ?? this.createdAt,
   );
   InstaPayAccountsTableData copyWithCompanion(
@@ -4229,6 +4260,7 @@ class InstaPayAccountsTableData extends DataClass
     return InstaPayAccountsTableData(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      balance: data.balance.present ? data.balance.value : this.balance,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -4238,19 +4270,21 @@ class InstaPayAccountsTableData extends DataClass
     return (StringBuffer('InstaPayAccountsTableData(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('balance: $balance, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, createdAt);
+  int get hashCode => Object.hash(id, name, balance, createdAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is InstaPayAccountsTableData &&
           other.id == this.id &&
           other.name == this.name &&
+          other.balance == this.balance &&
           other.createdAt == this.createdAt);
 }
 
@@ -4258,25 +4292,30 @@ class InstaPayAccountsTableCompanion
     extends UpdateCompanion<InstaPayAccountsTableData> {
   final Value<int> id;
   final Value<String> name;
+  final Value<double> balance;
   final Value<DateTime> createdAt;
   const InstaPayAccountsTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.balance = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   InstaPayAccountsTableCompanion.insert({
     this.id = const Value.absent(),
     required String name,
+    this.balance = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : name = Value(name);
   static Insertable<InstaPayAccountsTableData> custom({
     Expression<int>? id,
     Expression<String>? name,
+    Expression<double>? balance,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (balance != null) 'balance': balance,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -4284,11 +4323,13 @@ class InstaPayAccountsTableCompanion
   InstaPayAccountsTableCompanion copyWith({
     Value<int>? id,
     Value<String>? name,
+    Value<double>? balance,
     Value<DateTime>? createdAt,
   }) {
     return InstaPayAccountsTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      balance: balance ?? this.balance,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -4302,6 +4343,9 @@ class InstaPayAccountsTableCompanion
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
+    if (balance.present) {
+      map['balance'] = Variable<double>(balance.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -4313,6 +4357,7 @@ class InstaPayAccountsTableCompanion
     return (StringBuffer('InstaPayAccountsTableCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('balance: $balance, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -8051,12 +8096,14 @@ typedef $$InstaPayAccountsTableTableCreateCompanionBuilder =
     InstaPayAccountsTableCompanion Function({
       Value<int> id,
       required String name,
+      Value<double> balance,
       Value<DateTime> createdAt,
     });
 typedef $$InstaPayAccountsTableTableUpdateCompanionBuilder =
     InstaPayAccountsTableCompanion Function({
       Value<int> id,
       Value<String> name,
+      Value<double> balance,
       Value<DateTime> createdAt,
     });
 
@@ -8076,6 +8123,11 @@ class $$InstaPayAccountsTableTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get balance => $composableBuilder(
+    column: $table.balance,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8104,6 +8156,11 @@ class $$InstaPayAccountsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get balance => $composableBuilder(
+    column: $table.balance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -8124,6 +8181,9 @@ class $$InstaPayAccountsTableTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get balance =>
+      $composableBuilder(column: $table.balance, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -8177,20 +8237,24 @@ class $$InstaPayAccountsTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<double> balance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => InstaPayAccountsTableCompanion(
                 id: id,
                 name: name,
+                balance: balance,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required String name,
+                Value<double> balance = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => InstaPayAccountsTableCompanion.insert(
                 id: id,
                 name: name,
+                balance: balance,
                 createdAt: createdAt,
               ),
           withReferenceMapper:

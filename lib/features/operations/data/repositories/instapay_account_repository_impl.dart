@@ -16,11 +16,11 @@ class InstaPayAccountRepositoryImpl implements InstaPayAccountRepository {
   }
 
   @override
-  Future<int> insert(String name) async {
+  Future<int> insert(String name, {double balance = 0.0}) async {
     final model = InstaPayAccountModel(
       id: 0,
       name: name,
-      balance: 0.0,
+      balance: balance,
       createdAt: DateTime.now(),
     );
     return localDataSource.insert(model);

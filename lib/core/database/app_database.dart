@@ -445,8 +445,9 @@ class AppDatabase extends _$AppDatabase {
       final commission = operation.commission.value;
       final networkFee = operation.networkFee.value;
       final isDebt = operation.isDebt.value;
+      final instaPayAccountId = operation.instaPayAccountId.value;
 
-      // Vodafone Cash affects wallet balance; InstaPay does not
+      // 1. Update wallet or InstaPay account balance
       if (providerType == 'vodafoneCash') {
         final wallet =
             await (select(walletsTable)
@@ -463,36 +464,46 @@ class AppDatabase extends _$AppDatabase {
         await (update(walletsTable)..where(
           (w) => w.id.equals(walletId),
         )).write(WalletsTableCompanion(balance: Value(newBalance)));
+      } else if (providerType == 'instaPay') {
+        if (instaPayAccountId == null) {
+          throw Exception('حساب InstaPay مطلوب');
+        }
+        final account =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(instaPayAccountId))).getSingle();
+        double newBalance = account.balance;
+        if (type == 'deposit') {
+          newBalance -= amount + networkFee;
+          if (newBalance < 0) {
+            throw InsufficientInstaPayBalanceException();
+          }
+        } else if (type == 'withdrawal') {
+          newBalance += amount;
+        }
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(instaPayAccountId),
+        )).write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
       }
 
       final operationId = await into(operationsTable).insert(operation);
 
-      // Update cash drawer
+      // 2. Update cash drawer (Mirror Vodafone Cash behavior)
       final cashDrawer =
           await (select(cashDrawerTable)
             ..where((c) => c.id.equals(1))).getSingle();
       double cashBalance = cashDrawer.balance;
-      if (providerType == 'vodafoneCash') {
-        if (type == 'deposit') {
-          if (!isDebt) {
-            cashBalance += amount + commission;
-          }
-        } else if (type == 'withdrawal') {
-          cashBalance -= amount - commission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
-          }
+
+      if (type == 'deposit') {
+        if (!isDebt) {
+          cashBalance += amount + commission;
         }
-      } else if (providerType == 'instaPay') {
-        if (type == 'deposit') {
-          cashBalance += commission;
-        } else if (type == 'withdrawal') {
-          cashBalance -= amount - commission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
-          }
+      } else if (type == 'withdrawal') {
+        cashBalance -= amount - commission;
+        if (cashBalance < 0) {
+          throw InsufficientCashDrawerBalanceException();
         }
       }
+
       await (update(cashDrawerTable)..where(
         (c) => c.id.equals(1),
       )).write(CashDrawerTableCompanion(balance: Value(cashBalance)));
@@ -512,6 +523,7 @@ class AppDatabase extends _$AppDatabase {
       final type = operation.operationType.value;
       final amount = operation.amount.value;
       final commission = operation.commission.value;
+      final instaPayAccountId = operation.instaPayAccountId.value;
 
       if (type != 'withdrawal') {
         throw Exception(
@@ -519,13 +531,25 @@ class AppDatabase extends _$AppDatabase {
         );
       }
 
-      // 1. Vodafone Cash affects wallet balance by full requested withdrawal amount
+      // 1. Update wallet or InstaPay account balance by full requested withdrawal amount
       if (providerType == 'vodafoneCash') {
         final wallet =
             await (select(walletsTable)
               ..where((w) => w.id.equals(walletId))).getSingle();
         await (update(walletsTable)..where((w) => w.id.equals(walletId))).write(
           WalletsTableCompanion(balance: Value(wallet.balance + amount)),
+        );
+      } else if (providerType == 'instaPay') {
+        if (instaPayAccountId == null) {
+          throw Exception('حساب InstaPay مطلوب');
+        }
+        final account =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(instaPayAccountId))).getSingle();
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(instaPayAccountId),
+        )).write(
+          InstaPayAccountsTableCompanion(balance: Value(account.balance + amount)),
         );
       }
 
@@ -617,18 +641,13 @@ class AppDatabase extends _$AppDatabase {
       final walletId = operation.walletId.value;
       final providerType = operation.providerType.value;
       final type = operation.operationType.value;
+      final instaPayAccountId = operation.instaPayAccountId.value;
 
       final requestedAmount = operation.amount.value;
       final commission = operation.commission.value;
 
       // المبلغ الذي سيصبح مستحقًا على العميل بعد خصم العمولة
       final payableAmount = requestedAmount - commission;
-
-      print('===========================');
-      print('Requested Amount: $requestedAmount');
-      print('Commission: $commission');
-      print('Payable Amount: $payableAmount');
-      print('===========================');
 
       if (type != 'withdrawal') {
         throw Exception(
@@ -648,19 +667,7 @@ class AppDatabase extends _$AppDatabase {
         throw Exception('Commission cannot be greater than withdrawal amount');
       }
 
-      // ============================================================
-      // 1. Vodafone Cash
-      // ============================================================
-      //
-      // الـ Wallet يستقبل مبلغ السحب الكامل.
-      //
-      // مثال:
-      // Amount = 1000
-      // Commission = 20
-      //
-      // Wallet => +1000
-      // Payable => 980
-      //
+      // 1. Update wallet or InstaPay account balance
       if (providerType == 'vodafoneCash') {
         final wallet =
             await (select(walletsTable)
@@ -671,26 +678,25 @@ class AppDatabase extends _$AppDatabase {
         await (update(walletsTable)..where(
           (w) => w.id.equals(walletId),
         )).write(WalletsTableCompanion(balance: Value(newBalance)));
+      } else if (providerType == 'instaPay') {
+        if (instaPayAccountId == null) {
+          throw Exception('حساب InstaPay مطلوب');
+        }
+        final account =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(instaPayAccountId))).getSingle();
+        final newBalance = account.balance + requestedAmount;
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(instaPayAccountId),
+        )).write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
       }
 
-      // ============================================================
       // 2. Insert withdrawal operation
-      // ============================================================
-
       final operationId = await into(operationsTable).insert(operation);
 
-      // ============================================================
-      // 3. Cash Drawer
-      // ============================================================
-      //
-      // لا يتم تعديل Cash Drawer هنا لأن السحب مؤجل
-      // والعميل لم يستلم الكاش فعليًا.
-      //
+      // 3. Cash Drawer: Unchanged because full amount is deferred to payable
 
-      // ============================================================
       // 4. Find or create debtor
-      // ============================================================
-
       DebtorsTableData? existing;
 
       if (customerPhone != null && customerPhone.trim().isNotEmpty) {
@@ -720,29 +726,21 @@ class AppDatabase extends _$AppDatabase {
               ..where((d) => d.id.equals(debtorId))).getSingle();
       }
 
-      // ============================================================
       // 5. Create payable
-      // ============================================================
-
       await into(debtsTable).insert(
         DebtsTableCompanion(
           debtorId: Value(debtor.id),
           operationId: Value(operationId),
           operationType: const Value('withdrawal'),
           providerType: Value(providerType),
-
-          // المستحق = السحب - العمولة
           amount: Value(payableAmount),
-
           isPaid: const Value(false),
           isCashLoan: const Value(false),
           debtType: const Value('payable'),
-
           notes: Value(
             'مستحق كامل من سحب مؤجل بتاريخ '
             '${DateTime.now().toString().split(' ')[0]}',
           ),
-
           createdAt: Value(DateTime.now()),
         ),
       );
@@ -767,8 +765,10 @@ class AppDatabase extends _$AppDatabase {
       final newNetworkFee = operation.networkFee.value;
       final newType = operation.operationType.value;
       final newAmount = operation.amount.value;
+      final oldInstaPayAccountId = oldOp.instaPayAccountId;
+      final newInstaPayAccountId = operation.instaPayAccountId.value;
 
-      // Reverse old wallet effect (Vodafone Cash only)
+      // 1. Reverse old account balance effect
       if (oldProvider == 'vodafoneCash') {
         final oldWallet =
             await (select(walletsTable)
@@ -782,9 +782,22 @@ class AppDatabase extends _$AppDatabase {
         await (update(walletsTable)..where(
           (w) => w.id.equals(oldWalletId),
         )).write(WalletsTableCompanion(balance: Value(oldBalance)));
+      } else if (oldProvider == 'instaPay' && oldInstaPayAccountId != null) {
+        final oldAccount =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(oldInstaPayAccountId))).getSingle();
+        double oldBalance = oldAccount.balance;
+        if (oldOp.operationType == 'deposit') {
+          oldBalance += oldOp.amount + oldOp.networkFee;
+        } else if (oldOp.operationType == 'withdrawal') {
+          oldBalance -= oldOp.amount;
+        }
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(oldInstaPayAccountId),
+        )).write(InstaPayAccountsTableCompanion(balance: Value(oldBalance)));
       }
 
-      // Apply new wallet effect (Vodafone Cash only)
+      // 2. Apply new account balance effect
       if (newProvider == 'vodafoneCash') {
         final newWallet =
             await (select(walletsTable)
@@ -801,55 +814,56 @@ class AppDatabase extends _$AppDatabase {
         await (update(walletsTable)..where(
           (w) => w.id.equals(newWalletId),
         )).write(WalletsTableCompanion(balance: Value(newBalance)));
+      } else if (newProvider == 'instaPay') {
+        if (newInstaPayAccountId == null) {
+          throw Exception('حساب InstaPay مطلوب');
+        }
+        final newAccount =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(newInstaPayAccountId))).getSingle();
+        double newBalance = newAccount.balance;
+        if (newType == 'deposit') {
+          newBalance -= newAmount + newNetworkFee;
+          if (newBalance < 0) {
+            throw InsufficientInstaPayBalanceException();
+          }
+        } else if (newType == 'withdrawal') {
+          newBalance += newAmount;
+        }
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(newInstaPayAccountId),
+        )).write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
       }
 
       await update(operationsTable).replace(operation);
 
-      // Update cash drawer: reverse old, apply new
+      // 3. Update cash drawer: reverse old, apply new (Mirroring Vodafone Cash rules)
       final cashDrawer =
           await (select(cashDrawerTable)
             ..where((c) => c.id.equals(1))).getSingle();
       double cashBalance = cashDrawer.balance;
 
       // Reverse old cash drawer effect
-      if (oldProvider == 'vodafoneCash') {
-        if (oldOp.operationType == 'deposit') {
+      if (oldOp.operationType == 'deposit') {
+        if (!oldOp.isDebt) {
           cashBalance -= oldOp.amount + oldOp.commission;
           if (cashBalance < 0) {
             throw InsufficientCashDrawerBalanceException();
           }
-        } else if (oldOp.operationType == 'withdrawal') {
-          cashBalance += oldOp.amount - oldOp.commission;
         }
-      } else if (oldProvider == 'instaPay') {
-        if (oldOp.operationType == 'deposit') {
-          cashBalance -= oldOp.commission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
-          }
-        } else if (oldOp.operationType == 'withdrawal') {
-          cashBalance += oldOp.amount - oldOp.commission;
-        }
+      } else if (oldOp.operationType == 'withdrawal') {
+        cashBalance += oldOp.amount - oldOp.commission;
       }
 
       // Apply new cash drawer effect
-      if (newProvider == 'vodafoneCash') {
-        if (newType == 'deposit') {
+      if (newType == 'deposit') {
+        if (!operation.isDebt.value) {
           cashBalance += newAmount + newCommission;
-        } else if (newType == 'withdrawal') {
-          cashBalance -= newAmount - newCommission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
-          }
         }
-      } else if (newProvider == 'instaPay') {
-        if (newType == 'deposit') {
-          cashBalance += newCommission;
-        } else if (newType == 'withdrawal') {
-          cashBalance -= newAmount - newCommission;
-          if (cashBalance < 0) {
-            throw InsufficientCashDrawerBalanceException();
-          }
+      } else if (newType == 'withdrawal') {
+        cashBalance -= newAmount - newCommission;
+        if (cashBalance < 0) {
+          throw InsufficientCashDrawerBalanceException();
         }
       }
 
@@ -871,6 +885,7 @@ class AppDatabase extends _$AppDatabase {
       final commission = operation.commission;
       final networkFee = operation.networkFee;
       final isDebt = operation.isDebt;
+      final instaPayAccountId = operation.instaPayAccountId;
 
       // 1. Check if operation has a linked record in debtsTable (customer debt or payable)
       final linkedDebt =
@@ -906,7 +921,7 @@ class AppDatabase extends _$AppDatabase {
         await (delete(debtsTable)..where((d) => d.id.equals(linkedDebt.id))).go();
       }
 
-      // 2. Reverse wallet effect (Vodafone Cash only)
+      // 2. Reverse wallet or InstaPay account balance effect
       if (providerType == 'vodafoneCash') {
         final wallet =
             await (select(walletsTable)
@@ -925,47 +940,47 @@ class AppDatabase extends _$AppDatabase {
         await (update(walletsTable)..where(
           (w) => w.id.equals(walletId),
         )).write(WalletsTableCompanion(balance: Value(balance)));
+      } else if (providerType == 'instaPay' && instaPayAccountId != null) {
+        final account =
+            await (select(instaPayAccountsTable)
+              ..where((a) => a.id.equals(instaPayAccountId))).getSingle();
+        double balance = account.balance;
+        if (opType == 'deposit') {
+          balance += amount + networkFee;
+        } else if (opType == 'withdrawal') {
+          balance -= amount;
+          if (balance < 0) {
+            throw InsufficientInstaPayBalanceException();
+          }
+        }
+        await (update(instaPayAccountsTable)..where(
+          (a) => a.id.equals(instaPayAccountId),
+        )).write(InstaPayAccountsTableCompanion(balance: Value(balance)));
       }
 
       // 3. Delete the operation row
       await (delete(operationsTable)..where((o) => o.id.equals(id))).go();
 
-      // 4. Reverse cash drawer effect
+      // 4. Reverse cash drawer effect (Mirroring Vodafone Cash rules)
       final cashDrawer =
           await (select(cashDrawerTable)
             ..where((c) => c.id.equals(1))).getSingle();
       double cashBalance = cashDrawer.balance;
 
-      if (providerType == 'vodafoneCash') {
-        if (opType == 'deposit') {
-          if (!isDebt) {
-            // Normal cash deposit received (amount + commission) in drawer
-            cashBalance -= amount + commission;
-            if (cashBalance < 0) {
-              throw InsufficientCashDrawerBalanceException();
-            }
-          } else {
-            // Debt deposit did NOT add amount to drawer, only commission was added if any
-            // (Wait: in addOperationWithBalanceUpdate, when isDebt is true, drawer was NOT incremented by amount+commission)
-            // Drawer balance was unchanged when isDebt == true. So no cash subtraction needed!
-          }
-        } else if (opType == 'withdrawal') {
-          if (linkedDebt != null && linkedDebt.debtType == 'payable') {
-            // Payable withdrawal: only refund back what was actually given out of the drawer initially
-            cashBalance += initialCashPaidFromDrawer;
-          } else {
-            // Standard withdrawal: (amount - commission) was given out from drawer
-            cashBalance += amount - commission;
-          }
-        }
-      } else if (providerType == 'instaPay') {
-        if (opType == 'deposit') {
-          // InstaPay deposit added commission to drawer
-          cashBalance -= commission;
+      if (opType == 'deposit') {
+        if (!isDebt) {
+          // Normal cash deposit received (amount + commission) in drawer
+          cashBalance -= amount + commission;
           if (cashBalance < 0) {
             throw InsufficientCashDrawerBalanceException();
           }
-        } else if (opType == 'withdrawal') {
+        }
+      } else if (opType == 'withdrawal') {
+        if (linkedDebt != null && linkedDebt.debtType == 'payable') {
+          // Payable withdrawal: only refund back what was actually given out of the drawer initially
+          cashBalance += initialCashPaidFromDrawer;
+        } else {
+          // Standard withdrawal: (amount - commission) was given out from drawer
           cashBalance += amount - commission;
         }
       }

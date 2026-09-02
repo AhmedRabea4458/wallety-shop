@@ -4,19 +4,21 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
+import 'package:smart_expense/features/operations/domain/entities/instapay_account_entity.dart';
 
 String _formatAmount(double amount) {
   return NumberFormat('#,##0.##', 'ar').format(amount);
 }
 
 /// Dashboard Current Balances Component
-/// Displays Cash Drawer, Total Wallet Balance, Customer Receivables, and Payables
-/// as clean, separated, responsive cards.
+/// Displays Cash Drawer, Total Wallet Balance, Customer Receivables, Payables,
+/// and InstaPay account balances as clean, separated, responsive cards.
 class DashboardBalancesSection extends StatelessWidget {
   final double totalWalletBalance;
   final double cashDrawerBalance;
   final double customerReceivables;
   final double payables;
+  final List<InstaPayAccountEntity> instaPayAccounts;
   final VoidCallback? onEditCashDrawer;
 
   const DashboardBalancesSection({
@@ -25,11 +27,15 @@ class DashboardBalancesSection extends StatelessWidget {
     required this.cashDrawerBalance,
     required this.customerReceivables,
     required this.payables,
+    this.instaPayAccounts = const [],
     this.onEditCashDrawer,
   });
 
   @override
   Widget build(BuildContext context) {
+    final totalInstaPayBalance =
+        instaPayAccounts.fold(0.0, (sum, a) => sum + a.balance);
+
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.screenHorizontal,
@@ -42,6 +48,37 @@ class DashboardBalancesSection extends StatelessWidget {
             style: AppTextStyles.headline.copyWith(
               color: AppColors.foreground,
               fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.space3),
+
+          // Summary: Wallets + InstaPay + Grand Total
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(AppSpacing.space4),
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.border50, width: 1),
+            ),
+            child: Column(
+              children: [
+                _SummaryRow(
+                  label: 'المحافظ',
+                  amount: totalWalletBalance,
+                ),
+                const SizedBox(height: AppSpacing.space2),
+                _SummaryRow(
+                  label: 'InstaPay',
+                  amount: totalInstaPayBalance,
+                ),
+                const Divider(height: AppSpacing.space3),
+                _SummaryRow(
+                  label: 'الإجمالي',
+                  amount: totalWalletBalance + totalInstaPayBalance,
+                  isBold: true,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: AppSpacing.space3),
@@ -63,11 +100,11 @@ class DashboardBalancesSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.space3),
-              // Total Wallets Card
+              // Total Card
               Expanded(
                 child: _BalanceCard(
-                  title: 'إجمالي المحافظ',
-                  amount: totalWalletBalance,
+                  title: 'إجمالي الأرصدة',
+                  amount: totalWalletBalance + totalInstaPayBalance,
                   icon: Icons.account_balance_wallet_rounded,
                   iconColor: AppColors.primary,
                   iconBgColor: AppColors.primary.withValues(alpha: 0.12),
@@ -103,6 +140,15 @@ class DashboardBalancesSection extends StatelessWidget {
               ),
             ],
           ),
+
+          // InstaPay Balances Section — shown only when accounts exist
+          if (instaPayAccounts.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.space3),
+            _InstaPayBalancesCard(
+              accounts: instaPayAccounts,
+              totalBalance: totalInstaPayBalance,
+            ),
+          ],
         ],
       ),
     );
@@ -207,6 +253,181 @@ class _BalanceCard extends StatelessWidget {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryRow extends StatelessWidget {
+  final String label;
+  final double amount;
+  final bool isBold;
+
+  const _SummaryRow({
+    required this.label,
+    required this.amount,
+    this.isBold = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: AppTextStyles.body.copyWith(
+            color: AppColors.foreground,
+            fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+        Row(
+          children: [
+            Text(
+              _formatAmount(amount),
+              style: AppTextStyles.body.copyWith(
+                color: isBold ? AppColors.primary : AppColors.foreground,
+                fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'ج.م',
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.mutedForeground,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _InstaPayBalancesCard extends StatelessWidget {
+  final List<InstaPayAccountEntity> accounts;
+  final double totalBalance;
+
+  const _InstaPayBalancesCard({
+    required this.accounts,
+    required this.totalBalance,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.space4),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border50, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: const Icon(
+                  Icons.swap_horiz_rounded,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.space3),
+              Text(
+                'حسابات InstaPay',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.mutedForeground,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.space3),
+          const Divider(height: 1),
+          const SizedBox(height: AppSpacing.space2),
+          // Individual account rows
+          ...accounts.map(
+            (account) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.space1),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    account.name,
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.foreground,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        _formatAmount(account.balance),
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.foreground,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ج.م',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Total row — only when more than one account
+          if (accounts.length > 1) ...[
+            const SizedBox(height: AppSpacing.space2),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.space2),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'الإجمالي',
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      _formatAmount(totalBalance),
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ج.م',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

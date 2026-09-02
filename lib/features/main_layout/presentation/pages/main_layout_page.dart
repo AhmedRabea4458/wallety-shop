@@ -80,6 +80,7 @@ class _MainLayoutPageState extends State<MainLayoutPage> {
               context.read<WalletCubit>().getWallets();
               context.read<ActiveShiftCubit>().loadActiveShift();
               context.read<DebtCubit>().loadOutstandingDebt();
+              context.read<InstaPayAccountCubit>().loadAccounts();
             }
           },
           child: IndexedStack(

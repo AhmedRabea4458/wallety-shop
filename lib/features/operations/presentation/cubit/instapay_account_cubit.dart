@@ -33,8 +33,8 @@ class InstaPayAccountCubit extends Cubit<InstaPayAccountState> {
     }
   }
 
-  Future<void> addAccount(String name) async {
-    await repository.insert(name);
+  Future<void> addAccount(String name, {double balance = 0.0}) async {
+    await repository.insert(name, balance: balance);
     await loadAccounts();
   }
 

@@ -7,6 +7,7 @@ class ErrorMapper {
 
   static String map(Object error) {
     if (error is InsufficientBalanceException) return error.message;
+    if (error is InsufficientInstaPayBalanceException) return error.message;
     if (error is InsufficientCashDrawerBalanceException) return error.message;
     if (error is OperationLinkedToDebtException) return error.message;
     if (error is OperationHasPaidDebtException) return error.message;

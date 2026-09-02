@@ -7,6 +7,15 @@ class InsufficientBalanceException implements Exception {
   String toString() => message;
 }
 
+class InsufficientInstaPayBalanceException implements Exception {
+  final String message;
+
+  InsufficientInstaPayBalanceException([this.message = 'رصيد حساب InstaPay غير كافٍ']);
+
+  @override
+  String toString() => message;
+}
+
 class InsufficientCashDrawerBalanceException implements Exception {
   final String message;
 
