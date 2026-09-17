@@ -5,6 +5,7 @@ import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/domain/entities/shift_entity.dart';
 import 'package:smart_expense/features/operations/domain/repositories/shift_repository.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_state.dart';
+import 'package:smart_expense/features/sms_import/data/sms_import_processor.dart';
 
 class ActiveShiftCubit extends Cubit<ActiveShiftState> {
   final ShiftRepository repository;
@@ -32,7 +33,11 @@ class ActiveShiftCubit extends Cubit<ActiveShiftState> {
         }
       } catch (repairError) {
         debugPrint('Repair failed: $repairError');
-        emit(ActiveShiftError(message: 'يوجد أكثر من وردية نشطة ولم نتمكن من إصلاحها'));
+        emit(
+          ActiveShiftError(
+            message: 'يوجد أكثر من وردية نشطة ولم نتمكن من إصلاحها',
+          ),
+        );
       }
     } catch (e) {
       debugPrint('loadActiveShift error: $e');
@@ -51,6 +56,11 @@ class ActiveShiftCubit extends Cubit<ActiveShiftState> {
       );
       await repository.openShift(shift);
       await loadActiveShift();
+      try {
+        await SmsImportProcessor().retryPendingRecords();
+      } catch (e) {
+        debugPrint('retryPendingRecords on openShift error: $e');
+      }
     } on ActiveShiftExistsException catch (e) {
       debugPrint('openShift error: $e');
       emit(ActiveShiftError(message: ErrorMapper.map(e)));

@@ -15,6 +15,13 @@ abstract class OperationLocalDataSource {
     required String customerName,
     String? customerPhone,
   });
-  Future<void> updateOperation(OperationModel model);
+  Future<void> updateOperation(
+    OperationModel model, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  });
   Future<void> deleteOperation(int id);
 }

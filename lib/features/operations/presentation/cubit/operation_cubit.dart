@@ -122,11 +122,25 @@ class OperationCubit extends Cubit<OperationState> {
     }
   }
 
-  Future<void> updateOperation(OperationEntity operation) async {
+  Future<void> updateOperation(
+    OperationEntity operation, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  }) async {
     final hadData = state is OperationLoaded;
     if (!hadData) emit(OperationLoading());
     try {
-      await repository.updateOperation(operation);
+      await repository.updateOperation(
+        operation,
+        isDebt: isDebt,
+        isCreatePayable: isCreatePayable,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        paidNow: paidNow,
+      );
       debugPrint('updateOperation: updated op id=${operation.id}');
       await _refreshOperations();
     } on InsufficientBalanceException {

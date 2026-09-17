@@ -31,6 +31,10 @@ import 'package:smart_expense/core/errors/exceptions.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer_state.dart';
 import 'package:smart_expense/features/expenses/presentation/widgets/save_transaction_button.dart';
+import 'package:smart_expense/core/di/injection_container.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
+import 'package:smart_expense/features/operations/domain/repositories/debt_repository.dart';
 
 class AddOperationPage extends StatefulWidget {
   final OperationEntity? operationToEdit;
@@ -84,12 +88,60 @@ class _AddOperationPageState extends State<AddOperationPage> {
           op.networkFee > 0 ? op.networkFee.toStringAsFixed(0) : '';
       _phoneController.text = op.phoneNumber ?? '';
       _notesController.text = op.notes ?? '';
-      _isDebtLinked =
-          context.read<OperationCubit>().getDebtForOperation(op.id) != null;
+      _loadEditingDebtInfo(op.id);
     } else {
       _selectedType = OperationType.deposit;
       _selectedProvider = ProviderType.vodafoneCash;
       _selectedDate = DateTime.now();
+    }
+  }
+
+  Future<void> _loadEditingDebtInfo(int operationId) async {
+    try {
+      final opCubit = context.read<OperationCubit>();
+      DebtEntity? debt = opCubit.getDebtForOperation(operationId);
+      if (debt == null) {
+        final debts = await sl<DebtRepository>().getOperationDebts();
+        debt = debts[operationId];
+      }
+
+      if (debt != null) {
+        final debtor = await sl<DebtRepository>().getDebtorById(debt.debtorId);
+        if (!mounted) return;
+        setState(() {
+          _isDebtLinked = true;
+          if (debt!.debtType == DebtType.customerDebt) {
+            _isDebt = true;
+            _isCreatePayable = false;
+          } else if (debt.debtType == DebtType.payable) {
+            _isCreatePayable = true;
+            _isDebt = false;
+            final op = widget.operationToEdit!;
+            final totalRequired =
+                (op.amount - op.commission).clamp(0.0, double.infinity);
+            final paid =
+                (totalRequired - debt.amount).clamp(0.0, double.infinity);
+            if (paid > 0) {
+              _paidNowController.text = paid.toStringAsFixed(0);
+            } else {
+              _paidNowController.text = '0';
+            }
+          }
+          if (debtor != null) {
+            _customerNameController.text = debtor.name;
+            _customerPhoneController.text = debtor.phone ?? '';
+          }
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _isDebt = false;
+          _isCreatePayable = false;
+          _isDebtLinked = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('_loadEditingDebtInfo error: $e');
     }
   }
 
@@ -162,6 +214,11 @@ class _AddOperationPageState extends State<AddOperationPage> {
       return;
     }
 
+    if (_isCreatePayable && _customerNameController.text.trim().isEmpty) {
+      _showError('اسم المستحق له مطلوب');
+      return;
+    }
+
     final entity = OperationEntity(
       id: _isEditing ? widget.operationToEdit!.id : 0,
       walletId: walletId,
@@ -191,7 +248,21 @@ class _AddOperationPageState extends State<AddOperationPage> {
     try {
       int operationId;
       if (_isEditing) {
-        await operationCubit.updateOperation(entity);
+        final name = _customerNameController.text.trim();
+        final paidNowText = _paidNowController.text.trim();
+        final paidNowVal =
+            paidNowText.isEmpty ? 0.0 : parseArabicNumerals(paidNowText);
+
+        await operationCubit.updateOperation(
+          entity,
+          isDebt: _isDebt,
+          isCreatePayable: _isCreatePayable,
+          customerName: name.isNotEmpty ? name : null,
+          customerPhone: _customerPhoneController.text.trim().isNotEmpty
+              ? _customerPhoneController.text.trim()
+              : null,
+          paidNow: paidNowVal,
+        );
         operationId = entity.id;
       } else if (_isCreatePayable) {
         final name = _customerNameController.text.trim();
@@ -251,7 +322,13 @@ class _AddOperationPageState extends State<AddOperationPage> {
         await operationCubit.getOperations();
       }
       if (!mounted) return;
-      if ((_isCreatePayable || _isDebt) && !_isEditing) {
+      if (_isEditing) {
+        try {
+          context.read<DebtCubit>().loadDebtors(silent: true);
+          context.read<CashDrawerCubit>().refreshCashDrawer();
+          context.read<WalletCubit>().getWallets();
+        } catch (_) {}
+      } else if (_isCreatePayable || _isDebt) {
         try {
           context.read<DebtCubit>().loadDebtors(silent: true);
           context.read<CashDrawerCubit>().refreshCashDrawer();
@@ -983,6 +1060,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     setState(() {
                       _selectedType = type;
                       if (type == OperationType.withdrawal) _isDebt = false;
+                      if (type == OperationType.deposit) _isCreatePayable = false;
                     });
                   },
                 ),
@@ -1251,7 +1329,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
               ),
             ),
             SliverToBoxAdapter(child: SizedBox(height: AppSpacing.space4)),
-            if (!_isEditing && _selectedType == OperationType.deposit)
+            if (_selectedType == OperationType.deposit)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1260,13 +1338,19 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: DebtSection(
                     isDebt: _isDebt,
                     isSaving: _isSaving,
-                    onDebtChanged: (v) => setState(() => _isDebt = v),
+                    onDebtChanged: (v) => setState(() {
+                      _isDebt = v;
+                      if (!_isDebt && !_isEditing) {
+                        _customerNameController.clear();
+                        _customerPhoneController.clear();
+                      }
+                    }),
                     customerNameController: _customerNameController,
                     customerPhoneController: _customerPhoneController,
                   ),
                 ),
               ),
-            if (!_isEditing && _selectedType == OperationType.withdrawal)
+            if (_selectedType == OperationType.withdrawal)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -1295,7 +1379,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                   ? null
                                   : (v) => setState(() {
                                     _isCreatePayable = v ?? false;
-                                    if (!_isCreatePayable) {
+                                    if (!_isCreatePayable && !_isEditing) {
                                       _customerNameController.clear();
                                       _customerPhoneController.clear();
                                     }

@@ -97,7 +97,14 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
   }
 
   @override
-  Future<void> updateOperation(OperationModel model) {
+  Future<void> updateOperation(
+    OperationModel model, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  }) {
     return database.updateOperationWithBalanceUpdate(
       OperationsTableCompanion(
         id: Value(model.id),
@@ -113,6 +120,11 @@ class OperationLocalDataSourceImpl implements OperationLocalDataSource {
         instaPayAccountId: Value(model.instaPayAccountId),
         createdAt: Value(model.createdAt),
       ),
+      isDebt: isDebt,
+      isCreatePayable: isCreatePayable,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      paidNow: paidNow,
     );
   }
 

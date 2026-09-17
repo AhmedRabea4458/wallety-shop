@@ -62,15 +62,23 @@ class OperationRepositoryImpl implements OperationRepository {
   }
 
   @override
-  Future<void> updateOperation(OperationEntity operation) async {
-    if (operation.id != 0) {
-      final hasDebt = await debtDataSource.getDebtByOperationId(operation.id);
-      if (hasDebt != null) {
-        throw OperationLinkedToDebtException(operation.id);
-      }
-    }
+  Future<void> updateOperation(
+    OperationEntity operation, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  }) async {
     final model = OperationModel.fromEntity(operation);
-    return localDataSource.updateOperation(model);
+    return localDataSource.updateOperation(
+      model,
+      isDebt: isDebt,
+      isCreatePayable: isCreatePayable,
+      customerName: customerName,
+      customerPhone: customerPhone,
+      paidNow: paidNow,
+    );
   }
 
   @override

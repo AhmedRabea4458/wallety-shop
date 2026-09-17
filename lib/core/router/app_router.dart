@@ -22,6 +22,7 @@ import 'package:smart_expense/features/operations/presentation/pages/shift_detai
 import 'package:smart_expense/features/operations/presentation/pages/shift_history_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_management_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_setup_page.dart';
+import 'package:smart_expense/features/sms_import/presentation/pages/sms_transactions_page.dart';
 import 'package:smart_expense/features/splash/presentation/pages/splash_page.dart';
 
 final appRouter = GoRouter(
@@ -153,6 +154,10 @@ final appRouter = GoRouter(
           child: DebtorDetailPage(debtorId: debtorId),
         );
       },
+    ),
+    GoRoute(
+      path: AppRoutes.smsTransactions,
+      builder: (context, state) => const SmsTransactionsPage(),
     ),
   ],
 );
