@@ -15,6 +15,13 @@ abstract class OperationRepository {
     required String customerName,
     String? customerPhone,
   });
-  Future<void> updateOperation(OperationEntity operation);
+  Future<void> updateOperation(
+    OperationEntity operation, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  });
   Future<void> deleteOperation(int id);
 }

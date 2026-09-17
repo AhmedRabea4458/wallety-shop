@@ -12,4 +12,5 @@ class AppRoutes {
   static const String debtors = '/debtors';
   static const String debtorDetail = '/debtor-detail';
   static const String operationDetail = '/operation-detail';
+  static const String smsTransactions = '/sms-transactions';
 }

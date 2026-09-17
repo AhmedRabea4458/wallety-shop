@@ -43,6 +43,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/shift_histo
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:smart_expense/features/sms_import/sms_listener_service.dart';
 
 final sl = GetIt.instance;
 
@@ -136,4 +137,8 @@ Future<void> init() async {
   sl.registerLazySingleton(
     () => InstaPayAccountCubit(sl<InstaPayAccountRepository>()),
   );
+
+  // Restore SMS listener state from last session
+  await SmsListenerService.instance.restoreState();
 }
+

@@ -750,8 +750,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> updateOperationWithBalanceUpdate(
-    OperationsTableCompanion operation,
-  ) {
+    OperationsTableCompanion operation, {
+    bool isDebt = false,
+    bool isCreatePayable = false,
+    String? customerName,
+    String? customerPhone,
+    double? paidNow,
+  }) {
     return transaction(() async {
       final operationId = operation.id.value;
       final oldOp =
@@ -768,7 +773,25 @@ class AppDatabase extends _$AppDatabase {
       final oldInstaPayAccountId = oldOp.instaPayAccountId;
       final newInstaPayAccountId = operation.instaPayAccountId.value;
 
-      // 1. Reverse old account balance effect
+      // 1. Check existing linked debt
+      final oldLinkedDebt =
+          await (select(debtsTable)
+            ..where((d) => d.operationId.equals(operationId))).getSingleOrNull();
+
+      if (oldLinkedDebt != null) {
+        final payments =
+            await (select(debtPaymentsTable)
+              ..where((p) => p.debtId.equals(oldLinkedDebt.id))).get();
+        if (payments.isNotEmpty) {
+          if (oldLinkedDebt.debtType == 'payable') {
+            throw OperationLinkedToPayableException(operationId);
+          } else {
+            throw OperationHasPaidDebtException(operationId);
+          }
+        }
+      }
+
+      // 2. Reverse old account balance effect
       if (oldProvider == 'vodafoneCash') {
         final oldWallet =
             await (select(walletsTable)
@@ -797,7 +820,7 @@ class AppDatabase extends _$AppDatabase {
         )).write(InstaPayAccountsTableCompanion(balance: Value(oldBalance)));
       }
 
-      // 2. Apply new account balance effect
+      // 3. Apply new account balance effect
       if (newProvider == 'vodafoneCash') {
         final newWallet =
             await (select(walletsTable)
@@ -835,9 +858,7 @@ class AppDatabase extends _$AppDatabase {
         )).write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
       }
 
-      await update(operationsTable).replace(operation);
-
-      // 3. Update cash drawer: reverse old, apply new (Mirroring Vodafone Cash rules)
+      // 4. Update cash drawer: reverse old, apply new
       final cashDrawer =
           await (select(cashDrawerTable)
             ..where((c) => c.id.equals(1))).getSingle();
@@ -852,25 +873,165 @@ class AppDatabase extends _$AppDatabase {
           }
         }
       } else if (oldOp.operationType == 'withdrawal') {
-        cashBalance += oldOp.amount - oldOp.commission;
+        if (oldLinkedDebt != null && oldLinkedDebt.debtType == 'payable') {
+          final initialCashPaid = (oldOp.amount - oldOp.commission - oldLinkedDebt.amount)
+              .clamp(0.0, double.infinity);
+          cashBalance += initialCashPaid;
+        } else {
+          cashBalance += oldOp.amount - oldOp.commission;
+        }
       }
 
       // Apply new cash drawer effect
+      final effectiveIsDebt = (newType == 'deposit') && isDebt;
       if (newType == 'deposit') {
-        if (!operation.isDebt.value) {
+        if (!effectiveIsDebt) {
           cashBalance += newAmount + newCommission;
         }
       } else if (newType == 'withdrawal') {
-        cashBalance -= newAmount - newCommission;
-        if (cashBalance < 0) {
-          throw InsufficientCashDrawerBalanceException();
+        if (isCreatePayable) {
+          final actualPaidNow = (paidNow ?? 0.0).clamp(0.0, double.infinity);
+          if (actualPaidNow > 0) {
+            cashBalance -= actualPaidNow;
+            if (cashBalance < 0) {
+              throw InsufficientCashDrawerBalanceException();
+            }
+          }
+        } else {
+          cashBalance -= newAmount - newCommission;
+          if (cashBalance < 0) {
+            throw InsufficientCashDrawerBalanceException();
+          }
         }
       }
 
       await (update(cashDrawerTable)..where(
         (c) => c.id.equals(1),
       )).write(CashDrawerTableCompanion(balance: Value(cashBalance)));
+
+      // 5. Update operationsTable
+      final updatedCompanion = operation.copyWith(
+        isDebt: Value(effectiveIsDebt),
+      );
+      await update(operationsTable).replace(updatedCompanion);
+
+      // 6. Update/Create/Delete debtsTable
+      if (newType == 'deposit' && isDebt) {
+        final debtAmount = newAmount + newCommission;
+        final name = (customerName != null && customerName.trim().isNotEmpty)
+            ? customerName.trim()
+            : 'عميل';
+        final phone = (customerPhone != null && customerPhone.trim().isNotEmpty)
+            ? customerPhone.trim()
+            : null;
+
+        final debtor = await _findOrCreateDebtor(name, phone);
+
+        if (oldLinkedDebt != null) {
+          await (update(debtsTable)..where((d) => d.id.equals(oldLinkedDebt.id)))
+              .write(DebtsTableCompanion(
+            debtorId: Value(debtor.id),
+            amount: Value(debtAmount),
+            debtType: const Value('customerDebt'),
+            operationType: const Value('deposit'),
+            providerType: Value(newProvider),
+            notes: Value(operation.notes.value),
+          ));
+        } else {
+          await into(debtsTable).insert(DebtsTableCompanion(
+            debtorId: Value(debtor.id),
+            operationId: Value(operationId),
+            operationType: const Value('deposit'),
+            providerType: Value(newProvider),
+            amount: Value(debtAmount),
+            isPaid: const Value(false),
+            isCashLoan: const Value(false),
+            debtType: const Value('customerDebt'),
+            notes: Value(operation.notes.value),
+            createdAt: Value(DateTime.now()),
+          ));
+        }
+      } else if (newType == 'withdrawal' && isCreatePayable) {
+        final totalPayable = newAmount - newCommission;
+        final actualPaidNow = (paidNow ?? 0.0).clamp(0.0, double.infinity);
+        final remainderPayable =
+            (totalPayable - actualPaidNow).clamp(0.0, double.infinity);
+        final name = (customerName != null && customerName.trim().isNotEmpty)
+            ? customerName.trim()
+            : 'عميل';
+        final phone = (customerPhone != null && customerPhone.trim().isNotEmpty)
+            ? customerPhone.trim()
+            : null;
+
+        final debtor = await _findOrCreateDebtor(name, phone);
+
+        if (oldLinkedDebt != null) {
+          await (update(debtsTable)..where((d) => d.id.equals(oldLinkedDebt.id)))
+              .write(DebtsTableCompanion(
+            debtorId: Value(debtor.id),
+            amount: Value(remainderPayable),
+            debtType: const Value('payable'),
+            operationType: const Value('withdrawal'),
+            providerType: Value(newProvider),
+            notes: Value(
+              actualPaidNow > 0
+                  ? 'مستحق متبقي من سحب بقيمة ${newAmount.toStringAsFixed(0)} ج.م'
+                  : 'مستحق كامل من سحب مؤجل',
+            ),
+          ));
+        } else {
+          await into(debtsTable).insert(DebtsTableCompanion(
+            debtorId: Value(debtor.id),
+            operationId: Value(operationId),
+            operationType: const Value('withdrawal'),
+            providerType: Value(newProvider),
+            amount: Value(remainderPayable),
+            isPaid: const Value(false),
+            isCashLoan: const Value(false),
+            debtType: const Value('payable'),
+            notes: Value(
+              actualPaidNow > 0
+                  ? 'مستحق متبقي من سحب بقيمة ${newAmount.toStringAsFixed(0)} ج.م'
+                  : 'مستحق كامل من سحب مؤجل',
+            ),
+            createdAt: Value(DateTime.now()),
+          ));
+        }
+      } else {
+        // Normal operation: if there was an old debt, delete it safely
+        if (oldLinkedDebt != null) {
+          await (delete(debtsTable)..where((d) => d.id.equals(oldLinkedDebt.id))).go();
+        }
+      }
     });
+  }
+
+  Future<DebtorsTableData> _findOrCreateDebtor(
+    String customerName,
+    String? customerPhone,
+  ) async {
+    DebtorsTableData? existing;
+    if (customerPhone != null && customerPhone.trim().isNotEmpty) {
+      existing = await getDebtorByPhone(customerPhone.trim());
+    }
+    existing ??= await getDebtorByName(customerName.trim());
+
+    if (existing != null) {
+      return existing;
+    }
+
+    final debtorId = await into(debtorsTable).insert(
+      DebtorsTableCompanion(
+        name: Value(customerName.trim()),
+        phone: Value(
+          customerPhone != null && customerPhone.trim().isNotEmpty
+              ? customerPhone.trim()
+              : null,
+        ),
+      ),
+    );
+
+    return (select(debtorsTable)..where((d) => d.id.equals(debtorId))).getSingle();
   }
 
   Future<void> deleteOperationWithBalanceUpdate(int id) {

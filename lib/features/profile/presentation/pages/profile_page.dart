@@ -13,6 +13,7 @@ import 'package:smart_expense/features/profile/presentation/widgets/profile_card
 import 'package:smart_expense/features/profile/presentation/widgets/outstanding_debt_card.dart';
 import 'package:smart_expense/features/profile/presentation/widgets/provider_stats_card.dart';
 import 'package:smart_expense/features/profile/presentation/widgets/profile_actions_section.dart';
+import 'package:smart_expense/features/sms_import/presentation/widgets/sms_transactions_card.dart';
 import 'package:smart_expense/shared/widgets/stats_row.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -204,6 +205,21 @@ class ProfilePage extends StatelessWidget {
                   );
                 },
               ),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AppSpacing.space6),
+            ),
+            // SMS Transactions Section
+            SliverToBoxAdapter(
+              child: SectionHeader(
+                title: 'رسائل المعاملات',
+              ),
+            ),
+            const SliverToBoxAdapter(
+              child: SizedBox(height: AppSpacing.space4),
+            ),
+            const SliverToBoxAdapter(
+              child: SmsTransactionsSection(),
             ),
             const SliverToBoxAdapter(
               child: SizedBox(height: AppSpacing.space6),
