@@ -23,6 +23,7 @@ import 'package:smart_expense/features/operations/presentation/pages/shift_histo
 import 'package:smart_expense/features/operations/presentation/pages/wallet_management_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_setup_page.dart';
 import 'package:smart_expense/features/sms_import/presentation/pages/sms_transactions_page.dart';
+import 'package:smart_expense/features/license/presentation/pages/license_page.dart';
 import 'package:smart_expense/features/splash/presentation/pages/splash_page.dart';
 
 final appRouter = GoRouter(
@@ -31,6 +32,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.splash,
       builder: (context, state) => const SplashPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.license,
+      builder: (context, state) => const LicensePage(),
     ),
     GoRoute(
       path: AppRoutes.main,

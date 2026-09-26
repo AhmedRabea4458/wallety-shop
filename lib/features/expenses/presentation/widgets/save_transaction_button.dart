@@ -9,6 +9,7 @@ class SaveTransactionButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool isLoading;
 
+
   const SaveTransactionButton({
     super.key,
     this.label = 'حفظ المعاملة',

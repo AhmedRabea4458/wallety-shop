@@ -44,6 +44,10 @@ import 'package:smart_expense/features/operations/presentation/cubit/wallet_adju
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:smart_expense/features/sms_import/sms_listener_service.dart';
+import 'package:smart_expense/features/license/data/services/license_storage.dart';
+import 'package:smart_expense/features/license/data/services/license_api_service.dart';
+import 'package:smart_expense/features/license/data/services/license_verifier.dart';
+import 'package:smart_expense/features/license/domain/license_manager.dart';
 
 final sl = GetIt.instance;
 
@@ -136,6 +140,18 @@ Future<void> init() async {
   );
   sl.registerLazySingleton(
     () => InstaPayAccountCubit(sl<InstaPayAccountRepository>()),
+  );
+
+  // License
+  sl.registerLazySingleton(() => LicenseStorage());
+  sl.registerLazySingleton(() => LicenseApiService());
+  sl.registerLazySingleton(() => LicenseVerifier());
+  sl.registerLazySingleton(
+    () => LicenseManager(
+      storage: sl<LicenseStorage>(),
+      apiService: sl<LicenseApiService>(),
+      verifier: sl<LicenseVerifier>(),
+    ),
   );
 
   // Restore SMS listener state from last session

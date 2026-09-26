@@ -32,6 +32,10 @@ dependencies:
   pdf: ^3.11.0
   printing: ^5.13.4
   file_picker: ^11.0.2
+  http: ^1.6.0
+  flutter_secure_storage: ^10.3.3
+  device_info_plus: ^12.4.0
+  cryptography: ^2.9.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
