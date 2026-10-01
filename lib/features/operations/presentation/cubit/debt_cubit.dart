@@ -473,6 +473,30 @@ class DebtCubit extends Cubit<DebtState> {
     }
   }
 
+  Future<void> updateDebtorPhone({
+    required int debtorId,
+    required String phone,
+    DebtType activeLiabilityType = DebtType.customerDebt,
+  }) async {
+    try {
+      final debtor = await repository.getDebtorById(debtorId);
+      if (debtor != null) {
+        await repository.updateDebtor(DebtorEntity(
+          id: debtor.id,
+          name: debtor.name,
+          phone: phone.trim().isEmpty ? null : phone.trim(),
+          notes: debtor.notes,
+          createdAt: debtor.createdAt,
+        ));
+        await loadDebtorDetail(debtorId, activeLiabilityType: activeLiabilityType);
+        await loadDebtors(silent: true);
+      }
+    } catch (e) {
+      debugPrint('updateDebtorPhone error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> editDebt({
     required DebtEntity debt,
     required DebtorEntity debtor,

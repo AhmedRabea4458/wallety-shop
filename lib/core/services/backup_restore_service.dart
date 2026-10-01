@@ -11,6 +11,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/cash_drawer
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/active_shift_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_adjustment_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/profile/presentation/cubit/profile_cubit.dart';
@@ -188,6 +189,7 @@ class BackupRestoreService {
           InstaPayAccountsTableCompanion(
             id: Value(a['id'] as int),
             name: Value(a['name'] as String),
+            balance: Value((a['balance'] as num?)?.toDouble() ?? 0.0),
             createdAt: Value(DateTime.parse(a['createdAt'] as String)),
           ),
         );
@@ -219,6 +221,7 @@ class BackupRestoreService {
     sl<ActiveShiftCubit>().loadActiveShift();
     sl<DebtCubit>().loadDebtors();
     sl<DebtCubit>().loadOutstandingDebt();
+    sl<InstaPayAccountCubit>().loadAccounts();
     sl<ProfileCubit>().getProfileStats();
   }
 
@@ -301,6 +304,7 @@ class BackupRestoreService {
   static Map<String, dynamic> _instaPayAccountToJson(InstaPayAccountsTableData a) => {
         'id': a.id,
         'name': a.name,
+        'balance': a.balance,
         'createdAt': a.createdAt.toIso8601String(),
       };
 

@@ -25,6 +25,9 @@ class AppColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color destructive = Color(0xFFEF4444);
   static const Color destructiveForeground = Color(0xFFFFFFFF);
+  static const Color whatsapp = Color(0xFF25D366);
+  static const Color whatsappDark = Color(0xFF128C7E);
+  static const Color whatsapp10 = Color(0x1A25D366);
 
   // ── Gradient Stops ──
   static const Color gradientHeroStart = Color(0xFF0891B2);

@@ -1456,10 +1456,21 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                   controller: _customerPhoneController,
                                   keyboardType: TextInputType.phone,
                                   textAlign: TextAlign.right,
-                                  decoration: const InputDecoration(
-                                    labelText: 'رقم الهاتف (اختياري)',
+                                  decoration: InputDecoration(
+                                    labelText: 'رقم هاتف المستحق له (اختياري)',
                                     hintText: '01XXXXXXXXX',
-                                    border: OutlineInputBorder(),
+                                    border: const OutlineInputBorder(),
+                                    prefixIcon: const Icon(
+                                      Icons.phone_outlined,
+                                      size: 20,
+                                      color: AppColors.mutedForeground,
+                                    ),
+                                    helperText:
+                                        'يُحفظ في بيانات المستحق للاتصال والتذكير لاحقًا',
+                                    helperStyle: AppTextStyles.caption.copyWith(
+                                      color: AppColors.mutedForeground,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                   style: AppTextStyles.body.copyWith(
                                     color: AppColors.foreground,

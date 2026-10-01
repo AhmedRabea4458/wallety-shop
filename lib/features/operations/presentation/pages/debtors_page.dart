@@ -7,6 +7,7 @@ import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
+import 'package:smart_expense/core/utils/debt_reminder_helper.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_filter.dart';
@@ -302,9 +303,15 @@ class _DebtorsPageState extends State<DebtorsPage> {
                       (context, index) {
                         final debtor = state.debtors[index];
                         final balance = state.debtorBalances[debtor.id] ?? 0.0;
+                        final isPayable =
+                            state.activeLiabilityType == DebtType.payable;
                         return _DebtorCard(
                           debtor: debtor,
                           balance: balance,
+                          onWhatsApp: (!isPayable && balance > 0)
+                              ? () => _handleWhatsApp(debtor, balance)
+                              : null,
+                          onCall: () => _handleCall(debtor),
                           onTap: () async {
                             final debtCubit = context.read<DebtCubit>();
                             await context.push(
@@ -526,16 +533,182 @@ class _DebtorsPageState extends State<DebtorsPage> {
       ),
     );
   }
+
+  Future<void> _handleWhatsApp(DebtorEntity debtor, double balance) async {
+    final state = context.read<DebtCubit>().state;
+    if (state is DebtorsLoaded &&
+        state.activeLiabilityType == DebtType.payable) {
+      return;
+    }
+    String? phone = debtor.phone;
+    if (phone == null || phone.trim().isEmpty) {
+      final added = await _showMissingPhoneDialog(debtor);
+      if (!added || !mounted) return;
+      final updated = await context.read<DebtCubit>().getDebtorById(debtor.id);
+      phone = updated?.phone;
+      if (phone == null || phone.trim().isEmpty) return;
+    }
+
+    final message = DebtReminderHelper.buildDebtReminderMessage(
+      customerName: debtor.name,
+      remainingAmount: balance,
+    );
+    final success = await DebtReminderHelper.openWhatsApp(
+      phone: phone,
+      message: message,
+    );
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر فتح تطبيق واتساب. يرجى التأكد من تثبيت واتساب والتحقق من صحة الرقم.'),
+          backgroundColor: AppColors.destructive,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleCall(DebtorEntity debtor) async {
+    String? phone = debtor.phone;
+    if (phone == null || phone.trim().isEmpty) {
+      final added = await _showMissingPhoneDialog(debtor);
+      if (!added || !mounted) return;
+      final updated = await context.read<DebtCubit>().getDebtorById(debtor.id);
+      phone = updated?.phone;
+      if (phone == null || phone.trim().isEmpty) return;
+    }
+
+    final success = await DebtReminderHelper.openDialer(phone: phone);
+    if (!success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تعذر فتح تطبيق الهاتف.'),
+          backgroundColor: AppColors.destructive,
+        ),
+      );
+    }
+  }
+
+  Future<bool> _showMissingPhoneDialog(DebtorEntity debtor) async {
+    final state = context.read<DebtCubit>().state;
+    final isPayable =
+        state is DebtorsLoaded && state.activeLiabilityType == DebtType.payable;
+    final shouldAdd = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: Row(
+          children: [
+            const Icon(Icons.phone_missed_rounded, color: AppColors.warning),
+            const SizedBox(width: AppSpacing.space2),
+            Text('لا يوجد رقم هاتف', style: AppTextStyles.headline.copyWith(color: AppColors.foreground, fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          isPayable
+              ? 'لا يوجد رقم هاتف لهذا الشخص / الجهة'
+              : 'لا يوجد رقم هاتف لهذا العميل',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.primaryForeground),
+            child: const Text('إضافة رقم'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldAdd != true || !mounted) return false;
+
+    final phoneController = TextEditingController();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        title: Text('إضافة رقم الهاتف', style: AppTextStyles.headline.copyWith(color: AppColors.foreground, fontSize: 18)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('العميل: ${debtor.name}', style: AppTextStyles.caption.copyWith(color: AppColors.mutedForeground, fontWeight: FontWeight.w600)),
+            const SizedBox(height: AppSpacing.space3),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              autofocus: true,
+              textAlign: TextAlign.right,
+              decoration: const InputDecoration(
+                hintText: 'أدخل رقم الهاتف (مثال: 01012345678)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.phone_outlined, size: 20),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              final text = phoneController.text.trim();
+              if (text.isEmpty) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('الرجاء إدخال رقم الهاتف'), backgroundColor: AppColors.destructive),
+                );
+                return;
+              }
+              Navigator.pop(ctx, true);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: AppColors.primaryForeground),
+            child: const Text('حفظ والمتابعة'),
+          ),
+        ],
+      ),
+    );
+
+    if (saved == true && mounted) {
+      final phone = phoneController.text.trim();
+      try {
+        final currentLiability = context.read<DebtCubit>().activeLiabilityType;
+        await context.read<DebtCubit>().updateDebtorPhone(
+          debtorId: debtor.id,
+          phone: phone,
+          activeLiabilityType: currentLiability,
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم حفظ رقم الهاتف بنجاح'), backgroundColor: AppColors.success),
+          );
+        }
+        return true;
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل حفظ رقم الهاتف: $e'), backgroundColor: AppColors.destructive),
+          );
+        }
+        return false;
+      }
+    }
+    return false;
+  }
 }
 
 class _DebtorCard extends StatelessWidget {
   final DebtorEntity debtor;
   final double balance;
+  final VoidCallback? onWhatsApp;
+  final VoidCallback? onCall;
   final VoidCallback onTap;
 
   const _DebtorCard({
     required this.debtor,
     required this.balance,
+    this.onWhatsApp,
+    this.onCall,
     required this.onTap,
   });
 
@@ -598,7 +771,27 @@ class _DebtorCard extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: AppSpacing.space2),
+            if (balance > 0 && onWhatsApp != null) ...[
+              const SizedBox(width: AppSpacing.space1),
+              IconButton(
+                icon: const Icon(Icons.chat_rounded,
+                    color: AppColors.whatsapp, size: 20),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'تذكير واتساب',
+                onPressed: onWhatsApp,
+              ),
+            ],
+            if (onCall != null) ...[
+              const SizedBox(width: AppSpacing.space1),
+              IconButton(
+                icon: const Icon(Icons.phone_rounded,
+                    color: AppColors.primary, size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'اتصال',
+                onPressed: onCall,
+              ),
+            ],
+            const SizedBox(width: AppSpacing.space1),
             const Icon(Icons.chevron_left, color: AppColors.mutedForeground),
           ],
         ),

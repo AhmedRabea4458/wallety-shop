@@ -19,6 +19,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/operation_s
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/dialogs/delete_operation_dialog.dart';
+import 'package:smart_expense/core/utils/debt_reminder_helper.dart';
 
 class OperationDetailPage extends StatelessWidget {
   final OperationEntity operation;
@@ -323,7 +324,13 @@ class _DebtBanner extends StatelessWidget {
         return FutureBuilder<DebtorEntity?>(
           future: context.read<DebtCubit>().getDebtorById(debt.debtorId),
           builder: (context, snapshot) {
-            final debtorName = snapshot.data?.name ?? '--';
+            final debtor = snapshot.data;
+            final debtorName = debtor?.name ?? '--';
+            // رقم هاتف العميل/المستحق — مخزّن في DebtorEntity وليس في operation.phoneNumber
+            final debtorPhone =
+                (debtor?.phone != null && debtor!.phone!.trim().isNotEmpty)
+                    ? debtor.phone!
+                    : null;
             final isPayable = debt.debtType == DebtType.payable;
             final isPaid = debt.isPaid;
             final cardColor =
@@ -349,7 +356,9 @@ class _DebtBanner extends StatelessWidget {
                 ),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── العنوان ─────────────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -373,6 +382,7 @@ class _DebtBanner extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.space3),
+                  // ── اسم العميل/المستحق ──────────────────────────────
                   Text(
                     isPayable
                         ? 'المستحق له: $debtorName'
@@ -383,6 +393,72 @@ class _DebtBanner extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.space1),
+                  // ── رقم الهاتف + زر اتصال ───────────────────────────
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: debtorPhone != null
+                            ? AppColors.primary
+                            : AppColors.mutedForeground,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          debtorPhone ?? 'لا يوجد رقم هاتف مسجل',
+                          style: AppTextStyles.caption.copyWith(
+                            color: debtorPhone != null
+                                ? AppColors.foreground
+                                : AppColors.mutedForeground,
+                          ),
+                        ),
+                      ),
+                      if (debtorPhone != null) ...
+                        [
+                          const SizedBox(width: AppSpacing.space2),
+                          SizedBox(
+                            height: 32,
+                            child: OutlinedButton.icon(
+                              onPressed: () async {
+                                final success =
+                                    await DebtReminderHelper.openDialer(
+                                        phone: debtorPhone);
+                                if (!success && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content:
+                                          Text('تعذر فتح تطبيق الهاتف.'),
+                                      backgroundColor: AppColors.destructive,
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.phone_rounded, size: 14),
+                              label: const Text(
+                                'اتصال',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: BorderSide(
+                                  color: AppColors.primary.withValues(
+                                      alpha: 0.5),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: AppSpacing.space3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.space2),
+                  // ── المبلغ ──────────────────────────────────────────
                   Text(
                     isPayable
                         ? 'مبلغ المستحق المتبقي: ${NumberFormat('#,##0.##', 'ar').format(debt.amount)} ج.م'
@@ -393,24 +469,30 @@ class _DebtBanner extends StatelessWidget {
                           isPayable ? FontWeight.w700 : FontWeight.normal,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.space1),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.space3,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isPaid
-                              ? AppColors.success.withValues(alpha: 0.15)
-                              : AppColors.warning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Text(
-                      'الحالة: ${isPaid ? "خالص ومسدد" : "مستحق غير مسدد"}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: isPaid ? AppColors.success : AppColors.warning,
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(height: AppSpacing.space2),
+                  // ── الحالة ──────────────────────────────────────────
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.space3,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isPaid
+                                ? AppColors.success.withValues(alpha: 0.15)
+                                : AppColors.warning.withValues(alpha: 0.15),
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        'الحالة: ${isPaid ? "خالص ومسدد" : "مستحق غير مسدد"}',
+                        style: AppTextStyles.caption.copyWith(
+                          color:
+                              isPaid ? AppColors.success : AppColors.warning,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),

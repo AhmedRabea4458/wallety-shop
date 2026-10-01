@@ -23,22 +23,8 @@ class _SplashPageState extends State<SplashPage> {
     await Future.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
 
-    try {
-      final licenseManager = sl<LicenseManager>();
-      final result = await licenseManager.validateLicense();
-
-      if (!mounted) return;
-
-      if (result.isValid) {
-        context.go(AppRoutes.main);
-      } else {
-        context.go(AppRoutes.license);
-      }
-    } catch (_) {
-      if (mounted) {
-        context.go(AppRoutes.license);
-      }
-    }
+    // TODO: Restore license validation after Android networking issue is fixed.
+    context.go(AppRoutes.main);
   }
 
   @override
