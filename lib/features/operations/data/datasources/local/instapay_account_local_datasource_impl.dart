@@ -48,4 +48,13 @@ class InstaPayAccountLocalDataSourceImpl implements InstaPayAccountLocalDataSour
           ..where((t) => t.id.equals(id)))
         .write(InstaPayAccountsTableCompanion(balance: Value(newBalance)));
   }
+
+  @override
+  Future<bool> hasOperations(int id) async {
+    final ops = await (database.select(database.operationsTable)
+          ..where((o) => o.instaPayAccountId.equals(id))
+          ..limit(1))
+        .get();
+    return ops.isNotEmpty;
+  }
 }

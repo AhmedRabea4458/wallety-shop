@@ -46,4 +46,9 @@ class InstaPayAccountRepositoryImpl implements InstaPayAccountRepository {
   Future<void> updateBalance(int id, double newBalance) {
     return localDataSource.updateBalance(id, newBalance);
   }
+
+  @override
+  Future<bool> hasOperations(int id) {
+    return localDataSource.hasOperations(id);
+  }
 }

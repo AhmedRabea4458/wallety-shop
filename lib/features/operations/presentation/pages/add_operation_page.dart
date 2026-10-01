@@ -117,10 +117,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
             _isCreatePayable = true;
             _isDebt = false;
             final op = widget.operationToEdit!;
-            final totalRequired =
-                (op.amount - op.commission).clamp(0.0, double.infinity);
-            final paid =
-                (totalRequired - debt.amount).clamp(0.0, double.infinity);
+            final totalRequired = (op.amount - op.commission).clamp(
+              0.0,
+              double.infinity,
+            );
+            final paid = (totalRequired - debt.amount).clamp(
+              0.0,
+              double.infinity,
+            );
             if (paid > 0) {
               _paidNowController.text = paid.toStringAsFixed(0);
             } else {
@@ -258,9 +262,10 @@ class _AddOperationPageState extends State<AddOperationPage> {
           isDebt: _isDebt,
           isCreatePayable: _isCreatePayable,
           customerName: name.isNotEmpty ? name : null,
-          customerPhone: _customerPhoneController.text.trim().isNotEmpty
-              ? _customerPhoneController.text.trim()
-              : null,
+          customerPhone:
+              _customerPhoneController.text.trim().isNotEmpty
+                  ? _customerPhoneController.text.trim()
+                  : null,
           paidNow: paidNowVal,
         );
         operationId = entity.id;
@@ -652,308 +657,6 @@ class _AddOperationPageState extends State<AddOperationPage> {
     }
   }
 
-  void _showManageInstaPayAccountsDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final balanceController = TextEditingController();
-    final newBalanceController = TextEditingController();
-    InstaPayAccountEntity? editingAccount;
-    bool showBalanceEdit = false;
-    final instaPayCubit = context.read<InstaPayAccountCubit>();
-
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => BlocProvider.value(
-            value: instaPayCubit,
-            child: StatefulBuilder(
-              builder: (ctx, setDialogState) {
-                return BlocBuilder<InstaPayAccountCubit, InstaPayAccountState>(
-                  builder: (context, state) {
-                    final accounts =
-                        state is InstaPayAccountLoaded
-                            ? state.accounts
-                            : <InstaPayAccountEntity>[];
-                    return AlertDialog(
-                      backgroundColor: AppColors.card,
-                      title: Text(
-                        'إدارة حسابات InstaPay',
-                        style: AppTextStyles.headline.copyWith(
-                          color: AppColors.foreground,
-                        ),
-                      ),
-                      content: SizedBox(
-                        width: double.maxFinite,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: nameController,
-                                      textAlign: TextAlign.right,
-                                      decoration: InputDecoration(
-                                        hintText:
-                                            editingAccount != null
-                                                ? 'تعديل الاسم'
-                                                : 'اسم الحساب الجديد',
-                                        border: const OutlineInputBorder(),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: AppSpacing.space2),
-                                  if (editingAccount == null) ...[
-                                    Expanded(
-                                      child: TextField(
-                                        controller: balanceController,
-                                        keyboardType: TextInputType.number,
-                                        textAlign: TextAlign.right,
-                                        decoration: InputDecoration(
-                                          hintText: 'الرصيد الافتتاحي',
-                                          border: const OutlineInputBorder(),
-                                          suffixText: 'ج.م',
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(width: AppSpacing.space2),
-                                  ElevatedButton(
-                                    onPressed: () async {
-                                      final name = nameController.text.trim();
-                                      if (name.isEmpty) return;
-                                      final cubit =
-                                          context.read<InstaPayAccountCubit>();
-                                      if (editingAccount != null) {
-                                        await cubit.updateAccount(
-                                          InstaPayAccountEntity(
-                                            id: editingAccount!.id,
-                                            name: name,
-                                            balance: editingAccount!.balance,
-                                            createdAt:
-                                                editingAccount!.createdAt,
-                                          ),
-                                        );
-                                      } else {
-                                        final balanceText =
-                                            balanceController.text.trim();
-                                        final balance =
-                                            balanceText.isEmpty
-                                                ? 0.0
-                                                : parseArabicNumerals(
-                                                  balanceText,
-                                                );
-                                        if (balance < 0) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'الرصيد لا يمكن أن يكون سالباً',
-                                              ),
-                                              backgroundColor:
-                                                  AppColors.destructive,
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        await cubit.addAccount(
-                                          name,
-                                          balance: balance,
-                                        );
-                                      }
-                                      nameController.clear();
-                                      balanceController.clear();
-                                      setDialogState(
-                                        () => editingAccount = null,
-                                      );
-                                    },
-                                    child: Text(
-                                      editingAccount != null
-                                          ? 'تعديل'
-                                          : 'إضافة',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (accounts.isNotEmpty) ...[
-                                const SizedBox(height: AppSpacing.space4),
-                                const Divider(),
-                                ...accounts.map(
-                                  (a) => Column(
-                                    children: [
-                                      ListTile(
-                                        title: Text(a.name),
-                                        subtitle: Text(
-                                          'الرصيد: ${a.balance.toStringAsFixed(2)} ج.م',
-                                        ),
-                                        trailing: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.edit_rounded,
-                                                size: 18,
-                                              ),
-                                              onPressed: () {
-                                                nameController.text = a.name;
-                                                balanceController.clear();
-                                                setDialogState(
-                                                  () => editingAccount = a,
-                                                );
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.account_balance_wallet_outlined,
-                                                size: 18,
-                                              ),
-                                              onPressed: () {
-                                                newBalanceController.text = a
-                                                    .balance
-                                                    .toStringAsFixed(2);
-                                                setDialogState(() {
-                                                  editingAccount = a;
-                                                  showBalanceEdit = true;
-                                                });
-                                              },
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(
-                                                Icons.delete_outline_rounded,
-                                                size: 18,
-                                              ),
-                                              onPressed: () async {
-                                                await context
-                                                    .read<InstaPayAccountCubit>()
-                                                    .deleteAccount(a.id);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      if (showBalanceEdit &&
-                                          editingAccount?.id == a.id) ...[
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: TextField(
-                                                  controller:
-                                                      newBalanceController,
-                                                  keyboardType:
-                                                      TextInputType.number,
-                                                  textAlign: TextAlign.right,
-                                                  decoration: InputDecoration(
-                                                    hintText:
-                                                        'الرصيد الجديد',
-                                                    border:
-                                                        const OutlineInputBorder(),
-                                                    suffixText: 'ج.م',
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(
-                                                width: AppSpacing.space2,
-                                              ),
-                                              ElevatedButton(
-                                                onPressed: () async {
-                                                  final newBalanceText =
-                                                      newBalanceController.text
-                                                          .trim();
-                                                  if (newBalanceText.isEmpty) {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'أدخل الرصيد الجديد',
-                                                        ),
-                                                        backgroundColor:
-                                                            AppColors
-                                                                .destructive,
-                                                      ),
-                                                    );
-                                                    return;
-                                                  }
-                                                  final newBalance =
-                                                      parseArabicNumerals(
-                                                        newBalanceText,
-                                                      );
-                                                  if (newBalance < 0) {
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'الرصيد لا يمكن أن يكون سالباً',
-                                                        ),
-                                                        backgroundColor:
-                                                            AppColors
-                                                                .destructive,
-                                                      ),
-                                                    );
-                                                    return;
-                                                  }
-                                                  await context
-                                                      .read<
-                                                        InstaPayAccountCubit
-                                                      >()
-                                                      .updateBalance(
-                                                        a.id,
-                                                        newBalance,
-                                                      );
-                                                  setDialogState(() {
-                                                    showBalanceEdit = false;
-                                                    editingAccount = null;
-                                                  });
-                                                  newBalanceController.clear();
-                                                },
-                                                child: const Text('تحديث'),
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(
-                                                  Icons.close,
-                                                  size: 18,
-                                                ),
-                                                onPressed: () {
-                                                  setDialogState(() {
-                                                    showBalanceEdit = false;
-                                                    editingAccount = null;
-                                                  });
-                                                  newBalanceController.clear();
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('إغلاق'),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-    );
-  }
-
   @override
   void dispose() {
     _amountController.dispose();
@@ -1060,7 +763,8 @@ class _AddOperationPageState extends State<AddOperationPage> {
                     setState(() {
                       _selectedType = type;
                       if (type == OperationType.withdrawal) _isDebt = false;
-                      if (type == OperationType.deposit) _isCreatePayable = false;
+                      if (type == OperationType.deposit)
+                        _isCreatePayable = false;
                     });
                   },
                 ),
@@ -1095,11 +799,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
                             key: const ValueKey('wallet'),
                             builder: (context, state) {
                               if (state is WalletLoaded) {
-                                final availableWallets = state.wallets.where((w) {
-                                  if (!w.isArchived) return true;
-                                  // If editing an existing operation, allow the currently selected archived wallet to stay selected
-                                  return _isEditing && w.id == widget.operationToEdit?.walletId;
-                                }).toList();
+                                final availableWallets =
+                                    state.wallets.where((w) {
+                                      if (!w.isArchived) return true;
+                                      // If editing an existing operation, allow the currently selected archived wallet to stay selected
+                                      return _isEditing &&
+                                          w.id ==
+                                              widget.operationToEdit?.walletId;
+                                    }).toList();
                                 return WalletSelector(
                                   wallets: availableWallets,
                                   selectedWalletId: _selectedWalletId,
@@ -1178,58 +885,33 @@ class _AddOperationPageState extends State<AddOperationPage> {
                                           ),
                                         ),
                                       ),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: DropdownButtonFormField<int>(
-                                            value: effectiveAccountId,
-                                            isExpanded: true,
-                                            decoration: const InputDecoration(
-                                              border: InputBorder.none,
-                                              contentPadding: EdgeInsets.zero,
-                                              isDense: true,
-                                            ),
-                                            hint: Text(
-                                              'اختر الحساب',
-                                              style: AppTextStyles.body
-                                                  .copyWith(
-                                                    color:
-                                                        AppColors
-                                                            .mutedForeground,
-                                                  ),
-                                            ),
-                                            items:
-                                                accounts.map((a) {
-                                                  return DropdownMenuItem(
-                                                    value: a.id,
-                                                    child: Text(a.name),
-                                                  );
-                                                }).toList(),
-                                            onChanged:
-                                                _isSaving
-                                                    ? null
-                                                    : (v) => setState(
-                                                      () =>
-                                                          _instaPayAccountId =
-                                                              v,
-                                                    ),
-                                          ),
+                                    DropdownButtonFormField<int>(
+                                      value: effectiveAccountId,
+                                      isExpanded: true,
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        contentPadding: EdgeInsets.zero,
+                                        isDense: true,
+                                      ),
+                                      hint: Text(
+                                        'اختر الحساب',
+                                        style: AppTextStyles.body.copyWith(
+                                          color: AppColors.mutedForeground,
                                         ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.add_circle_outline_rounded,
-                                            size: 22,
-                                          ),
-                                          color: AppColors.primary,
-                                          onPressed:
-                                              _isSaving
-                                                  ? null
-                                                  : () =>
-                                                      _showManageInstaPayAccountsDialog(
-                                                        context,
-                                                      ),
-                                        ),
-                                      ],
+                                      ),
+                                      items:
+                                          accounts.map((a) {
+                                            return DropdownMenuItem(
+                                              value: a.id,
+                                              child: Text(a.name),
+                                            );
+                                          }).toList(),
+                                      onChanged:
+                                          _isSaving
+                                              ? null
+                                              : (v) => setState(
+                                                () => _instaPayAccountId = v,
+                                              ),
                                     ),
                                   ],
                                 ),
@@ -1338,13 +1020,14 @@ class _AddOperationPageState extends State<AddOperationPage> {
                   child: DebtSection(
                     isDebt: _isDebt,
                     isSaving: _isSaving,
-                    onDebtChanged: (v) => setState(() {
-                      _isDebt = v;
-                      if (!_isDebt && !_isEditing) {
-                        _customerNameController.clear();
-                        _customerPhoneController.clear();
-                      }
-                    }),
+                    onDebtChanged:
+                        (v) => setState(() {
+                          _isDebt = v;
+                          if (!_isDebt && !_isEditing) {
+                            _customerNameController.clear();
+                            _customerPhoneController.clear();
+                          }
+                        }),
                     customerNameController: _customerNameController,
                     customerPhoneController: _customerPhoneController,
                   ),

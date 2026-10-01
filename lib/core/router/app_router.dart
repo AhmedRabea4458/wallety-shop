@@ -22,6 +22,7 @@ import 'package:smart_expense/features/operations/presentation/pages/shift_detai
 import 'package:smart_expense/features/operations/presentation/pages/shift_history_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_management_page.dart';
 import 'package:smart_expense/features/operations/presentation/pages/wallet_setup_page.dart';
+import 'package:smart_expense/features/operations/presentation/pages/instapay_management_page.dart';
 import 'package:smart_expense/features/sms_import/presentation/pages/sms_transactions_page.dart';
 import 'package:smart_expense/features/license/presentation/pages/license_page.dart';
 import 'package:smart_expense/features/splash/presentation/pages/splash_page.dart';
@@ -91,6 +92,15 @@ final appRouter = GoRouter(
             BlocProvider.value(value: sl<CashDrawerCubit>()),
           ],
           child: const WalletManagementPage(),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.instaPayManagement,
+      builder: (context, state) {
+        return BlocProvider.value(
+          value: sl<InstaPayAccountCubit>(),
+          child: const InstaPayManagementPage(),
         );
       },
     ),

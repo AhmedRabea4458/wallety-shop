@@ -6,4 +6,5 @@ abstract class InstaPayAccountRepository {
   Future<void> update(InstaPayAccountEntity account);
   Future<void> delete(int id);
   Future<void> updateBalance(int id, double newBalance);
+  Future<bool> hasOperations(int id);
 }

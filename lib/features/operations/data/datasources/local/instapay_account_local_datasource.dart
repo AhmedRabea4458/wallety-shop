@@ -6,4 +6,5 @@ abstract class InstaPayAccountLocalDataSource {
   Future<void> update(InstaPayAccountModel account);
   Future<void> delete(int id);
   Future<void> updateBalance(int id, double newBalance);
+  Future<bool> hasOperations(int id);
 }

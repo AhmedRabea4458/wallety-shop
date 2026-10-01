@@ -53,4 +53,8 @@ class InstaPayAccountCubit extends Cubit<InstaPayAccountState> {
     await repository.updateBalance(id, newBalance);
     await loadAccounts();
   }
+
+  Future<bool> hasOperations(int id) {
+    return repository.hasOperations(id);
+  }
 }

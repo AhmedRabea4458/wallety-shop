@@ -114,6 +114,18 @@ class ProfileActionsSection extends StatelessWidget {
             indent: AppSpacing.space5,
             endIndent: AppSpacing.space5,
           ),
+          ActionRow(
+            icon: Icons.account_balance_outlined,
+            iconBackgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+            iconColor: const Color(0xFFF59E0B),
+            label: 'حسابات InstaPay',
+            onTap: () => context.push(AppRoutes.instaPayManagement),
+          ),
+          Divider(
+            color: AppColors.border45,
+            indent: AppSpacing.space5,
+            endIndent: AppSpacing.space5,
+          ),
            ActionRow(
             icon: Icons.backup_rounded,
             iconBackgroundColor: AppColors.primary10,
