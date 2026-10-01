@@ -122,7 +122,18 @@ class BackupRestoreService {
         );
       }
 
-      for (final o in (data['operations'] as List).cast<Map<String, dynamic>>()) {
+      for (final a in (data['instaPayAccounts'] as List?)?.cast<Map<String, dynamic>>() ?? []) {
+        await db.into(db.instaPayAccountsTable).insert(
+          InstaPayAccountsTableCompanion(
+            id: Value(a['id'] as int),
+            name: Value(a['name'] as String),
+            balance: Value((a['balance'] as num?)?.toDouble() ?? 0.0),
+            createdAt: Value(a['createdAt'] != null ? DateTime.parse(a['createdAt'] as String) : DateTime.now()),
+          ),
+        );
+      }
+
+      for (final o in (data['operations'] as List?)?.cast<Map<String, dynamic>>() ?? []) {
         await db.into(db.operationsTable).insert(
           OperationsTableCompanion(
             id: Value(o['id'] as int),
@@ -184,16 +195,6 @@ class BackupRestoreService {
         );
       }
 
-      for (final a in (data['instaPayAccounts'] as List?)?.cast<Map<String, dynamic>>() ?? []) {
-        await db.into(db.instaPayAccountsTable).insert(
-          InstaPayAccountsTableCompanion(
-            id: Value(a['id'] as int),
-            name: Value(a['name'] as String),
-            balance: Value((a['balance'] as num?)?.toDouble() ?? 0.0),
-            createdAt: Value(DateTime.parse(a['createdAt'] as String)),
-          ),
-        );
-      }
 
       for (final p in (data['debtPayments'] as List?)?.cast<Map<String, dynamic>>() ?? []) {
         await db.into(db.debtPaymentsTable).insert(
