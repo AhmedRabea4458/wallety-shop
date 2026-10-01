@@ -130,7 +130,12 @@ Future<void> init() async {
     () => ShiftHistoryCubit(sl<ShiftRepository>()),
   );
   sl.registerFactory(
-    () => ShiftDetailCubit(sl<ShiftRepository>()),
+    () => ShiftDetailCubit(
+      repository: sl<ShiftRepository>(),
+      walletRepository: sl<WalletRepository>(),
+      instaPayRepository: sl<InstaPayAccountRepository>(),
+      debtRepository: sl<DebtRepository>(),
+    ),
   );
   sl.registerLazySingleton(
     () => WalletCubit(sl<WalletRepository>()),
