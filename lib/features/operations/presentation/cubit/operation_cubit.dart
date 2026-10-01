@@ -6,6 +6,7 @@ import 'package:smart_expense/features/operations/domain/entities/operation_enti
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
 import 'package:smart_expense/features/operations/domain/repositories/debt_repository.dart';
 import 'package:smart_expense/features/operations/domain/repositories/operation_repository.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_date_filter.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 
 class OperationCubit extends Cubit<OperationState> {
@@ -18,6 +19,7 @@ class OperationCubit extends Cubit<OperationState> {
   int? _selectedWalletId;
   OperationType? _selectedOperationType;
   ProviderType? _selectedProviderType;
+  OperationDateFilter _dateFilter = OperationDateFilter.all;
 
   OperationCubit(this.repository, {required this.debtRepository}) : super(OperationInitial());
 
@@ -202,11 +204,17 @@ class OperationCubit extends Cubit<OperationState> {
     emit(_buildLoadedState());
   }
 
+  void filterByDate(OperationDateFilter dateFilter) {
+    _dateFilter = dateFilter;
+    emit(_buildLoadedState());
+  }
+
   void clearFilters() {
     _searchQuery = '';
     _selectedWalletId = null;
     _selectedOperationType = null;
     _selectedProviderType = null;
+    _dateFilter = OperationDateFilter.all;
     emit(_buildLoadedState());
   }
 
@@ -223,6 +231,10 @@ class OperationCubit extends Cubit<OperationState> {
 
     if (_selectedProviderType != null) {
       result = result.where((o) => o.providerType == _selectedProviderType).toList();
+    }
+
+    if (_dateFilter.type != OperationDateFilterType.all) {
+      result = result.where((o) => _dateFilter.matches(o.createdAt)).toList();
     }
 
     if (_searchQuery.isNotEmpty) {
@@ -247,6 +259,7 @@ class OperationCubit extends Cubit<OperationState> {
       selectedWalletId: _selectedWalletId,
       selectedOperationType: _selectedOperationType,
       selectedProviderType: _selectedProviderType,
+      dateFilter: _dateFilter,
     );
   }
 

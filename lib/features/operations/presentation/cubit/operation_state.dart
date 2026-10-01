@@ -1,6 +1,7 @@
 import 'package:smart_expense/features/operations/domain/entities/debt_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/provider_type.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_date_filter.dart';
 
 abstract class OperationState {}
 
@@ -16,6 +17,7 @@ class OperationLoaded extends OperationState {
   final int? selectedWalletId;
   final OperationType? selectedOperationType;
   final ProviderType? selectedProviderType;
+  final OperationDateFilter dateFilter;
 
   OperationLoaded({
     required this.allOperations,
@@ -25,6 +27,7 @@ class OperationLoaded extends OperationState {
     this.selectedWalletId,
     this.selectedOperationType,
     this.selectedProviderType,
+    this.dateFilter = OperationDateFilter.all,
   });
 }
 

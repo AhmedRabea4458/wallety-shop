@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:smart_expense/core/constants/app_routes.dart';
-import 'package:smart_expense/core/errors/error_mapper.dart';
 import 'package:smart_expense/core/theme/app_colors.dart';
 import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
@@ -17,6 +16,7 @@ import 'package:smart_expense/features/operations/domain/entities/provider_type.
 import 'package:smart_expense/features/operations/domain/entities/wallet_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/instapay_account_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
+import 'package:smart_expense/features/operations/presentation/cubit/operation_date_filter.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/wallet_state.dart';
@@ -128,9 +128,15 @@ class TransactionsPage extends StatelessWidget {
                         state is OperationLoaded
                             ? state.selectedProviderType
                             : null;
+                    final dateFilter =
+                        state is OperationLoaded
+                            ? state.dateFilter
+                            : OperationDateFilter.all;
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Row 1: Operation Type
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -168,6 +174,7 @@ class TransactionsPage extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.space2),
+                        // Row 2: Provider Type
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -202,6 +209,108 @@ class TransactionsPage extends StatelessWidget {
                                         .filterByProvider(
                                           ProviderType.instaPay,
                                         ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.space2),
+                        // Row 3: Date Filter
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip(
+                                label: 'التاريخ: الكل',
+                                isActive:
+                                    dateFilter.type ==
+                                    OperationDateFilterType.all,
+                                onTap:
+                                    () => context
+                                        .read<OperationCubit>()
+                                        .filterByDate(OperationDateFilter.all),
+                              ),
+                              _buildFilterChip(
+                                label: 'اليوم',
+                                isActive:
+                                    dateFilter.type ==
+                                    OperationDateFilterType.today,
+                                onTap:
+                                    () => context
+                                        .read<OperationCubit>()
+                                        .filterByDate(
+                                          OperationDateFilter.today,
+                                        ),
+                              ),
+                              _buildFilterChip(
+                                label: 'أمس',
+                                isActive:
+                                    dateFilter.type ==
+                                    OperationDateFilterType.yesterday,
+                                onTap:
+                                    () => context
+                                        .read<OperationCubit>()
+                                        .filterByDate(
+                                          OperationDateFilter.yesterday,
+                                        ),
+                              ),
+                              _buildFilterChip(
+                                label: 'آخر 7 أيام',
+                                isActive:
+                                    dateFilter.type ==
+                                    OperationDateFilterType.last7Days,
+                                onTap:
+                                    () => context
+                                        .read<OperationCubit>()
+                                        .filterByDate(
+                                          OperationDateFilter.last7Days,
+                                        ),
+                              ),
+                              _buildFilterChip(
+                                label:
+                                    dateFilter.type ==
+                                                OperationDateFilterType
+                                                    .custom &&
+                                            dateFilter.customDate != null
+                                        ? DateFormat(
+                                          'yyyy/MM/dd',
+                                          'ar',
+                                        ).format(dateFilter.customDate!)
+                                        : 'تاريخ محدد 📅',
+                                isActive:
+                                    dateFilter.type ==
+                                    OperationDateFilterType.custom,
+                                onTap: () async {
+                                  final now = DateTime.now();
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: dateFilter.customDate ?? now,
+                                    firstDate: DateTime(2020),
+                                    lastDate: DateTime(now.year + 5),
+                                    locale: const Locale('ar'),
+                                    builder: (context, child) {
+                                      return Theme(
+                                        data: Theme.of(context).copyWith(
+                                          colorScheme: const ColorScheme.dark(
+                                            primary: AppColors.primary,
+                                            onPrimary:
+                                                AppColors.primaryForeground,
+                                            surface: AppColors.card,
+                                            onSurface: AppColors.foreground,
+                                          ),
+                                        ),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (picked != null && context.mounted) {
+                                    context.read<OperationCubit>().filterByDate(
+                                      OperationDateFilter(
+                                        type: OperationDateFilterType.custom,
+                                        customDate: picked,
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
                             ],
                           ),
@@ -244,6 +353,24 @@ class TransactionsPage extends StatelessWidget {
                 } else if (state is OperationLoaded) {
                   if (state.visibleOperations.isEmpty) {
                     final bool isSearching = state.searchQuery.isNotEmpty;
+                    final bool isDateFiltered =
+                        state.dateFilter.type != OperationDateFilterType.all;
+                    final bool isOtherFiltered =
+                        state.selectedOperationType != null ||
+                        state.selectedProviderType != null;
+                    final bool hasFilters = isDateFiltered || isOtherFiltered;
+
+                    String message;
+                    if (isSearching) {
+                      message = 'لا توجد نتائج للبحث';
+                    } else if (isDateFiltered) {
+                      message = 'لا توجد عمليات في هذا التاريخ';
+                    } else if (isOtherFiltered) {
+                      message = 'لا توجد عمليات تطابق الفلاتر المحددة';
+                    } else {
+                      message = 'لا توجد عمليات';
+                    }
+
                     return SliverToBoxAdapter(
                       child: Center(
                         child: Padding(
@@ -251,14 +378,12 @@ class TransactionsPage extends StatelessWidget {
                           child: Column(
                             children: [
                               Text(
-                                isSearching
-                                    ? 'لا توجد نتائج للبحث'
-                                    : 'لا توجد عمليات',
+                                message,
                                 style: AppTextStyles.body.copyWith(
                                   color: AppColors.mutedForeground,
                                 ),
                               ),
-                              if (!isSearching) ...[
+                              if (!isSearching && !hasFilters) ...[
                                 const SizedBox(height: AppSpacing.space4),
                                 ElevatedButton(
                                   onPressed: () {
@@ -329,7 +454,6 @@ class _OperationsList extends StatelessWidget {
   Widget build(BuildContext context) {
     final grouped = _groupByDate(operations);
     final operationCubit = context.read<OperationCubit>();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     return BlocBuilder<WalletCubit, WalletState>(
       builder: (context, walletState) {
@@ -487,10 +611,13 @@ class _OperationsList extends StatelessWidget {
                             ),
                           ),
                           confirmDismiss: (direction) async {
-                            final walletState = context.read<WalletCubit>().state;
+                            final walletState =
+                                context.read<WalletCubit>().state;
                             String? walletName;
                             if (walletState is WalletLoaded) {
-                              final match = walletState.wallets.where((w) => w.id == operation.walletId);
+                              final match = walletState.wallets.where(
+                                (w) => w.id == operation.walletId,
+                              );
                               if (match.isNotEmpty) {
                                 walletName = match.first.name;
                               }
