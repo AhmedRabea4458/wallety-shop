@@ -20,10 +20,6 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkLicense() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (!mounted) return;
-
-    // TODO: Restore license validation after Android networking issue is fixed.
     context.go(AppRoutes.main);
   }
 

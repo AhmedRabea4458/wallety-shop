@@ -29,6 +29,7 @@ import 'package:smart_expense/features/operations/presentation/cubit/instapay_ac
 
 import 'package:smart_expense/features/operations/presentation/widgets/operation_list.dart';
 import 'package:smart_expense/features/operations/presentation/widgets/dialogs/edit_cash_drawer_dialog.dart';
+import 'package:smart_expense/features/home/presentation/widgets/daily_closing_card.dart';
 import 'package:smart_expense/features/home/presentation/widgets/dashboard_balances_section.dart';
 import 'package:smart_expense/features/home/presentation/widgets/dashboard_today_activity_section.dart';
 import 'package:smart_expense/features/home/presentation/widgets/home_wallet_card.dart';
@@ -276,6 +277,68 @@ class HomePage extends StatelessWidget {
                                         return SliverToBoxAdapter(
                                           child: Column(
                                             children: [
+                                              DailyClosingCard(
+                                                cashDrawerBalance:
+                                                    cashDrawerBalance,
+                                                totalWalletBalance:
+                                                    totalWalletBalance,
+                                                totalInstaPayBalance:
+                                                    instaPayAccounts.fold(
+                                                      0.0,
+                                                      (sum, a) =>
+                                                          sum + a.balance,
+                                                    ),
+                                                customerReceivables:
+                                                    customerReceivables,
+                                                payables: payables,
+                                                isLoading:
+                                                    cashState
+                                                        is CashDrawerLoading ||
+                                                    debtState is DebtLoading ||
+                                                    instaPayState
+                                                        is InstaPayAccountLoading,
+                                                errorMessage:
+                                                    cashState
+                                                            is CashDrawerError
+                                                        ? cashState.message
+                                                        : debtState is DebtError
+                                                        ? debtState.message
+                                                        : instaPayState
+                                                            is InstaPayAccountError
+                                                        ? instaPayState.message
+                                                        : null,
+                                                onRetry: () {
+                                                  context
+                                                      .read<CashDrawerCubit>()
+                                                      .getCashDrawer();
+                                                  context
+                                                      .read<DebtCubit>()
+                                                      .loadOutstandingDebt();
+                                                  context
+                                                      .read<
+                                                        InstaPayAccountCubit
+                                                      >()
+                                                      .loadAccounts();
+                                                  context
+                                                      .read<WalletCubit>()
+                                                      .getWallets();
+                                                },
+                                                onEditCashDrawer: () {
+                                                  showEditCashDrawerDialog(
+                                                    parentContext: context,
+                                                    cashDrawerCubit:
+                                                        context
+                                                            .read<
+                                                              CashDrawerCubit
+                                                            >(),
+                                                    currentDrawerBalance:
+                                                        cashDrawerBalance,
+                                                  );
+                                                },
+                                              ),
+                                              const SizedBox(
+                                                height: AppSpacing.space4,
+                                              ),
                                               DashboardBalancesSection(
                                                 totalWalletBalance:
                                                     totalWalletBalance,

@@ -143,8 +143,8 @@ class DebtRepositoryImpl implements DebtRepository {
   }
 
   @override
-  Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash'}) {
-    return localDataSource.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod);
+  Future<void> payDebt({required int debtId, required double amount, String? notes, String paymentMethod = 'cash', DateTime? createdAt}) {
+    return localDataSource.payDebt(debtId: debtId, amount: amount, notes: notes, paymentMethod: paymentMethod, createdAt: createdAt);
   }
 
   @override

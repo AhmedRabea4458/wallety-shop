@@ -1299,6 +1299,7 @@ class AppDatabase extends _$AppDatabase {
     required double amount,
     String? notes,
     String paymentMethod = 'cash',
+    DateTime? createdAt,
   }) {
     return transaction(() async {
       final debt =
@@ -1321,13 +1322,15 @@ class AppDatabase extends _$AppDatabase {
         throw Exception('قيمة الدفعة أكبر من المبلغ المتبقي المستحق');
       }
 
+      final paymentTime = createdAt ?? DateTime.now();
+
       await into(debtPaymentsTable).insert(
         DebtPaymentsTableCompanion(
           debtId: Value(debtId),
           amount: Value(amount),
           notes: Value(notes),
           paymentMethod: Value(paymentMethod),
-          createdAt: Value(DateTime.now()),
+          createdAt: Value(paymentTime),
         ),
       );
 
@@ -1542,6 +1545,7 @@ class AppDatabase extends _$AppDatabase {
           notes != null && notes.trim().isNotEmpty
               ? notes.trim()
               : 'دفعة سريعة';
+      final now = DateTime.now();
 
       for (final id in debtIds) {
         if (remaining <= 0) break;
@@ -1564,6 +1568,7 @@ class AppDatabase extends _$AppDatabase {
           amount: payAmount,
           notes: noteText,
           paymentMethod: paymentMethod,
+          createdAt: now,
         );
         remaining -= payAmount;
       }
