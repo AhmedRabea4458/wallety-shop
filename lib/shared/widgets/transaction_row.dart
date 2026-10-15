@@ -14,6 +14,7 @@ class TransactionRow extends StatelessWidget {
   final IconData icon;
   final bool isExpense;
   final VoidCallback? onTap;
+  final String? note;
 
   const TransactionRow({
     super.key,
@@ -26,6 +27,7 @@ class TransactionRow extends StatelessWidget {
     required this.icon,
     this.isExpense = false,
     this.onTap,
+    this.note,
   });
 
   @override
@@ -55,7 +57,7 @@ class TransactionRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.space3),
-            // Name + category + date
+            // Name + category + date + note
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,6 +115,29 @@ class TransactionRow extends StatelessWidget {
                       ],
                     ],
                   ),
+                  if (note != null && note!.trim().isNotEmpty) ...[
+                    const SizedBox(height: AppSpacing.space1),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.notes_rounded,
+                          size: 14,
+                          color: AppColors.mutedForeground,
+                        ),
+                        const SizedBox(width: AppSpacing.space1),
+                        Expanded(
+                          child: Text(
+                            note!.trim(),
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.mutedForeground,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

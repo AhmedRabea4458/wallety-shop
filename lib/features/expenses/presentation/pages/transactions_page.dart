@@ -493,20 +493,18 @@ class _OperationsList extends StatelessWidget {
                   final typeLabel = TransactionsPage._getOperationTypeLabel(
                     operation.operationType,
                   );
+                  final walletMatch = wallets.cast<WalletEntity?>().firstWhere(
+                    (w) => w?.id == operation.walletId,
+                    orElse: () => null,
+                  );
                   final walletName =
-                      wallets
-                          .firstWhere(
-                            (w) => w.id == operation.walletId,
-                            orElse:
-                                () => WalletEntity(
-                                  id: 0,
-                                  name: '',
-                                  balance: 0,
-                                  color: const Color(0xFF6366F1),
-                                  createdAt: DateTime.now(),
-                                ),
-                          )
-                          .name;
+                      walletMatch != null && walletMatch.name.isNotEmpty
+                          ? walletMatch.name
+                          : (walletMatch?.phoneNumber?.isNotEmpty == true
+                              ? walletMatch!.phoneNumber!
+                              : (operation.phoneNumber?.isNotEmpty == true
+                                  ? operation.phoneNumber!
+                                  : ''));
                   final isOutgoing =
                       operation.operationType == OperationType.deposit;
                   final providerLabel = operation.providerType.label;
@@ -530,12 +528,14 @@ class _OperationsList extends StatelessWidget {
                       instaPayAccountName = operation.providerType.label;
                     }
                   }
+                  final walletOrAccountName =
+                      operation.providerType == ProviderType.vodafoneCash
+                          ? walletName
+                          : instaPayAccountName;
                   final title =
-                      operation.notes?.trim().isNotEmpty == true
-                          ? operation.notes!
-                          : operation.providerType == ProviderType.vodafoneCash
-                          ? '$typeLabel - $walletName'
-                          : '$typeLabel - $instaPayAccountName';
+                      walletOrAccountName.isNotEmpty
+                          ? '$typeLabel - $walletOrAccountName'
+                          : typeLabel;
                   final debt = operationDebts[operation.id];
                   return Padding(
                     padding: const EdgeInsets.symmetric(
@@ -653,6 +653,7 @@ class _OperationsList extends StatelessWidget {
                               iconColor: typeColor,
                               icon: typeIcon,
                               isExpense: isOutgoing,
+                              note: operation.notes,
                               onTap: () {
                                 if (debt != null) {
                                   context.push(

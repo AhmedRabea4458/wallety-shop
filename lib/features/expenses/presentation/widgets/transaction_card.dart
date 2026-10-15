@@ -13,6 +13,7 @@ class TransactionCard extends StatelessWidget {
   final IconData icon;
   final bool isExpense;
   final VoidCallback? onTap;
+  final String? note;
 
   const TransactionCard({
     super.key,
@@ -25,6 +26,7 @@ class TransactionCard extends StatelessWidget {
     required this.icon,
     this.isExpense = false,
     this.onTap,
+    this.note,
   });
 
   @override
@@ -54,6 +56,7 @@ class TransactionCard extends StatelessWidget {
         icon: icon,
         isExpense: isExpense,
         onTap: onTap,
+        note: note,
       ),
     );
   }
