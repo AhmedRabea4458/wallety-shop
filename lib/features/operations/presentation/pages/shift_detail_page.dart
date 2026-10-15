@@ -9,6 +9,7 @@ import 'package:smart_expense/core/theme/app_radius.dart';
 import 'package:smart_expense/core/theme/app_spacing.dart';
 import 'package:smart_expense/core/theme/app_text_styles.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
+import 'package:smart_expense/features/operations/domain/entities/grouped_debt_payment.dart';
 import 'package:smart_expense/features/operations/domain/entities/operation_entity.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_detail_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/shift_detail_state.dart';
@@ -29,12 +30,14 @@ class _TimelineEvent {
   final _TimelineEventType type;
   final String? name;
   final double amount;
+  final GroupedDebtPayment? groupedPayment;
 
   const _TimelineEvent({
     required this.time,
     required this.type,
     this.name,
     required this.amount,
+    this.groupedPayment,
   });
 
   String get label {
@@ -147,26 +150,29 @@ class _ShiftDetailPageState extends State<ShiftDetailPage> {
       }
     }
 
-    // Payments made during shift
-    for (final payment in state.shiftPayments) {
-      final linkedDebt = state.allDebtsById[payment.debtId];
-      final debtorId = linkedDebt?.debtorId;
-      final name = debtorId != null ? state.debtorNames[debtorId] : null;
-      if (linkedDebt?.debtType == DebtType.payable) {
-        events.add(_TimelineEvent(
-          time: payment.createdAt,
-          type: _TimelineEventType.payableSettled,
-          name: name,
-          amount: payment.amount,
-        ));
-      } else {
-        events.add(_TimelineEvent(
-          time: payment.createdAt,
-          type: _TimelineEventType.debtCollected,
-          name: name,
-          amount: payment.amount,
-        ));
-      }
+    // Payments made during shift (grouped into single collection operations)
+    final groupedPayments = GroupedDebtPayment.groupPayments(
+      payments: state.shiftPayments,
+      debtsById: state.allDebtsById,
+      debtorNames: state.debtorNames,
+    );
+
+    for (final group in groupedPayments) {
+      final firstItem = group.items.first;
+      final isPayable = firstItem.debt?.debtType == DebtType.payable;
+      final type = isPayable
+          ? _TimelineEventType.payableSettled
+          : _TimelineEventType.debtCollected;
+
+      final name = group.debtorNameSummary;
+
+      events.add(_TimelineEvent(
+        time: group.createdAt,
+        type: type,
+        name: name,
+        amount: group.totalAmount,
+        groupedPayment: group,
+      ));
     }
 
     events.sort((a, b) => a.time.compareTo(b.time));
@@ -517,75 +523,249 @@ class _TimelineTile extends StatelessWidget {
 
   static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 
-  @override
-  Widget build(BuildContext context) {
-    final color = event.color;
-    return Padding(
-      padding: EdgeInsets.only(
-        top: isFirst ? AppSpacing.space3 : 0,
-        bottom: isLast ? AppSpacing.space3 : 0,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.space4,
-          vertical: AppSpacing.space3,
+  void _showBreakdownDialog(BuildContext context) {
+    final group = event.groupedPayment;
+    if (group == null || group.isSingle) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        title: Row(
           children: [
-            // Icon badge
             Container(
-              width: 36,
-              height: 36,
+              padding: const EdgeInsets.all(AppSpacing.space2),
               decoration: BoxDecoration(
-                color: AppColors.withAlpha(color, 0.15),
+                color: AppColors.withAlpha(event.color, 0.15),
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(event.icon, color: color, size: 18),
+              child: Icon(event.icon, color: event.color, size: 20),
             ),
-            const SizedBox(width: AppSpacing.space3),
-            // Label & name
+            const SizedBox(width: AppSpacing.space2),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.label,
-                    style: AppTextStyles.body.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (event.name != null && event.name!.isNotEmpty)
-                    Text(
-                      event.name!,
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.mutedForeground,
-                      ),
-                    ),
-                ],
+              child: Text(
+                'تفاصيل ${event.label}',
+                style: AppTextStyles.headline.copyWith(
+                  color: AppColors.foreground,
+                ),
               ),
             ),
-            // Amount & time
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${_f(event.amount)} ج.م',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.foreground,
-                    fontWeight: FontWeight.w700,
-                  ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'الوقت: ${DateFormat('hh:mm a', 'ar').format(event.time)} | طريقة الدفع: ${group.paymentMethod == 'cash' ? 'نقدي' : (group.paymentMethod == 'other' ? 'أخرى' : group.paymentMethod)}',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.mutedForeground,
                 ),
+              ),
+              if (group.notes != null && group.notes!.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.space1),
                 Text(
-                  DateFormat('hh:mm a', 'ar').format(event.time),
+                  'ملاحظات: ${group.notes}',
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mutedForeground,
+                    color: AppColors.foreground,
                   ),
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: AppSpacing.space3),
+              const Divider(height: 1, color: AppColors.border50),
+              const SizedBox(height: AppSpacing.space2),
+              ...group.items.map((item) {
+                final debtorName = item.debtorName ?? 'عميل';
+                final debt = item.debt;
+                String extra = '';
+                if (debt != null) {
+                  if (debt.isCashLoan) {
+                    extra = ' (دين نقدي)';
+                  } else {
+                    final type = debt.operationType == 'deposit' ? 'إيداع' : 'سحب';
+                    final prov = debt.providerType == 'instaPay' ? 'InstaPay' : 'Vodafone Cash';
+                    extra = ' ($type - $prov)';
+                  }
+                  if (debt.notes != null && debt.notes!.trim().isNotEmpty) {
+                    extra += ' - ${debt.notes}';
+                  }
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.space1),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '$debtorName$extra',
+                          style: AppTextStyles.body.copyWith(
+                            color: AppColors.foreground,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${_f(item.amount)} ج.م',
+                        style: AppTextStyles.body.copyWith(
+                          color: event.color,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              const SizedBox(height: AppSpacing.space2),
+              const Divider(height: 1, color: AppColors.border50),
+              const SizedBox(height: AppSpacing.space2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'الإجمالي:',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '${_f(event.amount)} ج.م',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: event.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = event.color;
+    final isGrouped = event.groupedPayment != null && !event.groupedPayment!.isSingle;
+
+    return InkWell(
+      onTap: isGrouped ? () => _showBreakdownDialog(context) : null,
+      child: Padding(
+        padding: EdgeInsets.only(
+          top: isFirst ? AppSpacing.space3 : 0,
+          bottom: isLast ? AppSpacing.space3 : 0,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.space4,
+            vertical: AppSpacing.space3,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon badge
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.withAlpha(color, 0.15),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(event.icon, color: color, size: 18),
+              ),
+              const SizedBox(width: AppSpacing.space3),
+              // Label & name
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          event.label,
+                          style: AppTextStyles.body.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (isGrouped) ...[
+                          const SizedBox(width: AppSpacing.space2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: Text(
+                              'موزعة على ${event.groupedPayment!.items.length} ذمم',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (event.name != null && event.name!.isNotEmpty)
+                      Text(
+                        event.name!,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              // Amount & time
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${_f(event.amount)} ج.م',
+                        style: AppTextStyles.body.copyWith(
+                          color: AppColors.foreground,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('hh:mm a', 'ar').format(event.time),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (isGrouped) ...[
+                    const SizedBox(width: AppSpacing.space1),
+                    const Icon(
+                      Icons.chevron_left_rounded,
+                      color: AppColors.mutedForeground,
+                      size: 20,
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

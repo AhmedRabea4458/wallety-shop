@@ -43,6 +43,7 @@ abstract class DebtRepository {
     required double amount,
     String? notes,
     String paymentMethod = 'cash',
+    DateTime? createdAt,
   });
 
   // Bulk Payment

@@ -14,6 +14,7 @@ import 'package:smart_expense/features/operations/domain/entities/debt_entity.da
 import 'package:smart_expense/features/operations/domain/entities/debt_payment_entity.dart';
 import 'package:smart_expense/features/operations/domain/entities/debt_type.dart';
 import 'package:smart_expense/features/operations/domain/entities/debtor_entity.dart';
+import 'package:smart_expense/features/operations/domain/entities/grouped_debt_payment.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_cubit.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/debt_state.dart';
 import 'package:smart_expense/features/operations/presentation/cubit/operation_cubit.dart';
@@ -1108,19 +1109,29 @@ class _DebtorDetailPageState extends State<DebtorDetailPage> {
                           ),
                         )
                       else
-                        SliverList(
-                          delegate: SliverChildBuilderDelegate((
-                            context,
-                            index,
-                          ) {
-                            final sortedPayments =
-                                List<DebtPaymentEntity>.from(state.payments)
-                                  ..sort(
-                                    (a, b) => b.createdAt.compareTo(a.createdAt),
-                                  );
-                            final payment = sortedPayments[index];
-                            return _PaymentTile(payment: payment);
-                          }, childCount: state.payments.length),
+                        Builder(
+                          builder: (context) {
+                            final debtsMap = {
+                              for (final d in state.debts) d.id: d,
+                            };
+                            final groupedPayments =
+                                GroupedDebtPayment.groupPayments(
+                              payments: state.payments,
+                              debtsById: debtsMap,
+                            );
+
+                            return SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                index,
+                              ) {
+                                final group = groupedPayments[index];
+                                return _GroupedPaymentTile(
+                                  groupedPayment: group,
+                                );
+                              }, childCount: groupedPayments.length),
+                            );
+                          },
                         ),
                       const SliverToBoxAdapter(
                         child: SizedBox(height: AppSpacing.space8),
@@ -2332,15 +2343,25 @@ class _DebtTile extends StatelessWidget {
   }
 }
 
-class _PaymentTile extends StatelessWidget {
-  final DebtPaymentEntity payment;
+class _GroupedPaymentTile extends StatefulWidget {
+  final GroupedDebtPayment groupedPayment;
 
-  const _PaymentTile({required this.payment});
+  const _GroupedPaymentTile({required this.groupedPayment});
+
+  @override
+  State<_GroupedPaymentTile> createState() => _GroupedPaymentTileState();
+}
+
+class _GroupedPaymentTileState extends State<_GroupedPaymentTile> {
+  bool _isExpanded = false;
 
   static String _f(double v) => NumberFormat('#,##0.##', 'ar').format(v);
 
   @override
   Widget build(BuildContext context) {
+    final group = widget.groupedPayment;
+    final isSingle = group.isSingle;
+
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: AppSpacing.screenHorizontal,
@@ -2355,46 +2376,182 @@ class _PaymentTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppRadius.md),
         border: Border.all(color: AppColors.border50),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          InkWell(
+            onTap: isSingle ? null : () => setState(() => _isExpanded = !_isExpanded),
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'دفعة بقيمة ${_f(payment.amount)} ج.م',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w700,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              isSingle
+                                  ? 'دفعة بقيمة ${_f(group.totalAmount)} ج.م'
+                                  : 'تحصيل آجل — ${_f(group.totalAmount)} ج.م',
+                              style: AppTextStyles.body.copyWith(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          if (!isSingle) ...[
+                            const SizedBox(width: AppSpacing.space2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(AppRadius.sm),
+                              ),
+                              child: Text(
+                                'موزعة على ${group.items.length} ذمم',
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.primary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (group.notes != null && group.notes!.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.space1),
+                        Text(
+                          group.notes!,
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.mutedForeground,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.space1),
+                      Text(
+                        'طريقة الدفع: ${group.paymentMethod == 'cash' ? 'نقدي' : (group.paymentMethod == 'other' ? 'أخرى' : group.paymentMethod)}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.mutedForeground,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (payment.notes != null && payment.notes!.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.space1),
-                  Text(
-                    payment.notes!,
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.mutedForeground,
+                Row(
+                  children: [
+                    Text(
+                      DateFormatter.formatFullDateTime(group.createdAt),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.mutedForeground,
+                      ),
                     ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.space1),
-                Text(
-                  'طريقة الدفع: ${payment.paymentMethod == 'cash' ? 'نقدي' : (payment.paymentMethod == 'other' ? 'أخرى' : payment.paymentMethod)}',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.mutedForeground,
-                    fontSize: 10,
-                  ),
+                    if (!isSingle) ...[
+                      const SizedBox(width: AppSpacing.space1),
+                      Icon(
+                        _isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                        color: AppColors.mutedForeground,
+                        size: 20,
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
           ),
-          Text(
-            DateFormatter.formatFullDateTime(payment.createdAt),
-            style: AppTextStyles.caption.copyWith(
-              color: AppColors.mutedForeground,
+          if (!isSingle && _isExpanded) ...[
+            const SizedBox(height: AppSpacing.space3),
+            const Divider(height: 1, color: AppColors.border50),
+            const SizedBox(height: AppSpacing.space2),
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.space2),
+              child: Text(
+                'تفاصيل توزيع المبلغ على الذمم:',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.mutedForeground,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-          ),
+            ...group.items.map((item) {
+              final debt = item.debt;
+              String debtDesc = 'آجل #${item.debtId}';
+              if (debt != null) {
+                if (debt.isCashLoan) {
+                  debtDesc = 'دين نقدي #${debt.id}';
+                } else {
+                  final type = debt.operationType == 'deposit' ? 'إيداع' : 'سحب';
+                  final prov = debt.providerType == 'instaPay' ? 'InstaPay' : 'Vodafone Cash';
+                  debtDesc = '$type ($prov) #${debt.id}';
+                }
+                if (debt.notes != null && debt.notes!.trim().isNotEmpty) {
+                  debtDesc += ' - ${debt.notes}';
+                }
+              }
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: AppSpacing.space2),
+                padding: const EdgeInsets.all(AppSpacing.space2),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.border50),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        debtDesc,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.foreground,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${_f(item.amount)} ج.م',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.space2,
+                vertical: AppSpacing.space1,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'الإجمالي:',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '${_f(group.totalAmount)} ج.م',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
