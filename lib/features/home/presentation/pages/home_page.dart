@@ -364,33 +364,142 @@ class HomePage extends StatelessWidget {
                                       ],
                                     ),
                                     const SizedBox(height: AppSpacing.space4),
-                                    SizedBox(
-                                      height: 152,
-                                      child: ListView.separated(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: activeWallets.length,
-                                        separatorBuilder:
-                                            (_, _) => const SizedBox(
-                                              width: AppSpacing.space2,
+                                    if (activeWallets.isEmpty)
+                                      Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: AppSpacing.space5,
+                                          vertical: AppSpacing.space5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.card,
+                                          borderRadius: BorderRadius.circular(
+                                            AppRadius.lg,
+                                          ),
+                                          border: Border.all(
+                                            color: AppColors.border45,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(
+                                                AppSpacing.space3,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.withAlpha(
+                                                  AppColors.primary,
+                                                  0.12,
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons
+                                                    .account_balance_wallet_outlined,
+                                                color: AppColors.primary,
+                                                size: 26,
+                                              ),
                                             ),
-                                        itemBuilder: (context, index) {
-                                          final wallet = activeWallets[index];
-                                          final usage =
-                                              WalletLimitCalculator.calculate(
+                                            const SizedBox(
+                                              height: AppSpacing.space3,
+                                            ),
+                                            Text(
+                                              'لا توجد محافظ مضافة حالياً',
+                                              style: AppTextStyles.bodyLarge
+                                                  .copyWith(
+                                                    color: AppColors.foreground,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                            ),
+                                            const SizedBox(
+                                              height: AppSpacing.space1,
+                                            ),
+                                            Text(
+                                              'أضف محفظتك الأولى لبدء تسجيل العمليات ومتابعة الحدود اليومية',
+                                              style: AppTextStyles.caption
+                                                  .copyWith(
+                                                    color: AppColors
+                                                        .mutedForeground,
+                                                  ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            const SizedBox(
+                                              height: AppSpacing.space3,
+                                            ),
+                                            ElevatedButton.icon(
+                                              onPressed:
+                                                  () => context.push(
+                                                    AppRoutes.walletManagement,
+                                                  ),
+                                              icon: const Icon(
+                                                Icons.add_rounded,
+                                                size: 18,
+                                              ),
+                                              label: Text(
+                                                'إضافة محفظة',
+                                                style: AppTextStyles.body
+                                                    .copyWith(
+                                                      color: AppColors
+                                                          .primaryForeground,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primary,
+                                                foregroundColor: AppColors
+                                                    .primaryForeground,
+                                                elevation: 0,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal:
+                                                          AppSpacing.space5,
+                                                      vertical:
+                                                          AppSpacing.space2,
+                                                    ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        AppRadius.md,
+                                                      ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    else
+                                      SizedBox(
+                                        height: 152,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: activeWallets.length,
+                                          separatorBuilder:
+                                              (_, _) => const SizedBox(
+                                                width: AppSpacing.space2,
+                                              ),
+                                          itemBuilder: (context, index) {
+                                            final wallet = activeWallets[index];
+                                            final usage =
+                                                WalletLimitCalculator.calculate(
+                                                  wallet: wallet,
+                                                  operations: operations,
+                                                  adjustments: adjustments,
+                                                );
+                                            return SizedBox(
+                                              width: 174,
+                                              child: HomeWalletCard(
                                                 wallet: wallet,
-                                                operations: operations,
-                                                adjustments: adjustments,
-                                              );
-                                          return SizedBox(
-                                            width: 174,
-                                            child: HomeWalletCard(
-                                              wallet: wallet,
-                                              usage: usage,
-                                            ),
-                                          );
-                                        },
+                                                usage: usage,
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),

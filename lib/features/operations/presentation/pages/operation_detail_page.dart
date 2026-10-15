@@ -267,8 +267,9 @@ class OperationDetailPage extends StatelessWidget {
                             value:
                                 '${operation.commission.toStringAsFixed(0)} ج.م',
                           ),
-                          if (operation.providerType ==
-                              ProviderType.vodafoneCash) ...[
+                          if (operation.operationType ==
+                                  OperationType.deposit ||
+                              operation.networkFee > 0) ...[
                             const Divider(color: AppColors.border45),
                             _DetailRow(
                               label: 'رسوم الشبكة',
