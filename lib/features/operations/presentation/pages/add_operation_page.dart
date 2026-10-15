@@ -231,7 +231,7 @@ class _AddOperationPageState extends State<AddOperationPage> {
       amount: amount,
       commission: commission,
       networkFee:
-          _selectedProvider == ProviderType.vodafoneCash ? networkFee : 0.0,
+          _selectedType == OperationType.deposit ? networkFee : 0.0,
       shiftId: shiftId,
       instaPayAccountId:
           _selectedProvider == ProviderType.instaPay
@@ -957,10 +957,12 @@ class _AddOperationPageState extends State<AddOperationPage> {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
                   child:
-                      _selectedProvider == ProviderType.vodafoneCash &&
-                              _selectedType == OperationType.deposit
+                      _selectedType == OperationType.deposit
                           ? OperationInputCard(
-                            label: 'رسوم الشبكة (Vodafone Cash)',
+                            key: ValueKey('network_fee_${_selectedProvider.name}'),
+                            label: _selectedProvider == ProviderType.vodafoneCash
+                                ? 'رسوم الشبكة (Vodafone Cash)'
+                                : 'رسوم الشبكة (InstaPay)',
                             controller: _networkFeeController,
                             keyboardType: TextInputType.number,
                             enabled: !_isSaving,
